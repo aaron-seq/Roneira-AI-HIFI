@@ -1,0 +1,15 @@
+stock-prediction-tool/
+├── backend/
+│   └── StockPredictionAPI/
+│       ├── Controllers/
+│       ├── Models/
+│       ├── Services/
+│       ├── Data/
+│       ├── Program.cs
+│       ├── appsettings.json
+│       └── StockPredictionAPI.csproj
+├── frontend/
+│   ├── src/
+│   └── package.json
+├── README.md
+└── setup-instructions.md
