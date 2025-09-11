@@ -1,87 +1,90 @@
-// server.js
+// Import necessary modules
 const express = require('express');
-const cors = require('cors');
 const axios = require('axios');
+const cors = require('cors');
+const yfinance = require('yahoo-finance2').default;
 
+// Initialize the Express application
 const app = express();
-const PORT = process.env.PORT || 3001;
-const ML_SERVICE_URL = 'http://127.0.0.1:5000/predict'; // URL of your Python ML service
+const PORT = process.env.PORT || 5000;
+const ML_API_URL = 'http://localhost:8000/predict';
 
-app.use(cors());
-app.use(express.json());
+// Apply middleware
+app.use(cors()); // Enable Cross-Origin Resource Sharing
+app.use(express.json()); // Parse JSON request bodies
 
-// --- Mock Database ---
-// In a real app, you would use a database like MongoDB or PostgreSQL
-const users = {
-  'admin': { password: 'aaron1234', name: 'Aaron' },
-  'user1': { password: 'password1', name: 'User One' }
-};
-const auditLog = [
-  { user: 'user_alpha', timestamp: '2025-08-09 23:45:12', stock: 'RELIANCE.NS' },
-  { user: 'user_beta', timestamp: '2025-08-09 23:42:05', stock: 'NVDA' },
-];
+/**
+ * @route   GET /api/stock/:ticker
+ * @desc    Get historical stock data for a given ticker symbol
+ * @access  Public
+ */
+app.get('/api/stock/:ticker', async (request, response) => {
+    try {
+        const { ticker } = request.params;
+        const queryOptions = {
+            period1: '2020-01-01', // Start date for historical data
+        };
 
-// --- API Endpoints ---
+        console.log(`Fetching historical data for ${ticker}`);
+        const historicalData = await yfinance.historical(ticker, queryOptions);
 
-// Login Endpoint
-app.post('/api/login', (req, res) => {
-  const { username, password } = req.body;
-  if (users[username] && users[username].password === password) {
-    console.log(`Login successful for user: ${username}`);
-    res.json({ success: true, user: { username, name: users[username].name } });
-  } else {
-    console.log(`Login failed for user: ${username}`);
-    res.status(401).json({ success: false, message: 'Invalid credentials' });
-  }
+        if (!historicalData || historicalData.length === 0) {
+            return response.status(404).json({ message: 'Stock data not found for the given ticker.' });
+        }
+
+        response.status(200).json(historicalData);
+    } catch (error) {
+        console.error('Error fetching stock data:', error.message);
+        if (error.response) {
+            // The request was made and the server responded with a status code
+            // that falls out of the range of 2xx
+            return response.status(error.response.status).json({ message: 'External API returned an error.', details: error.message });
+        } else if (error.request) {
+            // The request was made but no response was received
+            return response.status(503).json({ message: 'Could not connect to the stock data service.' });
+        }
+        // Something happened in setting up the request that triggered an Error
+        response.status(500).json({ message: 'An internal server error occurred.' });
+    }
 });
 
-// Audit Log Endpoint
-app.get('/api/auditlog', (req, res) => {
-  // In a real app, you'd check if the user is an admin
-  res.json(auditLog.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)));
-});
+/**
+ * @route   POST /api/predict
+ * @desc    Get stock price prediction from the ML service
+ * @access  Public
+ */
+app.post('/api/predict', async (request, response) => {
+    try {
+        const { ticker } = request.body;
 
-// Prediction Endpoint
-app.post('/api/predict', async (req, res) => {
-  const { stock, timeline, user } = req.body;
+        if (!ticker) {
+            return response.status(400).json({ message: 'Ticker symbol is required.' });
+        }
 
-  if (!stock || !timeline || !user) {
-    return res.status(400).json({ message: 'Missing required fields: stock, timeline, user' });
-  }
+        console.log(`Requesting prediction for ${ticker}`);
+        
+        // Forward the request to the Python ML service
+        const predictionResponse = await axios.post(ML_API_URL, {
+            ticker: ticker
+        });
 
-  // Add to audit log
-  const newLogEntry = { user: user.username, timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19), stock };
-  auditLog.unshift(newLogEntry);
-  console.log('New audit log entry:', newLogEntry);
-
-  try {
-    // Call the Python ML service
-    console.log(`Forwarding prediction request for ${stock} to ML service...`);
-    const mlResponse = await axios.post(ML_SERVICE_URL, {
-      stock_symbol: stock,
-      prediction_timeline: timeline
-    });
-
-    // Return the prediction from the ML service
-    res.json(mlResponse.data);
-
-  } catch (error) {
-    console.error("Error calling ML service:", error.message);
-    // Fallback to mock data if ML service fails
-    res.status(500).json({
-        priceTarget: 215.50,
-        confidenceScore: 85,
-        marketValueTarget: '220.00 - 225.00',
-        indicators: { shortTerm: 'Strong Buy', longTerm: 'Buy' },
-        peerComparison: [
-            { name: 'Peer A', valuation: 'High', durability: 'High', momentum: 'Medium' },
-            { name: 'Peer B', valuation: 'Medium', durability: 'High', momentum: 'High' },
-        ],
-    });
-  }
+        response.status(200).json(predictionResponse.data);
+    } catch (error) {
+        console.error('Error getting prediction:', error.message);
+        if (error.code === 'ECONNREFUSED') {
+             return response.status(503).json({ message: 'The prediction service is currently unavailable.' });
+        }
+        response.status(500).json({ message: 'An internal server error occurred while fetching the prediction.' });
+    }
 });
 
 
+// Centralized Error Handling for routes that don't exist
+app.use((req, res, next) => {
+    res.status(404).json({ message: "API endpoint not found." });
+});
+
+// Start the server
 app.listen(PORT, () => {
-  console.log(`Backend server running on http://localhost:${PORT}`);
+    console.log(`✅ Backend server is running on http://localhost:${PORT}`);
 });
