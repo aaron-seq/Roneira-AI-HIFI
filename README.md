@@ -1,6 +1,6 @@
 # Advanced Stock Portfolio & Prediction Platform 2.0 
 
-## 🚀 Complete Upgraded Codebase
+## Complete Upgraded Codebase
 
 This is a **comprehensive upgrade** of your stock portfolio and prediction application with modern technologies, advanced features, and production-ready architecture.
 
