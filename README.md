@@ -37,8 +37,8 @@ Roneira AI HIFI is an advanced, AI-powered finance analytics platform designed t
      ┌──────────────┐    ┌────────────┐       ┌─────────────┐
      │ PostgreSQL   │    │  Redis     │       │   Nginx     │
      └──────────────┘    └────────────┘       └─────────────┘
-    ```
-
+    
+```
 ---
 
 ## Tech Stack
