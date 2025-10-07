@@ -25,7 +25,7 @@ Roneira AI HIFI is an advanced, AI-powered finance analytics platform designed t
 
 ---
 
-## 🏗️ System Architecture
+## System Architecture
 
 ```
 
@@ -41,7 +41,7 @@ Roneira AI HIFI is an advanced, AI-powered finance analytics platform designed t
 
 ---
 
-## 💻 Tech Stack
+## Tech Stack
 
 - **Frontend:** React 18+, TypeScript, Vite, Tailwind CSS, Zustand, TanStack Query, Framer Motion
 - **Backend:** Node.js 18+, Express, TypeScript, Prisma ORM, PostgreSQL, Redis, JWT, Socket.io, Bull
@@ -50,7 +50,7 @@ Roneira AI HIFI is an advanced, AI-powered finance analytics platform designed t
 
 ---
 
-## ⚡ Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -89,7 +89,7 @@ docker-compose logs -f
 
 ---
 
-## ☁️ Cloud Deployment
+## Cloud Deployment
 
 **Frontend:**  
 Deploy `frontend/` to [Vercel](https://vercel.com), set environment variables using the Vercel dashboard.
@@ -105,7 +105,7 @@ Update your frontend’s `.env.local` and backend/ML `.env` files with the deplo
 
 ---
 
-## 🔐 Security by Design
+## Security by Design
 
 - JWT authentication and refresh tokens
 - Rate limiting and brute-force protection
@@ -114,7 +114,7 @@ Update your frontend’s `.env.local` and backend/ML `.env` files with the deplo
 
 ---
 
-## 📊 Monitoring & Observability
+## Monitoring & Observability
 
 - Health checks for every service
 - Real-time Prometheus metrics and Grafana dashboards
@@ -122,7 +122,7 @@ Update your frontend’s `.env.local` and backend/ML `.env` files with the deplo
 
 ---
 
-## 🧪 Testing
+## Testing
 
 **Frontend:**  
 `cd frontend && yarn test`
@@ -135,7 +135,7 @@ Update your frontend’s `.env.local` and backend/ML `.env` files with the deplo
 
 ---
 
-## 🗂️ API Documentation
+## API Documentation
 
 - **Swagger/OpenAPI:**  
   - DEV: `http://localhost:3001/api-docs`
@@ -158,7 +158,7 @@ MIT License ([LICENSE](./LICENSE))
 
 ---
 
-## 🏢 Enterprise Support & Contact
+## Enterprise Support & Contact
 
 For custom analytics, business integration, white-label deployment, or technical support,  
 reach out to the Roneira AI HIFI team.
@@ -167,15 +167,4 @@ reach out to the Roneira AI HIFI team.
 
 **Build finance intelligence that works for you—fast, secure, and AI-powered with Roneira AI HIFI.**
 ```
-
-
-***
-
-**Instructions to use:**
-
-- Copy everything above (starting from `# Roneira AI HIFI ...` to the end).
-- Paste into a new file called `README.md` in your repository folder.
-- Commit and push the file to your GitHub repo.
-
-Let me know if you want this broken into separate files, need a PDF export summary, or want a different formatting style!
 
