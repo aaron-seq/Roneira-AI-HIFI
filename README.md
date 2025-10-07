@@ -1,9 +1,3 @@
-**Roneira AI HIFI** (*High-Impact Finance Intelligence*).
-This version is business-forward, focused on modern features, enterprise hosting, and developer onboarding.
-
-***
-
-```markdown
 # Roneira AI HIFI – High-Impact Finance Intelligence
 
 Roneira AI HIFI is an advanced, AI-powered finance analytics platform designed to drive smarter investment decisions, portfolio intelligence, and real-time financial insights for businesses and individuals alike.
@@ -31,7 +25,7 @@ Roneira AI HIFI is an advanced, AI-powered finance analytics platform designed t
 
 ---
 
-## System Architecture
+## 🏗️ System Architecture
 
 ```
 
@@ -47,7 +41,7 @@ Roneira AI HIFI is an advanced, AI-powered finance analytics platform designed t
 
 ---
 
-## Tech Stack
+## 💻 Tech Stack
 
 - **Frontend:** React 18+, TypeScript, Vite, Tailwind CSS, Zustand, TanStack Query, Framer Motion
 - **Backend:** Node.js 18+, Express, TypeScript, Prisma ORM, PostgreSQL, Redis, JWT, Socket.io, Bull
@@ -56,7 +50,7 @@ Roneira AI HIFI is an advanced, AI-powered finance analytics platform designed t
 
 ---
 
-## Getting Started
+## ⚡ Getting Started
 
 ### Prerequisites
 
@@ -95,7 +89,7 @@ docker-compose logs -f
 
 ---
 
-## Cloud Deployment
+## ☁️ Cloud Deployment
 
 **Frontend:**  
 Deploy `frontend/` to [Vercel](https://vercel.com), set environment variables using the Vercel dashboard.
@@ -111,7 +105,7 @@ Update your frontend’s `.env.local` and backend/ML `.env` files with the deplo
 
 ---
 
-## Security by Design
+## 🔐 Security by Design
 
 - JWT authentication and refresh tokens
 - Rate limiting and brute-force protection
@@ -120,7 +114,7 @@ Update your frontend’s `.env.local` and backend/ML `.env` files with the deplo
 
 ---
 
-## Monitoring & Observability
+## 📊 Monitoring & Observability
 
 - Health checks for every service
 - Real-time Prometheus metrics and Grafana dashboards
@@ -128,7 +122,7 @@ Update your frontend’s `.env.local` and backend/ML `.env` files with the deplo
 
 ---
 
-## Testing
+## 🧪 Testing
 
 **Frontend:**  
 `cd frontend && yarn test`
@@ -141,7 +135,7 @@ Update your frontend’s `.env.local` and backend/ML `.env` files with the deplo
 
 ---
 
-## API Documentation
+## 🗂️ API Documentation
 
 - **Swagger/OpenAPI:**  
   - DEV: `http://localhost:3001/api-docs`
@@ -149,7 +143,7 @@ Update your frontend’s `.env.local` and backend/ML `.env` files with the deplo
 
 ---
 
-## Contributing
+## 🤝 Contributing
 
 1. Fork this repo
 2. Create a feature branch (`git checkout -b feature/your-feature`)
@@ -158,13 +152,13 @@ Update your frontend’s `.env.local` and backend/ML `.env` files with the deplo
 
 ---
 
-## License
+## 📄 License
 
 MIT License ([LICENSE](./LICENSE))
 
 ---
 
-## Enterprise Support & Contact
+## 🏢 Enterprise Support & Contact
 
 For custom analytics, business integration, white-label deployment, or technical support,  
 reach out to the Roneira AI HIFI team.
@@ -177,5 +171,11 @@ reach out to the Roneira AI HIFI team.
 
 ***
 
-Let me know if you need further customization for open-source, SaaS, client onboarding, or a more technical/developer-centric tone!
+**Instructions to use:**
+
+- Copy everything above (starting from `# Roneira AI HIFI ...` to the end).
+- Paste into a new file called `README.md` in your repository folder.
+- Commit and push the file to your GitHub repo.
+
+Let me know if you want this broken into separate files, need a PDF export summary, or want a different formatting style!
 
