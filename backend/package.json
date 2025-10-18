@@ -1,89 +1,114 @@
 {
-  "name": "roneira-financial-intelligence-backend",
+  "name": "roneira-ai-hifi-backend",
   "version": "2.0.0",
-  "description": "Enhanced Backend API for Roneira Financial Intelligence Platform - AI-driven stock predictions and portfolio management",
-  "main": "src/server.js",
-  "type": "module",
+  "description": "Enhanced backend API server for Roneira AI HIFI with PDM strategy integration",
+  "main": "dist/server.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
-    "test": "jest --detectOpenHandles",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "test": "jest --coverage",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
-    "lint": "eslint src --ext .js --fix",
-    "format": "prettier --write src/**/*.js",
-    "build": "npm run lint && npm run test",
-    "validate": "npm run lint && npm run test && npm audit"
+    "test:integration": "jest --testMatch='**/*.integration.test.ts'",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "format": "prettier --write src/**/*.ts",
+    "clean": "rimraf dist",
+    "prebuild": "npm run clean",
+    "postinstall": "npm run build"
   },
   "keywords": [
-    "financial-intelligence",
-    "stock-prediction",
-    "portfolio-management",
+    "finance",
+    "ai",
     "machine-learning",
-    "fintech",
-    "investment-analysis",
-    "REST-API",
+    "stock-prediction",
+    "pdm-strategy",
+    "typescript",
     "express",
-    "nodejs"
+    "api"
   ],
   "author": "Aaron Sequeira <aaronsequeira12@gmail.com>",
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/aaron-seq/Roneira-AI-HIFI.git"
-  },
   "dependencies": {
-    "express": "^4.19.2",
+    "express": "^4.18.2",
+    "axios": "^1.6.2",
     "cors": "^2.8.5",
-    "axios": "^1.7.7",
-    "dotenv": "^16.4.5",
     "helmet": "^7.1.0",
-    "express-rate-limit": "^7.4.0",
+    "express-rate-limit": "^7.1.5",
     "compression": "^1.7.4",
     "morgan": "^1.10.0",
-    "express-validator": "^7.2.0",
-    "joi": "^17.13.3",
-    "winston": "^3.14.2",
-    "express-async-errors": "^3.1.1",
-    "http-status-codes": "^2.3.0",
-    "node-cache": "^5.1.2",
-    "uuid": "^10.0.0",
-    "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^5.0.1",
-    "yamljs": "^0.3.0"
+    "dotenv": "^16.3.1",
+    "winston": "^3.11.0",
+    "express-validator": "^7.0.1",
+    "jsonwebtoken": "^9.0.2",
+    "bcryptjs": "^2.4.3",
+    "uuid": "^9.0.1",
+    "lodash": "^4.17.21",
+    "moment": "^2.30.1"
   },
   "devDependencies": {
-    "nodemon": "^3.1.4",
+    "@types/express": "^4.17.21",
+    "@types/cors": "^2.8.17",
+    "@types/compression": "^1.7.5",
+    "@types/morgan": "^1.9.9",
+    "@types/node": "^20.10.5",
+    "@types/jest": "^29.5.8",
+    "@types/supertest": "^2.0.16",
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/uuid": "^9.0.7",
+    "@types/lodash": "^4.14.202",
+    "typescript": "^5.3.3",
+    "ts-node": "^10.9.1",
+    "ts-node-dev": "^2.0.0",
     "jest": "^29.7.0",
-    "supertest": "^7.0.0",
-    "eslint": "^9.9.1",
+    "ts-jest": "^29.1.1",
+    "supertest": "^6.3.3",
+    "@typescript-eslint/eslint-plugin": "^6.13.2",
+    "@typescript-eslint/parser": "^6.13.2",
+    "eslint": "^8.55.0",
     "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-node": "^11.1.0",
-    "prettier": "^3.3.3",
-    "@babel/core": "^7.25.2",
-    "@babel/preset-env": "^7.25.4"
+    "eslint-plugin-prettier": "^5.0.1",
+    "prettier": "^3.1.1",
+    "rimraf": "^5.0.5",
+    "nodemon": "^3.0.2"
   },
   "engines": {
     "node": ">=18.0.0",
-    "npm": ">=8.0.0"
+    "npm": ">=9.0.0"
   },
   "jest": {
+    "preset": "ts-jest",
     "testEnvironment": "node",
+    "roots": ["<rootDir>/src", "<rootDir>/tests"],
+    "testMatch": ["**/__tests__/**/*.ts", "**/?(*.)+(spec|test).ts"],
     "collectCoverageFrom": [
-      "src/**/*.js",
-      "!src/config/*.js"
+      "src/**/*.ts",
+      "!src/**/*.d.ts",
+      "!src/**/*.test.ts"
     ],
     "coverageDirectory": "coverage",
-    "coverageReporters": [
-      "text",
-      "lcov",
-      "html"
-    ]
+    "coverageReporters": ["text", "lcov", "html"]
   },
-  "nodemonConfig": {
-    "watch": ["src"],
-    "ext": "js,json",
-    "ignore": ["src/**/*.test.js"],
-    "delay": 1000
+  "eslintConfig": {
+    "parser": "@typescript-eslint/parser",
+    "extends": [
+      "eslint:recommended",
+      "@typescript-eslint/recommended",
+      "prettier"
+    ],
+    "plugins": ["@typescript-eslint", "prettier"],
+    "rules": {
+      "prettier/prettier": "error",
+      "@typescript-eslint/no-unused-vars": "error",
+      "@typescript-eslint/explicit-function-return-type": "warn"
+    }
+  },
+  "prettier": {
+    "semi": true,
+    "trailingComma": "es5",
+    "singleQuote": true,
+    "printWidth": 100,
+    "tabWidth": 2
   }
 }
