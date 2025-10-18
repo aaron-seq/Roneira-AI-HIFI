@@ -222,7 +222,7 @@ class PriceVolumeDerivativesEngine:
         try:
             # Fetch historical data
             end_date = datetime.now()
-            start_date = end_date - timedelta(days=self.lookbook_period + 50)  # Extra buffer
+            start_date = end_date - timedelta(days=self.lookback_period + 50)  # Extra buffer
             
             stock_data = yf.download(symbol, start=start_date, end=end_date)
             
