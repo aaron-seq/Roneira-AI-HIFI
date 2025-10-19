@@ -1,209 +1,324 @@
-import React, { useState, useEffect } from 'react';
+/**
+ * Roneira AI HIFI - Enhanced Frontend Application
+ * 
+ * Features:
+ * - Stock price prediction with ML models
+ * - PDM (Price-Volume Derivatives Momentum) strategy analysis
+ * - Real-time market data visualization
+ * - Portfolio management tools
+ * - Technical indicators display
+ * 
+ * Author: Aaron Sequeira
+ * Company: Roneira AI
+ */
+
+import React, { useState, useEffect, useCallback } from 'react';
 import axios, { AxiosError } from 'axios';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 
-// --- Type Definitions ---
-// Type for the raw data coming from the backend API
-interface RawStockData {
-    date: string; // This will be a string like "2023-10-27T00:00:00.000Z"
-    open: number;
-    high: number;
-    low: number;
-    close: number;
-    volume: number;
-    adjClose?: number; // Optional property
+// Import our custom components
+import { NavigationHeader } from './components/navigation/NavigationHeader';
+import { StockPredictionDashboard } from './components/prediction/StockPredictionDashboard';
+import { PDMStrategyDashboard } from './components/pdm/PDMStrategyDashboard';
+import { PortfolioManagementDashboard } from './components/portfolio/PortfolioManagementDashboard';
+import { TechnicalAnalysisDashboard } from './components/analysis/TechnicalAnalysisDashboard';
+import { LoadingSpinner } from './components/ui/LoadingSpinner';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
+
+// Import utilities and types
+import { useFinancialDataStore } from './store/financialDataStore';
+import { ApplicationConfiguration } from './config/applicationConfig';
+import { FinancialDataService } from './services/financialDataService';
+import { NotificationService } from './services/notificationService';
+
+// Type definitions for better type safety
+export interface StockPredictionResult {
+  ticker_symbol: string;
+  company_name: string;
+  current_market_price: number;
+  ml_predicted_price: number;
+  predicted_price_change: number;
+  predicted_percentage_change: number;
+  prediction_horizon_days: number;
+  model_accuracy_r2_score: number;
+  market_sentiment: {
+    label: string;
+    score: number;
+  };
+  timestamp: string;
+  technical_indicators: {
+    relative_strength_index: number | null;
+    simple_moving_average_5: number | null;
+    simple_moving_average_20: number | null;
+    macd_line: number | null;
+    bollinger_position: number | null;
+  };
+  pdm_strategy_analysis?: {
+    signal_type: string;
+    confidence_score: number;
+    price_velocity: number;
+    price_curvature: number;
+    volume_sensitivity: number;
+    institutional_volume_factor: number;
+    atr_hard_stop_loss: number;
+    atr_trailing_stop: number;
+    strategy_description: string;
+  };
 }
 
-// Type for the data formatted for the chart
-interface FormattedStockData {
-    date: string; // This will be a formatted string like "10/27/2023"
-    open: number;
-    high: number;
-    low: number;
-    close: number;
-    volume: number;
+export interface PDMOpportunity {
+  ticker_symbol: string;
+  signal_type: string;
+  current_price: number;
+  confidence_score: number;
+  price_velocity: number;
+  price_curvature: number;
+  volume_sensitivity: number;
+  institutional_factor: number;
+  atr_stop_loss: number;
+  trailing_stop: number;
+  signal_timestamp: string;
 }
 
-interface PredictionData {
-    ticker: string;
-    predicted_close_price: number;
-    last_open_price: number;
+export interface MarketHealthStatus {
+  service_status: string;
+  timestamp: string;
+  ml_service_status: string;
+  pdm_engine_status: string;
+  supported_features: string[];
+  version: string;
 }
 
-// Type for a more structured API error response
-interface ApiError {
-    message: string;
-}
+// Initialize React Query client
+const reactQueryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 2,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000,   // 10 minutes (formerly cacheTime)
+      refetchOnWindowFocus: false,
+    },
+    mutations: {
+      retry: 1,
+    },
+  },
+});
 
-// --- API Configuration ---
-const API_BASE_URL = 'http://localhost:3001/api';
+// Main application configuration
+const applicationConfig = new ApplicationConfiguration();
+const financialDataService = new FinancialDataService(applicationConfig.apiBaseUrl);
+const notificationService = new NotificationService();
 
-const App: React.FC = () => {
-    // --- State Management ---
-    const [ticker, setTicker] = useState<string>('AAPL');
-    const [historicalData, setHistoricalData] = useState<FormattedStockData[]>([]);
-    const [prediction, setPrediction] = useState<PredictionData | null>(null);
-    const [isLoading, setIsLoading] = useState<boolean>(true); // Start with loading true
-    const [error, setError] = useState<string | null>(null);
+const MainApplicationContent: React.FC = () => {
+  // State management using Zustand store
+  const {
+    selectedStockTicker,
+    isApplicationLoading,
+    applicationErrorMessage,
+    marketHealthStatus,
+    setSelectedStockTicker,
+    setIsApplicationLoading,
+    setApplicationErrorMessage,
+    setMarketHealthStatus,
+  } = useFinancialDataStore();
 
-    // --- Functions ---
-    const formatDataForChart = (data: RawStockData[]): FormattedStockData[] => {
-        // Sort the data by date to ensure the chart is chronological
-        const sortedData = data.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-        return sortedData.map(item => ({
-            date: new Date(item.date).toLocaleDateString(),
-            open: item.open,
-            high: item.high,
-            low: item.low,
-            close: item.close,
-            volume: item.volume
-        }));
-    };
+  // Local state for navigation
+  const [activeNavigationTab, setActiveNavigationTab] = useState<string>('prediction');
+  const [isInitialized, setIsInitialized] = useState<boolean>(false);
 
-    const handleFetchData = async (currentTicker: string) => {
-        if (!currentTicker) {
-            setError('Please enter a stock ticker.');
-            return;
-        }
-        setIsLoading(true);
-        setError(null);
-        setPrediction(null);
-        setHistoricalData([]);
+  // Initialize application and check system health
+  const initializeApplication = useCallback(async () => {
+    try {
+      setIsApplicationLoading(true);
+      setApplicationErrorMessage(null);
 
-        try {
-            // Fetch both historical data and prediction concurrently
-            const [historyRes, predictionRes] = await Promise.all([
-                axios.get<RawStockData[]>(`${API_BASE_URL}/stock/${currentTicker}`),
-                axios.post<PredictionData>(`${API_BASE_URL}/predict`, { ticker: currentTicker })
-            ]);
+      // Check backend and ML service health
+      const healthResponse = await financialDataService.checkSystemHealth();
+      setMarketHealthStatus(healthResponse);
 
-            if (historyRes.data) {
-                setHistoricalData(formatDataForChart(historyRes.data));
-            }
+      if (healthResponse.service_status !== 'healthy') {
+        throw new Error('Backend services are not fully operational');
+      }
 
-            if (predictionRes.data) {
-                setPrediction(predictionRes.data);
-            }
+      notificationService.showSuccess('Application initialized successfully');
+      setIsInitialized(true);
 
-        } catch (err) {
-            console.error('Error fetching data:', err);
-            let errorMessage = 'An unexpected error occurred. Check the console for details.';
-            if (axios.isAxiosError(err)) {
-                const serverError = err as AxiosError<ApiError>;
-                if (serverError.response?.data?.message) {
-                    errorMessage = serverError.response.data.message;
-                }
-            }
-            setError(`Failed to fetch data for ${currentTicker.toUpperCase()}. ${errorMessage}`);
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    } catch (error) {
+      console.error('Application initialization failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to initialize application';
+      setApplicationErrorMessage(errorMessage);
+      notificationService.showError(`Initialization failed: ${errorMessage}`);
+    } finally {
+      setIsApplicationLoading(false);
+    }
+  }, [setIsApplicationLoading, setApplicationErrorMessage, setMarketHealthStatus]);
 
-    // Fetch data for the default ticker on initial component load
-    useEffect(() => {
-        handleFetchData('AAPL');
-    }, []);
+  // Initialize application on component mount
+  useEffect(() => {
+    initializeApplication();
+  }, [initializeApplication]);
 
-    const onButtonClick = () => {
-        handleFetchData(ticker);
-    };
+  // Periodically check system health
+  useEffect(() => {
+    if (!isInitialized) return;
 
+    const healthCheckInterval = setInterval(async () => {
+      try {
+        const healthResponse = await financialDataService.checkSystemHealth();
+        setMarketHealthStatus(healthResponse);
+      } catch (error) {
+        console.warn('Health check failed:', error);
+      }
+    }, 30000); // Check every 30 seconds
 
-    // --- Render ---
+    return () => clearInterval(healthCheckInterval);
+  }, [isInitialized, setMarketHealthStatus]);
+
+  // Handle navigation tab changes
+  const handleNavigationTabChange = useCallback((tabName: string) => {
+    setActiveNavigationTab(tabName);
+  }, []);
+
+  // Show loading spinner during initialization
+  if (!isInitialized && isApplicationLoading) {
     return (
-        <div className="min-h-screen bg-gray-900 text-gray-100 p-4 sm:p-6 lg:p-8 font-sans">
-            <div className="max-w-7xl mx-auto">
-
-                {/* Header */}
-                <header className="mb-8">
-                    <h1 className="text-4xl font-bold text-cyan-400">Stock Predictor</h1>
-                    <p className="text-gray-400 mt-2">Enter a stock ticker to view its historical performance and get a next-day price prediction.</p>
-                </header>
-
-                {/* Input Form */}
-                <div className="bg-gray-800 p-6 rounded-lg shadow-lg mb-8">
-                    <div className="flex flex-col sm:flex-row gap-4">
-                        <input
-                            type="text"
-                            value={ticker}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTicker(e.target.value.toUpperCase())}
-                            onKeyDown={(e) => e.key === 'Enter' && onButtonClick()}
-                            placeholder="e.g., AAPL, GOOGL, TSLA"
-                            className="flex-grow bg-gray-700 text-white placeholder-gray-400 rounded-md px-4 py-3 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                        />
-                        <button
-                            onClick={onButtonClick}
-                            disabled={isLoading}
-                            className="bg-cyan-600 hover:bg-cyan-700 disabled:bg-gray-500 text-white font-bold py-3 px-6 rounded-md transition duration-300 ease-in-out transform hover:scale-105 disabled:scale-100"
-                        >
-                            {isLoading ? 'Loading...' : 'Get Data & Predict'}
-                        </button>
-                    </div>
-                </div>
-
-                {/* Error and Loading States */}
-                {error && <div className="bg-red-900/50 border border-red-700 text-red-300 p-4 rounded-lg mb-8">{error}</div>}
-
-                {/* Results Display */}
-                {isLoading && <div className="text-center p-8 text-xl">Loading data for {ticker}...</div>}
-
-                {!isLoading && !error && historicalData.length === 0 && (
-                    <div className="text-center p-8 bg-gray-800 rounded-lg">
-                        <p>No data to display. Please enter a ticker and click "Get Data & Predict".</p>
-                    </div>
-                )}
-
-                {!isLoading && historicalData.length > 0 && (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        {/* Prediction Card */}
-                        <div className="lg:col-span-1 bg-gray-800 p-6 rounded-lg shadow-lg">
-                            <h2 className="text-2xl font-semibold mb-4 text-white">Prediction for <span className="text-cyan-400">{ticker}</span></h2>
-                            {prediction ? (
-                                <div className="space-y-4">
-                                    <div>
-                                        <p className="text-gray-400">Predicted Next Close</p>
-                                        <p className="text-4xl font-bold text-cyan-400">${prediction.predicted_close_price.toFixed(2)}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-gray-400">Last Open Price</p>
-                                        <p className="text-2xl text-gray-300">${prediction.last_open_price.toFixed(2)}</p>
-                                    </div>
-                                    <p className="text-xs text-gray-500 pt-4">Disclaimer: This is a prediction from an LSTM model and should not be used as financial advice.</p>
-                                </div>
-                            ) : (
-                                <p className="text-gray-400">Prediction data not available.</p>
-                            )}
-                        </div>
-
-                        {/* Chart */}
-                        <div className="lg:col-span-2 bg-gray-800 p-6 rounded-lg shadow-lg">
-                            <h2 className="text-2xl font-semibold mb-6 text-white">Historical Closing Price</h2>
-                            <ResponsiveContainer width="100%" height={400}>
-                                <LineChart
-                                    data={historicalData}
-                                    margin={{ top: 5, right: 20, left: -10, bottom: 5 }}
-                                >
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                                    <XAxis dataKey="date" stroke="#9CA3AF" />
-                                    <YAxis stroke="#9CA3AF" domain={['auto', 'auto']} />
-                                    <Tooltip
-                                        contentStyle={{
-                                            backgroundColor: '#1F2937',
-                                            borderColor: '#374151'
-                                        }}
-                                    />
-                                    <Legend />
-                                    <Line type="monotone" dataKey="close" stroke="#22D3EE" strokeWidth={2} dot={false} name="Close Price" />
-                                </LineChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-                )}
-            </div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <LoadingSpinner size="large" />
+          <h2 className="mt-4 text-xl font-semibold text-white">Initializing Roneira AI HIFI</h2>
+          <p className="mt-2 text-slate-300">Connecting to financial intelligence services...</p>
         </div>
+      </div>
     );
+  }
+
+  // Show error screen if initialization failed
+  if (applicationErrorMessage && !isInitialized) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-red-900 to-slate-900 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-8">
+          <div className="text-red-500 text-6xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold text-white mb-4">System Unavailable</h2>
+          <p className="text-slate-300 mb-6">{applicationErrorMessage}</p>
+          <button
+            onClick={initializeApplication}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200"
+          >
+            Retry Initialization
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Main application layout
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
+      {/* Navigation Header */}
+      <NavigationHeader
+        activeTab={activeNavigationTab}
+        onTabChange={handleNavigationTabChange}
+        marketHealthStatus={marketHealthStatus}
+      />
+
+      {/* Main Content Area */}
+      <main className="container mx-auto px-4 py-6">
+        <Routes>
+          {/* Stock Prediction Dashboard */}
+          <Route
+            path="/prediction"
+            element={
+              <StockPredictionDashboard
+                selectedTicker={selectedStockTicker}
+                onTickerChange={setSelectedStockTicker}
+              />
+            }
+          />
+
+          {/* PDM Strategy Dashboard */}
+          <Route
+            path="/pdm-strategy"
+            element={
+              <PDMStrategyDashboard
+                marketHealthStatus={marketHealthStatus}
+              />
+            }
+          />
+
+          {/* Portfolio Management Dashboard */}
+          <Route
+            path="/portfolio"
+            element={
+              <PortfolioManagementDashboard
+                selectedTicker={selectedStockTicker}
+              />
+            }
+          />
+
+          {/* Technical Analysis Dashboard */}
+          <Route
+            path="/analysis"
+            element={
+              <TechnicalAnalysisDashboard
+                selectedTicker={selectedStockTicker}
+              />
+            }
+          />
+
+          {/* Default route redirect */}
+          <Route path="/" element={<Navigate to="/prediction" replace />} />
+          
+          {/* Fallback for unknown routes */}
+          <Route path="*" element={<Navigate to="/prediction" replace />} />
+        </Routes>
+      </main>
+    </div>
+  );
 };
 
-export default App;
+const EnhancedFinancialIntelligenceApp: React.FC = () => {
+  return (
+    <QueryClientProvider client={reactQueryClient}>
+      <Router>
+        <ErrorBoundary>
+          <MainApplicationContent />
+          
+          {/* Toast notifications */}
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 4000,
+              style: {
+                background: '#1f2937',
+                color: '#f9fafb',
+                border: '1px solid #374151',
+              },
+              success: {
+                iconTheme: {
+                  primary: '#10b981',
+                  secondary: '#f9fafb',
+                },
+              },
+              error: {
+                iconTheme: {
+                  primary: '#ef4444',
+                  secondary: '#f9fafb',
+                },
+              },
+            }}
+          />
+          
+          {/* React Query DevTools (only in development) */}
+          {process.env.NODE_ENV === 'development' && (
+            <ReactQueryDevtools initialIsOpen={false} />
+          )}
+        </ErrorBoundary>
+      </Router>
+    </QueryClientProvider>
+  );
+};
 
+export default EnhancedFinancialIntelligenceApp;
