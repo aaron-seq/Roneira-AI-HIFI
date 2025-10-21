@@ -9,8 +9,10 @@ services:
       - ./frontend:/app
       - /app/node_modules
     environment:
-      - REACT_APP_API_URL=http://localhost:3001
-      - REACT_APP_ML_API_URL=http://localhost:5000
+      - VITE_API_BASE_URL=http://localhost:3001
+      - VITE_ML_API_BASE_URL=http://localhost:5000
+      - VITE_APP_NAME=Roneira AI HIFI
+      - VITE_APP_VERSION=2.0.0
       - CHOKIDAR_USEPOLLING=true
     depends_on:
       - backend
