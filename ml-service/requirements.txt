@@ -11,7 +11,6 @@ scipy==1.11.4
 
 # Financial Data and Analysis
 yfinance==0.2.28
-ta-lib==0.4.28
 alpha-vantage==2.3.1
 
 # API and HTTP Requests
@@ -55,3 +54,8 @@ PyJWT==2.8.0
 
 # Performance
 numba==0.58.1
+
+# Technical Analysis (Pure Python Implementation)
+# Using custom implementations instead of TA-Lib for better compatibility
+pandas-ta==0.3.14b0
+ta==0.10.2

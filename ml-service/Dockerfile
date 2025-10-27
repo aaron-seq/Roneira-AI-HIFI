@@ -1,36 +1,45 @@
-# Use Python 3.11 slim image for better performance
-FROM python:3.11-slim
+# Use Python 3.11 slim image for better performance and security
+FROM python:3.11-slim AS production_base
 
 # Set working directory
-WORKDIR /app
+WORKDIR /application
 
-# Install system dependencies
+# Install system dependencies for compilation and security
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
-    && rm -rf /var/lib/apt/lists/*
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
-# Copy requirements first for better Docker layer caching
-COPY enhanced_requirements.txt requirements.txt
+# Copy requirements file for better Docker layer caching
+COPY requirements.txt .
 
-# Install Python dependencies
-RUN pip install --no-cache-dir --upgrade pip && \
+# Upgrade pip and install Python dependencies
+RUN pip install --no-cache-dir --upgrade pip==23.3.1 && \
     pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .
 
 # Create non-root user for security
-RUN useradd --create-home --shell /bin/bash app && \
-    chown -R app:app /app
-USER app
+RUN useradd --create-home --shell /bin/bash --uid 1001 application_user && \
+    chown -R application_user:application_user /application
 
-# Expose port
+# Switch to non-root user
+USER application_user
+
+# Expose application port
 EXPOSE 5000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:5000/health || exit 1
+# Configure health check using requests instead of curl
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD python -c "import requests; requests.get('http://localhost:5000/health', timeout=5)" || exit 1
 
-# Start application with gunicorn for production
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "120", "enhanced_app:app"]
+# Set environment variables for production
+ENV FLASK_ENV=production
+ENV PYTHONPATH=/application
+ENV PYTHONUNBUFFERED=1
+
+# Start application with gunicorn for production deployment
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "120", "--max-requests", "1000", "--preload", "enhanced_app:app"]
