@@ -1,370 +1,338 @@
-# Roneira AI HIFI - High-Impact Finance Intelligence (v2.0.0)
+# Roneira AI HIFI — High-Impact Finance Intelligence Platform
 
-**Enhanced Financial Intelligence Platform with PDM Strategy Integration**
+Roneira AI HIFI is a production-grade financial analytics framework engineered for robust machine learning forecasting, advanced price-volume momentum analytics, and comprehensive portfolio intelligence in institutional or retail trading environments.
 
-Advanced AI-powered financial analytics platform combining traditional machine learning with innovative Price-Volume Derivatives Momentum strategy for institutional momentum detection.
-
-## Code Review Status
-
-### ✅ Strengths
-- **Clean Architecture**: Microservices with clear API boundaries
-- **Security**: Comprehensive middleware (helmet, CORS, rate limiting)
-- **Testing**: Strong ML service test coverage with pytest
-- **Modern Stack**: TypeScript, React 18, Python 3.11, Docker
-- **Documentation**: Detailed README and API specifications
-
-### ⚠️ Critical Issues (In Progress)
-- **Configuration Drift**: Port mismatches between services ([Issue #X](link))
-- **Environment Variables**: Frontend uses REACT_APP_* but needs VITE_* ([Issue #Y](link))
-- **ML Service Concurrency**: Unsafe request mutation in batch_predict ([Issue #Z](link))
-- **Backend Duplication**: Multiple server files causing confusion ([Issue #W](link))
-
-### 📈 Production Readiness Score: 75/100
-- **Architecture**: ✅ Excellent (25/25)
-- **Security**: ✅ Good (20/25) 
-- **Testing**: ⚠️ Partial (15/25) - Missing backend tests
-- **Deployment**: ⚠️ Dev-ready (15/25) - Needs production configs
-
-### Next Steps
-1. Fix configuration alignment across services
-2. Add comprehensive backend test suite
-3. Implement production Docker configurations
-4. Resolve ML service concurrency issues
-
----
-
-## Overview
-
-Roneira AI HIFI is a sophisticated financial intelligence platform that integrates traditional ML models with a calculus-driven Price-Volume Derivatives Momentum (PDM) Strategy for capturing institutional momentum in equity markets.
-
-### Key Features
-
-- **Advanced ML Predictions**: LSTM and ensemble models for accurate stock price forecasting
-- **PDM Strategy Engine**: Calculus-based momentum detection using derivatives of price and volume
-- **Real-Time Analytics**: Live market data with 20+ technical indicators
-- **Portfolio Intelligence**: Comprehensive portfolio management and performance tracking
-- **Technical Analysis**: Professional-grade charting and pattern recognition
-- **Risk Management**: Volatility-adjusted stop losses and position sizing
-- **Modern Architecture**: Microservices with TypeScript, React, Python, and Docker
-
-## PDM Strategy - Mathematical Framework
-
-The Price-Volume Derivatives Momentum Strategy uses calculus to detect institutional trading activity:
-
-### Core Derivatives
-
-1. **df/dt (Price Velocity)** - Captures directional momentum with minimal lag
-2. **d²f/dt² (Price Curvature)** - Detects acceleration/deceleration in trends  
-3. **df/dV (Volume Sensitivity)** - Measures price responsiveness to volume changes
-
-### Strategy Performance (Apr-Oct 2025)
-- **Strategy Return**: +42.8%
-- **NIFTY 50 Benchmark**: +7.1%
-- **Outperformance**: +35.7%
-- **Max Positions**: 25
-- **Universe**: NIFTY 500 (liquidity filtered)
+## Objectives
+- Deliver reliable, reproducible market predictions using advanced ML and calculus-based analytics
+- Maintain clear separation between user interface, API gateway, and ML inference logic for scalable deployments
+- Ensure painless local, Docker, and cloud onboarding on free and paid hosting platforms
 
 ## Architecture
-
 ```
-┌─────────────┐ ┌───────────────┐ ┌─────────────┐
-│  Frontend   │ │   Backend     │ │ ML Service  │
-│ (React TS)  │◄┤ (Node TS)   ├►│(Python/PDM) │
-└─────────────┘ └───────────────┘ └─────────────┘
-       │                │              │
-┌──────────────────────────────────────────────┐
-│ ┌───────────┐ ┌───────┐ ┌─────────────┐ │
-│ │PostgreSQL │ │ Redis │ │   Nginx     │ │
-│ └───────────┘ └───────┘ └─────────────┘ │
-└──────────────────────────────────────────────┘
+frontend (React + Vite + TS)
+│ REST/HTTPS
+▼
+backend (Node.js + Express + TS)  ←→  ml-service (Flask, scikit-learn, pandas)
+            │                                │
+            ├─ PostgreSQL (portfolio, auth)  └─ Redis (market/cache)
 ```
 
-## Tech Stack
+### Core Services
+- **Frontend**: React 18 + TypeScript, TanStack Query, TailwindCSS (Vite build)
+- **API**: Express + TypeScript, Zod validation, Helmet/CORS, rate limiting
+- **ML**: Flask, scikit-learn, pandas, yfinance, custom indicator engine
+- **Data Plane**: PostgreSQL (OLTP), Redis (caching)
+- **Operations**: Docker (multi-stage), GitHub Actions, Prometheus/Grafana (optional)
 
-### Frontend
-- **React 18+** with TypeScript and Vite
-- **Tailwind CSS** for styling
-- **Zustand** for state management
-- **TanStack Query** for data fetching
-- **Recharts** for data visualization
-- **Framer Motion** for animations
+## Feature Set
 
-### Backend
-- **Node.js 18+** with Express and TypeScript
-- **Helmet** and **CORS** for security
-- **Rate limiting** and validation
-- **Zod** for request validation
+### Machine Learning Predictions
+- RandomForest-based regression with engineered technical features
+- Model caching and cold-start mitigation for consistent response times
+- Deterministic training seed and repeatable runs for backtesting validation
 
-### ML Service
-- **Python 3.11+** with Flask
-- **scikit-learn** and **pandas** for ML
-- **yfinance** for market data
-- **Custom PDM Strategy Engine**
+### PDM Strategy Analytics (Derivatives-Based)
+- Price velocity (df/dt), curvature (d²f/dt²), and volume sensitivity (df/dV)
+- Signal strength scoring, ATR-based stop levels, and confidence metrics
+- Institutional momentum detection through calculus-driven analysis
 
-### Infrastructure
-- **Docker & Docker Compose**
-- **PostgreSQL** for data storage
-- **Redis** for caching
-- **Nginx** for reverse proxy (production)
+### Technical Indicators
+- SMA/EMA, RSI, MACD, Bollinger Bands via optimized, vectorized pipelines
+- Custom implementations avoiding system-level compilation dependencies
+- Batch processing capabilities for multiple ticker analysis
 
-## Quick Start
+### Portfolio Intelligence
+- Position CRUD operations with real-time portfolio valuation
+- Performance metrics including drawdown analysis and volatility profiling
+- Risk assessment with correlation matrices and position sizing algorithms
+
+### Reliability & Operations
+- Comprehensive health endpoints with dependency status checking
+- Structured logging with configurable levels and request tracing
+- Graceful shutdowns, backpressure handling, and circuit breaker patterns
+- Container health checks, resource limits, and security hardening
+
+## Environment URLs
+- **Frontend**: http://localhost:3000
+- **Backend**: http://localhost:3001  
+- **ML Service**: http://localhost:5000
+- **Health Checks**: /health on backend and ML service
+
+## Getting Started
 
 ### Prerequisites
-- Node.js 18+
-- Python 3.11+
-- Docker & Docker Compose (recommended)
-- Git
+- Node.js >= 18
+- Python >= 3.11
+- Docker and Docker Compose (optional but recommended)
 
-### 1. Clone and Setup
+### Local Development Setup
+1. **Clone and bootstrap**
+   ```bash
+   git clone https://github.com/aaron-seq/Roneira-AI-HIFI.git
+   cd Roneira-AI-HIFI
+   cp .env.example .env
+   cp frontend/.env.example frontend/.env.local
+   cp backend/.env.example backend/.env
+   cp ml-service/.env.example ml-service/.env
+   ```
 
+2. **Install dependencies**
+   ```bash
+   cd frontend && npm ci
+   cd ../backend && npm ci
+   cd ../ml-service && pip install -r requirements.txt
+   ```
+
+3. **Run services (separate terminals)**
+   ```bash
+   # Terminal 1: Frontend
+   cd frontend && npm run dev
+   
+   # Terminal 2: Backend
+   cd backend && npm run dev
+   
+   # Terminal 3: ML Service
+   cd ml-service && gunicorn --bind 0.0.0.0:5000 enhanced_app:app
+   ```
+
+### Docker Deployment (All Services)
 ```bash
-git clone https://github.com/aaron-seq/Roneira-AI-HIFI.git
-cd Roneira-AI-HIFI
+# Development environment
+docker-compose up --build
 
-# Copy environment files
-cp .env.example .env
-cp frontend/.env.example frontend/.env.local
-cp backend/.env.example backend/.env
-cp ml-service/.env.example ml-service/.env
+# Production environment
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
 
-### 2. Environment Configuration
+## Configuration
 
-Edit the `.env` files with your configuration:
+### Frontend Environment Variables
+- `VITE_API_BASE_URL`: Backend API base URL (default: http://localhost:3001)
+- `VITE_APP_NAME`: Application display name
+- `VITE_APP_VERSION`: Version identifier for UI display
 
+### Backend Environment Variables
+- `PORT`: Server port (default: 3001)
+- `DATABASE_URL`: PostgreSQL connection string
+- `REDIS_URL`: Redis endpoint for caching
+- `ML_SERVICE_URL`: ML service endpoint (e.g., http://ml-service:5000)
+- `JWT_SECRET`: Secret key for JWT token signing
+
+### ML Service Environment Variables
+- `FLASK_ENV`: Environment mode (development|production)
+- `HUGGING_FACE_API_KEY`: Optional API key for sentiment analysis models
+- `GUNICORN_WORKERS`: Number of worker processes for production
+
+## API Surface
+
+### Prediction Endpoints
 ```bash
-# Backend (.env)
-DATABASE_URL=postgresql://user:password@localhost:5432/roneira_hifi
-REDIS_URL=redis://localhost:6379
-JWT_SECRET=your_jwt_secret_here
-ML_SERVICE_URL=http://localhost:5000
-
-# ML Service (.env)
-FLASK_ENV=development
-HUGGING_FACE_API_KEY=your_hf_key_here
-REDIS_URL=redis://localhost:6379
-
-# Frontend (.env.local)
-VITE_API_BASE_URL=http://localhost:3001
-VITE_APP_NAME=Roneira AI HIFI
-VITE_APP_VERSION=2.0.0
-```
-
-### 3. Run with Docker (Recommended)
-
-```bash
-# Start all services
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Stop services
-docker-compose down
-```
-
-**Service URLs:**
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:3001
-- ML Service: http://localhost:5000
-- Health Check: http://localhost:3001/health
-
-### 4. Manual Setup (Development)
-
-```bash
-# Install dependencies
-npm run install-all
-
-# Start PostgreSQL and Redis
-# (using Docker or local installation)
-
-# Start ML Service
-cd ml-service
-pip install -r requirements.txt
-flask run --port=5000
-
-# Start Backend (new terminal)
-cd backend
-npm run dev
-
-# Start Frontend (new terminal)
-cd frontend
-npm run dev
-```
-
-## API Endpoints
-
-### Stock Prediction
-```http
+# Single ticker prediction
 POST /api/predict
 {
   "ticker": "AAPL",
   "days": 1,
   "include_pdm": true
 }
+
+# Batch predictions (max 10 tickers)
+POST /api/batch_predict
+{
+  "tickers": ["AAPL", "GOOGL", "MSFT"]
+}
 ```
 
-### PDM Strategy
-```http
-GET /api/pdm_scan          # Scan for PDM opportunities
-POST /api/pdm_backtest     # Run strategy backtest
+### PDM Strategy Endpoints
+```bash
+# Scan for PDM opportunities
+GET /api/pdm_scan
+
+# Run strategy backtest
+POST /api/pdm_backtest
+{
+  "start_date": "2024-01-01",
+  "end_date": "2024-12-31"
+}
 ```
 
 ### Portfolio Management
-```http
-GET /api/portfolio/:userId     # Get portfolio
-POST /api/portfolio/:userId/update  # Update holdings
-```
-
-## Testing
-
-### Run All Tests
 ```bash
-# Frontend tests
-cd frontend && npm run test
+# Get user portfolio
+GET /api/portfolio/:userId
 
-# Backend tests
-cd backend && npm run test && npm run test:integration
-
-# ML Service tests
-cd ml-service && pytest --cov=app --cov-report=html
+# Update portfolio positions
+POST /api/portfolio/:userId/update
+{
+  "positions": [...]
+}
 ```
 
-### Test Coverage
-- Frontend: Jest + React Testing Library
-- Backend: Jest + Supertest
-- ML Service: pytest + coverage
+## Performance Optimizations
 
-## Deployment
+### Frontend
+- Code splitting via React.lazy for reduced initial bundle size
+- React Query caching tuned for low-latency refetches and stale-while-revalidate
+- Asset compression and prefetch hints for critical resources
+- Service worker implementation for offline capability
 
-### Free Hosting Options
+### Backend
+- Response compression middleware with configurable thresholds
+- PostgreSQL connection pooling with optimized pool sizing
+- Redis-backed rate limiting with sliding window algorithms
+- Efficient JSON serialization and streaming for large responses
 
-**Frontend (Vercel)**
+### ML Service
+- Vectorized indicator computation using pandas and numpy operations
+- Model caching with LRU eviction and selective retrain strategies
+- Batch processing optimization for multiple ticker requests
+- Memory-efficient feature engineering pipelines
+
+## Security Implementation
+
+### HTTP Security
+- Helmet middleware for security headers (CSP, HSTS, X-Frame-Options)
+- CORS configuration with strict origin allowlisting
+- TLS termination at edge with certificate automation
+
+### Authentication & Authorization
+- JWT tokens with configurable expiration and refresh strategies
+- bcrypt password hashing with adaptive cost factors
+- Rate limiting with progressive backoff for brute force protection
+
+### Input Validation
+- Comprehensive request validation using Zod schemas
+- SQL injection prevention through parameterized queries
+- XSS protection via input sanitization and output encoding
+
+### Container Security
+- Non-root user execution in all containers
+- Resource quotas and health check gates
+- Network segmentation with isolated service communications
+
+## Testing Strategy
+
+### Frontend Testing
 ```bash
 cd frontend
-npm run build
-vercel --prod
+npm run test           # Unit tests with Vitest
+npm run test:coverage  # Coverage reporting
+npm run test:e2e       # End-to-end tests with Playwright
 ```
 
-**Backend & ML (Railway/Render)**
-- Deploy `/backend` and `/ml-service` separately
-- Configure environment variables
-- Update frontend API URLs
-
-**Database**
-- PostgreSQL: Supabase, ElephantSQL
-- Redis: Upstash, Redis Cloud
-
-### Production Configuration
-
+### Backend Testing
 ```bash
-# Production deployment
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+cd backend
+npm run test                # Unit and integration tests
+npm run test:watch         # Watch mode for development
+npm run test:integration   # Integration tests with test database
 ```
 
-## Project Structure
-
+### ML Service Testing
+```bash
+cd ml-service
+pytest --cov=.                    # Unit tests with coverage
+pytest --benchmark                # Performance benchmarks
+python -m pytest tests/           # Full test suite
 ```
-Roneira-AI-HIFI/
-├── frontend/           # React TypeScript frontend
-│   ├── src/
-│   │   ├── components/    # React components
-│   │   ├── store/         # Zustand state management
-│   │   ├── services/      # API services
-│   │   └── config/        # Configuration
-│   └── package.json
-├── backend/            # Node.js TypeScript backend
-│   ├── server.ts       # Main server file
-│   ├── tsconfig.json   # TypeScript config
-│   └── package.json
-├── ml-service/         # Python ML service
-│   ├── app.py          # Main Flask app
-│   ├── pdm_strategy_engine.py  # PDM strategy
-│   ├── test_ml_service.py      # Tests
-│   └── requirements.txt
-├── docker-compose.yml  # Docker services
-└── README.md
-```
-
-## Recent Updates (v2.0.0)
-
-### New Features
-- **PDM Strategy Engine**: Calculus-based momentum detection
-- **Enhanced UI/UX**: Modern React components with TypeScript
-- **Microservices Architecture**: Separate frontend, backend, and ML services
-- **Comprehensive Testing**: Unit, integration, and coverage testing
-- **Production Ready**: Docker, monitoring, and deployment configurations
-
-### Technical Improvements
-- **Humanized Code**: Clear variable and function names throughout
-- **Type Safety**: Full TypeScript implementation
-- **Error Handling**: Comprehensive error boundaries and validation
-- **Performance**: Optimized queries, caching, and lazy loading
-- **Security**: Helmet, CORS, rate limiting, and input validation
-
-### Removed
-- Unused Jupyter notebooks
-- Duplicate Docker files
-- Legacy code and dependencies
-- Outdated configuration files
 
 ## Contributing
 
-1. **Fork** the repository
-2. **Create** a feature branch: `git checkout -b feature/your-feature`
-3. **Commit** your changes: `git commit -am 'Add amazing feature'`
-4. **Push** to the branch: `git push origin feature/your-feature`
-5. **Submit** a Pull Request
+We welcome contributions that improve correctness, performance, and developer experience. Please follow the workflow below.
 
-### Development Guidelines
-- Use TypeScript for all new code
-- Follow existing code style and naming conventions
-- Add tests for new features
-- Update documentation as needed
-- Use clear, technical comments without emojis
+### Branching Strategy
+- **main**: Protected branch, release-ready code
+- **develop**: Integration branch for next release features
+- **feature/**: Short-lived branches for single-purpose changes
 
-## Documentation
+### Pull Request Workflow
+1. **Fork and Branch**: Create feature branch from main or develop
+2. **Implement Changes**: Keep scope focused on one logical change per PR
+3. **Add Tests**: Ensure new/changed behavior is covered by tests
+4. **Run Quality Checks**: Execute linters, type-checkers, and test suites locally
+5. **Update Documentation**: Update README or API docs for behavior changes
+6. **Submit PR**: Provide clear description with motivation and context
 
-- **API Documentation**: Available at `/api/docs` when running
-- **Component Storybook**: `npm run storybook` (planned)
-- **Technical Docs**: See `/docs` folder (planned)
+### Code Style Guidelines
 
-## Security
+#### TypeScript (Frontend/Backend)
+- Enable strict mode with explicit types at module boundaries
+- Use descriptive, domain-relevant variable names (e.g., `priceVelocity`, `portfolioSnapshot`)
+- Prefer pure functions where possible; isolate side effects
+- Return typed error objects with actionable context
 
-- **Authentication**: JWT tokens with refresh mechanism
-- **Rate Limiting**: API request throttling
-- **Input Validation**: Zod schema validation
-- **CORS Configuration**: Controlled cross-origin requests
-- **Environment Variables**: Secure configuration management
+#### Python (ML Service)
+- Follow PEP 8 with Black formatting
+- Use type hints for function signatures and return values
+- Implement comprehensive error handling with structured logging
+- Optimize for vectorized operations using pandas/numpy
 
-## Performance
+#### General Principles
+- Functions should be small, composable, and testable
+- Validate inputs at boundaries using Zod/pydantic patterns
+- Include meaningful commit messages in imperative mood
+- Reference issues using `Fixes #issue` or `Refs #issue`
 
-- **Caching**: Redis for ML predictions and market data
-- **Database**: Optimized PostgreSQL queries with indexes
-- **Frontend**: React Query for efficient data fetching
-- **Compression**: Gzip compression for API responses
-- **CDN Ready**: Static asset optimization
+### Review Guidelines
+- Verify correctness through code inspection and test execution
+- Discuss performance and complexity tradeoffs explicitly
+- Suggest alternatives when rejecting changes
+- Ensure backward compatibility or document breaking changes
+
+## Detailed Maintainer Notes
+
+### Recent Production Improvements
+- PostCSS configuration added for TailwindCSS compilation
+- Backend Dockerfile added for production containerization
+- ML service Dockerfile updated with Python-based health checks
+- TA-Lib replaced with pure Python libraries for free hosting compatibility
+- CI/CD pipeline introduced for automated lint, tests, and builds
+- Production Docker Compose override added with resource limits and networks
+
+### Architecture Decisions
+- Microservices separation for independent scaling and deployments
+- React/TypeScript for UI reliability, Flask for ML ergonomics, PostgreSQL/Redis for data plane
+- Defense-in-depth security with validation, auth, container hardening
+- Multi-layer caching strategy with invalidation rules
+
+## Roadmap
+
+### Short Term
+- Authentication flows (registration, login, refresh tokens)
+- Portfolio persistence and reporting
+- Interactive API documentation
+
+### Medium Term
+- Backtesting UI with parameter sweeping
+- WebSocket streaming for live data
+- Advanced risk and correlation analytics
+
+### Long Term
+- gRPC low-latency inference path
+- Canary and blue/green deployment support
+- Advanced ML ensembles and feature pipelines
+
+## Deployment Platforms
+
+### Free Tier Hosting
+- Frontend: Vercel, Netlify
+- Backend: Railway, Render
+- ML Service: Railway, Render
+- Database: Supabase, ElephantSQL; Redis: Upstash
+
+### Production Hosting
+- Orchestration: Kubernetes, Docker Swarm
+- Cloud: AWS ECS, Google Cloud Run, Azure Container Instances
+- Monitoring: Prometheus + Grafana, DataDog, New Relic
 
 ## License
 
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+MIT License - see LICENSE for full terms and conditions.
 
-## Acknowledgments
+## Support
 
-- **Wizzer Trading Platform** for PDM strategy inspiration
-- **Yahoo Finance** for market data API
-- **Hugging Face** for sentiment analysis models
-- **Open Source Community** for amazing libraries and tools
+- Issues: GitHub Issues for bug reports and feature requests
+- Discussions: GitHub Discussions for questions and community support
+- Documentation: API documentation will be under `/docs`
+- Enterprise: Contact for custom implementations and enterprise support
 
-## Contact & Support
-
-**Author**: Aaron Sequeira  
-**Email**: aaronsequeira12@gmail.com  
-**Company**: Roneira AI  
-**LinkedIn**: [Connect](https://linkedin.com/in/aaron-sequeira)  
-
-For enterprise support, custom analytics, or business partnerships, please reach out to the Roneira AI team.
-
----
-
-**Built for the financial community | Roneira AI HIFI v2.0.0**
+Built with precision engineering for institutional-grade financial intelligence.
