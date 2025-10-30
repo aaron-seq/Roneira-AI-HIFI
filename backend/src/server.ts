@@ -13,6 +13,7 @@
  */
 
 import express, { Request, Response, NextFunction, Application } from 'express';
+import { body, validationResult } from 'express-validator';
 import axios, { AxiosError } from 'axios';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -20,6 +21,8 @@ import rateLimit from 'express-rate-limit';
 import compression from 'compression';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
+const logger = require('./utils/logger');
+import { sendSuccess, sendError } from './utils/response';
 
 // Load environment variables
 dotenv.config();
@@ -100,7 +103,11 @@ class BackendServer {
     
     // Logging middleware
     if (this.configuration.node_environment !== 'test') {
-      this.application.use(morgan('combined'));
+      this.application.use(morgan('combined', {
+        stream: {
+          write: (message: string) => logger.info(message.trim()),
+        },
+      }));
     }
     
     // CORS configuration
@@ -136,9 +143,16 @@ class BackendServer {
     
     // API information endpoint
     this.application.get('/api', this.handle_api_information.bind(this));
+
+    // Market data endpoints
+    this.application.get('/api/market/overview', this.handle_market_overview.bind(this));
     
     // Stock prediction endpoints
-    this.application.post('/api/predict', this.handle_stock_prediction.bind(this));
+    this.application.post(
+      '/api/predict',
+      body('ticker').isString().notEmpty(),
+      this.handle_stock_prediction.bind(this)
+    );
     this.application.post('/api/batch_predict', this.handle_batch_prediction.bind(this));
     
     // PDM strategy endpoints
@@ -148,6 +162,10 @@ class BackendServer {
     // Portfolio management endpoints (placeholder for future implementation)
     this.application.get('/api/portfolio/:user_id', this.handle_get_portfolio.bind(this));
     this.application.post('/api/portfolio/:user_id/update', this.handle_update_portfolio.bind(this));
+
+    // Auth endpoints (placeholder for future implementation)
+    this.application.post('/api/auth/login', (req, res) => sendSuccess(res, { message: 'Login successful' }));
+    this.application.post('/api/auth/register', (req, res) => sendSuccess(res, { message: 'Registration successful' }));
   }
   
   private initialize_error_handlers(): void {
@@ -183,14 +201,10 @@ class BackendServer {
         uptime_seconds: uptime_seconds
       };
       
-      response.status(200).json(health_status);
+      sendSuccess(response, health_status);
     } catch (error) {
-      console.error('Health check error:', error);
-      response.status(500).json({
-        service_status: 'unhealthy',
-        timestamp: new Date().toISOString(),
-        error: 'Health check failed'
-      });
+      logger.error('Health check error:', error);
+      sendError(response, 'Health check failed', 500);
     }
   }
   
@@ -223,32 +237,41 @@ class BackendServer {
     
     response.status(200).json(api_documentation);
   }
+
+  private handle_market_overview(request: Request, response: Response): void {
+    const mockOverview = {
+      indices: [
+        { name: 'S&P 500', value: '5,433.74', change: '+0.23%' },
+        { name: 'Dow 30', value: '38,778.10', change: '-0.15%' },
+        { name: 'Nasdaq', value: '17,688.88', change: '+0.12%' },
+        { name: 'Russell 2000', value: '2,022.04', change: '-0.10%' },
+      ],
+      topPerformers: [
+        { ticker: 'NVDA', price: '135.58', change: '+3.52%' },
+        { ticker: 'AAPL', price: '214.29', change: '+0.55%' },
+        { ticker: 'MSFT', price: '442.57', change: '+0.22%' },
+        { ticker: 'GOOGL', price: '179.63', change: '+0.25%' },
+      ],
+    };
+    sendSuccess(response, mockOverview);
+  }
   
   private async handle_stock_prediction(request: Request, response: Response): Promise<void> {
+    const errors = validationResult(request);
+    if (!errors.isEmpty()) {
+      response.status(400).json({ errors: errors.array() });
+      return;
+    }
+
     try {
       const prediction_request: StockPredictionRequest = request.body;
-      
-      // Validate request
-      if (!prediction_request.ticker) {
-        response.status(400).json({
-          success: false,
-          error: 'Stock ticker symbol is required',
-          example_request: {
-            ticker: 'AAPL',
-            days: 1,
-            include_pdm: true
-          },
-          timestamp: new Date().toISOString()
-        });
-        return;
-      }
       
       // Sanitize and prepare request
       const sanitized_ticker = prediction_request.ticker.toUpperCase().trim();
       const prediction_days = Math.min(Math.max(prediction_request.days || 1, 1), 30); // Limit 1-30 days
       const include_pdm_analysis = prediction_request.include_pdm !== false; // Default to true
       
-      console.log(`Processing prediction request: ${sanitized_ticker} (${prediction_days} days, PDM: ${include_pdm_analysis})`);
+      logger.info(`Processing prediction request: ${sanitized_ticker} (${prediction_days} days, PDM: ${include_pdm_analysis})`);
       
       // Forward request to ML service
       const ml_service_response = await axios.post(
@@ -267,16 +290,9 @@ class BackendServer {
         }
       );
       
-      const prediction_result: APIResponse = {
-        success: true,
-        data: ml_service_response.data,
-        timestamp: new Date().toISOString()
-      };
-      
-      response.status(200).json(prediction_result);
-      
+      sendSuccess(response, ml_service_response.data);
     } catch (error) {
-      console.error('Stock prediction error:', error);
+      logger.error('Stock prediction error:', error);
       this.handle_ml_service_error(error as AxiosError, response);
     }
   }
@@ -316,7 +332,7 @@ class BackendServer {
       
       const include_pdm_analysis = batch_request.include_pdm === true;
       
-      console.log(`Processing batch prediction for ${sanitized_tickers.length} tickers (PDM: ${include_pdm_analysis})`);
+      logger.info(`Processing batch prediction for ${sanitized_tickers.length} tickers (PDM: ${include_pdm_analysis})`);
       
       // Forward request to ML service
       const ml_service_response = await axios.post(
@@ -343,14 +359,14 @@ class BackendServer {
       response.status(200).json(batch_result);
       
     } catch (error) {
-      console.error('Batch prediction error:', error);
+      logger.error('Batch prediction error:', error);
       this.handle_ml_service_error(error as AxiosError, response);
     }
   }
   
   private async handle_pdm_opportunity_scan(request: Request, response: Response): Promise<void> {
     try {
-      console.log('Processing PDM opportunity scan request');
+      logger.info('Processing PDM opportunity scan request');
       
       const ml_service_response = await axios.get(
         `${this.configuration.machinelearning_service_url}/pdm_scan`,
@@ -371,7 +387,7 @@ class BackendServer {
       response.status(200).json(scan_result);
       
     } catch (error) {
-      console.error('PDM scan error:', error);
+      logger.error('PDM scan error:', error);
       this.handle_ml_service_error(error as AxiosError, response);
     }
   }
@@ -384,7 +400,7 @@ class BackendServer {
       const start_date = backtest_request.start_date || '2025-04-01';
       const end_date = backtest_request.end_date || '2025-10-01';
       
-      console.log(`Processing PDM backtest: ${start_date} to ${end_date}`);
+      logger.info(`Processing PDM backtest: ${start_date} to ${end_date}`);
       
       const ml_service_response = await axios.post(
         `${this.configuration.machinelearning_service_url}/pdm_backtest`,
@@ -410,7 +426,7 @@ class BackendServer {
       response.status(200).json(backtest_result);
       
     } catch (error) {
-      console.error('PDM backtest error:', error);
+      logger.error('PDM backtest error:', error);
       this.handle_ml_service_error(error as AxiosError, response);
     }
   }
@@ -445,69 +461,30 @@ class BackendServer {
   
   private handle_ml_service_error(error: AxiosError, response: Response): void {
     if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
-      response.status(503).json({
-        success: false,
-        error: 'Machine Learning service is currently unavailable. Please try again later.',
-        service_url: this.configuration.machinelearning_service_url,
-        timestamp: new Date().toISOString()
-      });
+      sendError(response, 'Machine Learning service is currently unavailable. Please try again later.', 503);
     } else if (error.response) {
-      response.status(error.response.status || 500).json({
-        success: false,
-        error: error.response.data?.error || 'ML service returned an error',
-        details: error.response.data,
-        timestamp: new Date().toISOString()
-      });
+      const errorData = error.response.data as { error?: string };
+      sendError(response, errorData?.error || 'ML service returned an error', error.response.status || 500);
     } else {
-      response.status(500).json({
-        success: false,
-        error: 'An internal server error occurred while communicating with the ML service',
-        timestamp: new Date().toISOString()
-      });
+      sendError(response, 'An internal server error occurred while communicating with the ML service', 500);
     }
   }
   
   private handle_not_found(request: Request, response: Response): void {
-    response.status(404).json({
-      success: false,
-      error: 'API endpoint not found',
-      requested_path: request.path,
-      method: request.method,
-      available_endpoints: {
-        health_check: 'GET /health',
-        api_documentation: 'GET /api',
-        stock_prediction: 'POST /api/predict',
-        batch_prediction: 'POST /api/batch_predict',
-        pdm_opportunity_scan: 'GET /api/pdm_scan',
-        pdm_backtesting: 'POST /api/pdm_backtest'
-      },
-      timestamp: new Date().toISOString()
-    });
+    sendError(response, 'API endpoint not found', 404);
   }
-  
+
   private handle_server_error(error: Error, request: Request, response: Response, next: NextFunction): void {
-    console.error('Unhandled server error:', error);
-    
+    logger.error('Unhandled server error:', error);
     if (response.headersSent) {
       return next(error);
     }
-    
-    response.status(500).json({
-      success: false,
-      error: 'An internal server error occurred',
-      timestamp: new Date().toISOString(),
-      ...(this.configuration.node_environment === 'development' && {
-        debug: {
-          message: error.message,
-          stack: error.stack
-        }
-      })
-    });
+    sendError(response, 'An internal server error occurred', 500);
   }
   
   private setup_graceful_shutdown(): void {
     const shutdown_handler = (signal: string) => {
-      console.log(`\n${signal} received. Starting graceful shutdown...`);
+      logger.info(`\n${signal} received. Starting graceful shutdown...`);
       
       process.exit(0);
     };
@@ -520,17 +497,17 @@ class BackendServer {
     this.setup_graceful_shutdown();
     
     this.application.listen(this.configuration.port, '0.0.0.0', () => {
-      console.log('====================================');
-      console.log('🚀 Roneira AI HIFI Backend Server');
-      console.log('====================================');
-      console.log(`📍 Port: ${this.configuration.port}`);
-      console.log(`🔗 ML Service: ${this.configuration.machinelearning_service_url}`);
-      console.log(`🌐 CORS Origins: ${this.configuration.cors_allowed_origins}`);
-      console.log(`🛡️  Environment: ${this.configuration.node_environment}`);
-      console.log(`⚡ Rate Limit: ${this.configuration.rate_limit_max_requests} requests per ${this.configuration.rate_limit_window_minutes} minutes`);
-      console.log(`✅ Server is ready and accepting connections`);
-      console.log(`📊 Health check: http://localhost:${this.configuration.port}/health`);
-      console.log('====================================');
+      logger.info('====================================');
+      logger.info('🚀 Roneira AI HIFI Backend Server');
+      logger.info('====================================');
+      logger.info(`📍 Port: ${this.configuration.port}`);
+      logger.info(`🔗 ML Service: ${this.configuration.machinelearning_service_url}`);
+      logger.info(`🌐 CORS Origins: ${this.configuration.cors_allowed_origins}`);
+      logger.info(`🛡️  Environment: ${this.configuration.node_environment}`);
+      logger.info(`⚡ Rate Limit: ${this.configuration.rate_limit_max_requests} requests per ${this.configuration.rate_limit_window_minutes} minutes`);
+      logger.info(`✅ Server is ready and accepting connections`);
+      logger.info(`📊 Health check: http://localhost:${this.configuration.port}/health`);
+      logger.info('====================================');
     });
   }
   
@@ -545,4 +522,4 @@ if (require.main === module) {
   backend_server.start_server();
 }
 
-export default BackendServer;
+module.exports = BackendServer;

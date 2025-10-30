@@ -16,6 +16,6 @@ setup(
         "yfinance>=0.2.18",
         "requests>=2.31.0",
         "joblib>=1.3.2",
-        "python-dotenv>=1.0.0"
-    ]
+        "python-dotenv>=1.0.0",
+    ],
 )
