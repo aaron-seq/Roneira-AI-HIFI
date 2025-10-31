@@ -1,38 +1,44 @@
 /**
  * Roneira AI HIFI - Enhanced Frontend Application
- * 
+ *
  * Features:
  * - Stock price prediction with ML models
  * - PDM (Price-Volume Derivatives Momentum) strategy analysis
  * - Real-time market data visualization
  * - Portfolio management tools
  * - Technical indicators display
- * 
+ *
  * Author: Aaron Sequeira
  * Company: Roneira AI
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import axios, { AxiosError } from 'axios';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
+import React, { useState, useEffect, useCallback } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import { Toaster } from "react-hot-toast";
 
 // Import our custom components
-import { NavigationHeader } from './components/navigation/NavigationHeader';
-import { StockPredictionDashboard } from './components/prediction/StockPredictionDashboard';
-import { PDMStrategyDashboard } from './components/pdm/PDMStrategyDashboard';
-import { PortfolioManagementDashboard } from './components/portfolio/PortfolioManagementDashboard';
-import { TechnicalAnalysisDashboard } from './components/analysis/TechnicalAnalysisDashboard';
-import { LoadingSpinner } from './components/ui/LoadingSpinner';
-import { ErrorBoundary } from './components/ui/ErrorBoundary';
+import { NavigationHeader } from "../../components/navigation/NavigationHeader";
+import { StockPredictionDashboard } from "../../components/prediction/StockPredictionDashboard";
+import { PDMStrategyDashboard } from "../../components/pdm/PDMStrategyDashboard";
+import { PortfolioManagementDashboard } from "../../components/portfolio/PortfolioManagementDashboard";
+import { TechnicalAnalysisDashboard } from "../../components/analysis/TechnicalAnalysisDashboard";
+import { LoadingSpinner } from "../../components/ui/LoadingSpinner";
+import { ErrorBoundary } from "../../components/ui/ErrorBoundary";
+import { MarketOverviewDashboard } from "../../components/overview/MarketOverviewDashboard";
+import { MarketOverviewDashboard } from "../../components/overview/MarketOverviewDashboard";
 
 // Import utilities and types
-import { useFinancialDataStore } from './store/financialDataStore';
-import { ApplicationConfiguration } from './config/applicationConfig';
-import { FinancialDataService } from './services/financialDataService';
-import { NotificationService } from './services/notificationService';
+import { useFinancialDataStore } from "../../store/financialDataStore";
+import { ApplicationConfiguration } from "../../config/applicationConfig";
+import { FinancialDataService } from "../../services/financialDataService";
+import { NotificationService } from "../../services/notificationService";
 
 // Type definitions for better type safety
 export interface StockPredictionResult {
@@ -98,7 +104,7 @@ const reactQueryClient = new QueryClient({
     queries: {
       retry: 2,
       staleTime: 5 * 60 * 1000, // 5 minutes
-      gcTime: 10 * 60 * 1000,   // 10 minutes (formerly cacheTime)
+      gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
       refetchOnWindowFocus: false,
     },
     mutations: {
@@ -109,7 +115,9 @@ const reactQueryClient = new QueryClient({
 
 // Main application configuration
 const applicationConfig = new ApplicationConfiguration();
-const financialDataService = new FinancialDataService(applicationConfig.apiBaseUrl);
+const financialDataService = new FinancialDataService(
+  applicationConfig.apiBaseUrl,
+);
 const notificationService = new NotificationService();
 
 const MainApplicationContent: React.FC = () => {
@@ -126,7 +134,8 @@ const MainApplicationContent: React.FC = () => {
   } = useFinancialDataStore();
 
   // Local state for navigation
-  const [activeNavigationTab, setActiveNavigationTab] = useState<string>('prediction');
+  const [activeNavigationTab, setActiveNavigationTab] =
+    useState<string>("overview");
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
 
   // Initialize application and check system health
@@ -139,22 +148,28 @@ const MainApplicationContent: React.FC = () => {
       const healthResponse = await financialDataService.checkSystemHealth();
       setMarketHealthStatus(healthResponse);
 
-      if (healthResponse.service_status !== 'healthy') {
-        throw new Error('Backend services are not fully operational');
+      if (healthResponse.service_status !== "healthy") {
+        throw new Error("Backend services are not fully operational");
       }
 
-      notificationService.showSuccess('Application initialized successfully');
+      notificationService.showSuccess("Application initialized successfully");
       setIsInitialized(true);
-
     } catch (error) {
-      console.error('Application initialization failed:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to initialize application';
+      console.error("Application initialization failed:", error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to initialize application";
       setApplicationErrorMessage(errorMessage);
       notificationService.showError(`Initialization failed: ${errorMessage}`);
     } finally {
       setIsApplicationLoading(false);
     }
-  }, [setIsApplicationLoading, setApplicationErrorMessage, setMarketHealthStatus]);
+  }, [
+    setIsApplicationLoading,
+    setApplicationErrorMessage,
+    setMarketHealthStatus,
+  ]);
 
   // Initialize application on component mount
   useEffect(() => {
@@ -170,7 +185,7 @@ const MainApplicationContent: React.FC = () => {
         const healthResponse = await financialDataService.checkSystemHealth();
         setMarketHealthStatus(healthResponse);
       } catch (error) {
-        console.warn('Health check failed:', error);
+        console.warn("Health check failed:", error);
       }
     }, 30000); // Check every 30 seconds
 
@@ -188,8 +203,12 @@ const MainApplicationContent: React.FC = () => {
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
         <div className="text-center">
           <LoadingSpinner size="large" />
-          <h2 className="mt-4 text-xl font-semibold text-white">Initializing Roneira AI HIFI</h2>
-          <p className="mt-2 text-slate-300">Connecting to financial intelligence services...</p>
+          <h2 className="mt-4 text-xl font-semibold text-white">
+            Initializing Roneira AI HIFI
+          </h2>
+          <p className="mt-2 text-slate-300">
+            Connecting to financial intelligence services...
+          </p>
         </div>
       </div>
     );
@@ -200,8 +219,10 @@ const MainApplicationContent: React.FC = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-red-900 to-slate-900 flex items-center justify-center">
         <div className="text-center max-w-md mx-auto p-8">
-          <div className="text-red-500 text-6xl mb-4">⚠️</div>
-          <h2 className="text-2xl font-bold text-white mb-4">System Unavailable</h2>
+          <div className="text-red-500 text-6xl mb-4"></div>
+          <h2 className="text-2xl font-bold text-white mb-4">
+            System Unavailable
+          </h2>
           <p className="text-slate-300 mb-6">{applicationErrorMessage}</p>
           <button
             onClick={initializeApplication}
@@ -227,6 +248,9 @@ const MainApplicationContent: React.FC = () => {
       {/* Main Content Area */}
       <main className="container mx-auto px-4 py-6">
         <Routes>
+          {/* Market Overview Dashboard */}
+          <Route path="/overview" element={<MarketOverviewDashboard />} />
+
           {/* Stock Prediction Dashboard */}
           <Route
             path="/prediction"
@@ -242,9 +266,7 @@ const MainApplicationContent: React.FC = () => {
           <Route
             path="/pdm-strategy"
             element={
-              <PDMStrategyDashboard
-                marketHealthStatus={marketHealthStatus}
-              />
+              <PDMStrategyDashboard marketHealthStatus={marketHealthStatus} />
             }
           />
 
@@ -269,10 +291,10 @@ const MainApplicationContent: React.FC = () => {
           />
 
           {/* Default route redirect */}
-          <Route path="/" element={<Navigate to="/prediction" replace />} />
-          
+          <Route path="/" element={<Navigate to="/overview" replace />} />
+
           {/* Fallback for unknown routes */}
-          <Route path="*" element={<Navigate to="/prediction" replace />} />
+          <Route path="*" element={<Navigate to="/overview" replace />} />
         </Routes>
       </main>
     </div>
@@ -285,34 +307,34 @@ const EnhancedFinancialIntelligenceApp: React.FC = () => {
       <Router>
         <ErrorBoundary>
           <MainApplicationContent />
-          
+
           {/* Toast notifications */}
           <Toaster
             position="top-right"
             toastOptions={{
               duration: 4000,
               style: {
-                background: '#1f2937',
-                color: '#f9fafb',
-                border: '1px solid #374151',
+                background: "#1f2937",
+                color: "#f9fafb",
+                border: "1px solid #374151",
               },
               success: {
                 iconTheme: {
-                  primary: '#10b981',
-                  secondary: '#f9fafb',
+                  primary: "#10b981",
+                  secondary: "#f9fafb",
                 },
               },
               error: {
                 iconTheme: {
-                  primary: '#ef4444',
-                  secondary: '#f9fafb',
+                  primary: "#ef4444",
+                  secondary: "#f9fafb",
                 },
               },
             }}
           />
-          
+
           {/* React Query DevTools (only in development) */}
-          {process.env.NODE_ENV === 'development' && (
+          {process.env.NODE_ENV === "development" && (
             <ReactQueryDevtools initialIsOpen={false} />
           )}
         </ErrorBoundary>

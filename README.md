@@ -268,7 +268,7 @@ We welcome contributions that improve correctness, performance, and developer ex
 
 #### General Principles
 - Functions should be small, composable, and testable
-- Validate inputs at boundaries using Zod/pydantic patterns
+- Validate inputs at boundaries using Zod/pantic patterns
 - Include meaningful commit messages in imperative mood
 - Reference issues using `Fixes #issue` or `Refs #issue`
 

@@ -1,15 +1,22 @@
 /**
  * Navigation Header Component
- * 
+ *
  * Main navigation bar for the application with tabs and health status
- * 
+ *
  * Author: Aaron Sequeira
  * Company: Roneira AI
  */
 
-import React from 'react';
-import { TrendingUp, BarChart3, PieChart, Activity, Settings } from 'lucide-react';
-import type { MarketHealthStatus } from '../../App';
+import React from "react";
+import {
+  TrendingUp,
+  BarChart3,
+  PieChart,
+  Activity,
+  Settings,
+  LayoutDashboard,
+} from "lucide-react";
+import type { MarketHealthStatus } from "../../features/Shell/App";
 
 interface NavigationHeaderProps {
   activeTab: string;
@@ -26,48 +33,54 @@ interface NavigationTab {
 
 const navigationTabs: NavigationTab[] = [
   {
-    id: 'prediction',
-    label: 'Stock Prediction',
+    id: "overview",
+    label: "Market Overview",
+    icon: <LayoutDashboard className="w-5 h-5" />,
+    description: "Real-time market overview and top performers",
+  },
+  {
+    id: "prediction",
+    label: "Stock Prediction",
     icon: <TrendingUp className="w-5 h-5" />,
-    description: 'AI-powered stock price predictions'
+    description: "AI-powered stock price predictions",
   },
   {
-    id: 'pdm-strategy',
-    label: 'PDM Strategy',
+    id: "pdm-strategy",
+    label: "PDM Strategy",
     icon: <Activity className="w-5 h-5" />,
-    description: 'Price-Volume Derivatives Momentum analysis'
+    description: "Price-Volume Derivatives Momentum analysis",
   },
   {
-    id: 'portfolio',
-    label: 'Portfolio',
+    id: "portfolio",
+    label: "Portfolio",
     icon: <PieChart className="w-5 h-5" />,
-    description: 'Portfolio management and tracking'
+    description: "Portfolio management and tracking",
   },
   {
-    id: 'analysis',
-    label: 'Technical Analysis',
+    id: "analysis",
+    label: "Technical Analysis",
     icon: <BarChart3 className="w-5 h-5" />,
-    description: 'Comprehensive technical indicators'
-  }
+    description: "Comprehensive technical indicators",
+  },
 ];
 
 export const NavigationHeader: React.FC<NavigationHeaderProps> = ({
   activeTab,
   onTabChange,
-  marketHealthStatus
+  marketHealthStatus,
 }) => {
   const getHealthStatusColor = () => {
-    if (!marketHealthStatus) return 'bg-gray-500';
-    
+    if (!marketHealthStatus) return "bg-gray-500";
+
     switch (marketHealthStatus.service_status) {
-      case 'healthy':
-        return 'bg-green-500';
-      case 'degraded':
-        return 'bg-yellow-500';
-      case 'unhealthy':
-        return 'bg-red-500';
+      case "healthy":
+        return "bg-green-500";
+      case "degraded":
+        return "bg-yellow-500";
+      case "unhealthy":
+        return "bg-red-500";
       default:
-        return 'bg-gray-500';
+        return "bg-gray-500";
     }
   };
 
@@ -82,8 +95,12 @@ export const NavigationHeader: React.FC<NavigationHeaderProps> = ({
                 <Activity className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-white">Roneira AI HIFI</h1>
-                <p className="text-xs text-gray-400">High-Impact Finance Intelligence</p>
+                <h1 className="text-xl font-bold text-white">
+                  Roneira AI HIFI
+                </h1>
+                <p className="text-xs text-gray-400">
+                  High-Impact Finance Intelligence
+                </p>
               </div>
             </div>
           </div>
@@ -98,8 +115,8 @@ export const NavigationHeader: React.FC<NavigationHeaderProps> = ({
                   flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200
                   ${
                     activeTab === tab.id
-                      ? 'bg-cyan-600 text-white shadow-md'
-                      : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                      ? "bg-cyan-600 text-white shadow-md"
+                      : "text-gray-300 hover:text-white hover:bg-gray-700"
                   }
                 `}
                 title={tab.description}
@@ -114,9 +131,11 @@ export const NavigationHeader: React.FC<NavigationHeaderProps> = ({
           <div className="flex items-center space-x-4">
             {/* Health Status Indicator */}
             <div className="flex items-center space-x-2">
-              <div className={`w-3 h-3 rounded-full ${getHealthStatusColor()} animate-pulse`} />
+              <div
+                className={`w-3 h-3 rounded-full ${getHealthStatusColor()} animate-pulse`}
+              />
               <span className="text-sm text-gray-400">
-                {marketHealthStatus?.service_status || 'Unknown'}
+                {marketHealthStatus?.service_status || "Unknown"}
               </span>
             </div>
 
@@ -141,8 +160,8 @@ export const NavigationHeader: React.FC<NavigationHeaderProps> = ({
                   flex items-center space-x-2 px-3 py-2 rounded-lg whitespace-nowrap transition-all duration-200
                   ${
                     activeTab === tab.id
-                      ? 'bg-cyan-600 text-white'
-                      : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                      ? "bg-cyan-600 text-white"
+                      : "text-gray-300 hover:text-white hover:bg-gray-700"
                   }
                 `}
               >
