@@ -61,7 +61,7 @@ Roneira AI HIFI represents the convergence of advanced machine learning, real-ti
 <tr>
 <td>
 
-**Reliability** 🎯
+**Reliability** 
 - Reproducible ML predictions
 - Deterministic model training
 - Comprehensive error handling
@@ -69,7 +69,7 @@ Roneira AI HIFI represents the convergence of advanced machine learning, real-ti
 </td>
 <td>
 
-**Scalability** 📈
+**Scalability** 
 - Microservices architecture
 - Container orchestration
 - Auto-scaling capabilities
@@ -77,7 +77,7 @@ Roneira AI HIFI represents the convergence of advanced machine learning, real-ti
 </td>
 <td>
 
-**Performance** ⚡
+**Performance**
 - Sub-second API responses
 - Optimized data pipelines
 - Intelligent caching layers
