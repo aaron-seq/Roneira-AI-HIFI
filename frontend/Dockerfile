@@ -7,8 +7,8 @@ WORKDIR /app
 # Copy package.json and package-lock.json (or yarn.lock if you use yarn)
 COPY package*.json ./
 
-# Install app dependencies
-RUN npm install
+# Install app dependencies with legacy peer deps to resolve ESLint conflict
+RUN npm install --legacy-peer-deps
 
 # Copy the rest of the application's code
 COPY . .
