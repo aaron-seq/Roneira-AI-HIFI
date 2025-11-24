@@ -19,20 +19,23 @@ services:
       - ml-service
 
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     ports:
       - "3001:3001"
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
     environment:
-      - DATABASE_URL=postgresql://postgres:password@db:5432/stock_portfolio
-      - REDIS_URL=redis://redis:6379
-      - ML_SERVICE_URL=http://ml-service:5000
       - PORT=3001
+      - NODE_ENV=development
+      - ML_SERVICE_URL=http://ml-service:5000
+      - CORS_ORIGIN=http://localhost:3000
+      - ALPHA_VANTAGE_API_KEY=90CTAFL8CEZKUFAN
     depends_on:
       - db
       - redis
+      - ml-service
+    networks:
+      - default
 
   ml-service:
     build: ./ml-service
