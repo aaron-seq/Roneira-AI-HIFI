@@ -29,7 +29,7 @@ services:
       - NODE_ENV=development
       - ML_SERVICE_URL=http://ml-service:5000
       - CORS_ORIGIN=http://localhost:3000
-      - ALPHA_VANTAGE_API_KEY=90CTAFL8CEZKUFAN
+      - ALPHA_VANTAGE_API_KEY=${ALPHA_VANTAGE_API_KEY}
     depends_on:
       - db
       - redis
@@ -52,7 +52,7 @@ services:
     environment:
       - POSTGRES_DB=stock_portfolio
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=password
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
     ports:
       - "5432:5432"
     volumes:
