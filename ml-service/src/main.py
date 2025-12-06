@@ -1,14 +1,8 @@
 #!/usr/bin/env python3
 """
 Roneira Financial Intelligence ML Service
-Advanced stock price prediction service using machine learning
-
-Author: Aaron Sequeira
-Version: 2.0.0
-Description: Production-ready ML service for financial predictions
 """
 
-import os
 import sys
 from pathlib import Path
 

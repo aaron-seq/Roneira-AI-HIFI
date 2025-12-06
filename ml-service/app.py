@@ -12,9 +12,8 @@ Company: Roneira AI
 import os
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
+from typing import Dict, Optional, Any
 import warnings
-
 import numpy as np
 import pandas as pd
 from flask import Flask, request, jsonify
@@ -24,9 +23,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, r2_score
 import requests
-
-# Import our custom PDM strategy engine
-from pdm_strategy_engine import PriceVolumeDerivativesEngine, PDMSignal
+from pdm_strategy_engine import PriceVolumeDerivativesEngine
 
 warnings.filterwarnings("ignore")
 

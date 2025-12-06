@@ -7,7 +7,7 @@ interface ApiResponse<T> {
   timestamp: string;
 }
 
-export const sendSuccess = <T>(res: Response, data: T, statusCode = 200) => {
+export const sendSuccess = <T>(res: Response, data: T, statusCode = 200): void => {
   const response: ApiResponse<T> = {
     success: true,
     data,
@@ -16,7 +16,7 @@ export const sendSuccess = <T>(res: Response, data: T, statusCode = 200) => {
   res.status(statusCode).json(response);
 };
 
-export const sendError = (res: Response, error: string, statusCode = 500) => {
+export const sendError = (res: Response, error: string, statusCode = 500): void => {
   const response: ApiResponse<null> = {
     success: false,
     error,

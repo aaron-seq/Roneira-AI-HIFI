@@ -1,13 +1,13 @@
 /**
  * Roneira AI HIFI - Enhanced Backend Server with TypeScript
- * 
+ *
  * Features:
  * - RESTful API for stock predictions
  * - PDM strategy integration
  * - Error handling and validation
  * - Health monitoring
  * - CORS configuration
- * 
+ *
  * Author: Aaron Sequeira
  * Company: Roneira AI
  */
@@ -43,13 +43,6 @@ interface BatchPredictionRequest {
 interface PDMBacktestRequest {
   start_date?: string;
   end_date?: string;
-}
-
-interface APIResponse<T = any> {
-  success: boolean;
-  data?: T;
-  error?: string;
-  timestamp: string;
 }
 
 interface HealthCheckResponse {
@@ -100,29 +93,33 @@ class BackendServer {
     this.application.use(compression());
 
     if (this.configuration.node_environment !== 'test') {
-      this.application.use(morgan('combined', {
-        stream: {
-          write: (message: string) => logger.info(message.trim()),
-        },
-      }));
+      this.application.use(
+        morgan('combined', {
+          stream: {
+            write: (message: string) => logger.info(message.trim()),
+          },
+        })
+      );
     }
 
-    this.application.use(cors({
-      origin: this.configuration.cors_allowed_origins.split(','),
-      credentials: true,
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-    }));
+    this.application.use(
+      cors({
+        origin: this.configuration.cors_allowed_origins.split(','),
+        credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+      })
+    );
 
     const rate_limiter = rateLimit({
       windowMs: this.configuration.rate_limit_window_minutes * 60 * 1000,
       max: this.configuration.rate_limit_max_requests,
       message: {
         error: 'Too many requests from this IP address. Please try again later.',
-        retry_after_minutes: this.configuration.rate_limit_window_minutes
+        retry_after_minutes: this.configuration.rate_limit_window_minutes,
       },
       standardHeaders: true,
-      legacyHeaders: false
+      legacyHeaders: false,
     });
 
     this.application.use('/api/', rate_limiter);
@@ -135,7 +132,7 @@ class BackendServer {
     this.application.get('/api', this.handle_api_information.bind(this));
 
     // Handles /quote/:symbol, /timeseries/:symbol
-    this.application.use('/api/market', marketRoutes);      // Handles /overview, /movers
+    this.application.use('/api/market', marketRoutes); // Handles /overview, /movers
 
     // Stock prediction endpoints
     this.application.post(
@@ -148,9 +145,16 @@ class BackendServer {
     this.application.get('/api/pdm_scan', this.handle_pdm_opportunity_scan.bind(this));
     this.application.post('/api/pdm_backtest', this.handle_pdm_backtest.bind(this));
     this.application.get('/api/portfolio/:user_id', this.handle_get_portfolio.bind(this));
-    this.application.post('/api/portfolio/:user_id/update', this.handle_update_portfolio.bind(this));
-    this.application.post('/api/auth/login', (req, res) => sendSuccess(res, { message: 'Login successful' }));
-    this.application.post('/api/auth/register', (req, res) => sendSuccess(res, { message: 'Registration successful' }));
+    this.application.post(
+      '/api/portfolio/:user_id/update',
+      this.handle_update_portfolio.bind(this)
+    );
+    this.application.post('/api/auth/login', (req, res) =>
+      sendSuccess(res, { message: 'Login successful' })
+    );
+    this.application.post('/api/auth/register', (req, res) =>
+      sendSuccess(res, { message: 'Registration successful' })
+    );
   }
 
   private initialize_error_handlers(): void {
@@ -179,7 +183,7 @@ class BackendServer {
         environment: this.configuration.node_environment,
         version: '2.0.0',
         ml_service_status: ml_service_status,
-        uptime_seconds: uptime_seconds
+        uptime_seconds: uptime_seconds,
       };
 
       sendSuccess(response, health_status);
@@ -203,7 +207,7 @@ class BackendServer {
         batch_prediction: 'POST /api/batch_predict',
         pdm_opportunity_scan: 'GET /api/pdm_scan',
         pdm_backtesting: 'POST /api/pdm_backtest',
-        portfolio_management: 'GET|POST /api/portfolio/:user_id'
+        portfolio_management: 'GET|POST /api/portfolio/:user_id',
       },
       features: [
         'Real-time stock price prediction',
@@ -212,12 +216,12 @@ class BackendServer {
         'Technical indicator analysis',
         'Sentiment analysis integration',
         'Portfolio management tools',
-        'Alpha Vantage market data integration'
+        'Alpha Vantage market data integration',
       ],
       rate_limits: {
         window_minutes: this.configuration.rate_limit_window_minutes,
-        max_requests: this.configuration.rate_limit_max_requests
-      }
+        max_requests: this.configuration.rate_limit_max_requests,
+      },
     };
 
     response.status(200).json(api_documentation);
@@ -236,21 +240,23 @@ class BackendServer {
       const prediction_days = Math.min(Math.max(prediction_request.days || 1, 1), 30);
       const include_pdm_analysis = prediction_request.include_pdm !== false;
 
-      logger.info(`Processing prediction request: ${sanitized_ticker} (${prediction_days} days, PDM: ${include_pdm_analysis})`);
+      logger.info(
+        `Processing prediction request: ${sanitized_ticker} (${prediction_days} days, PDM: ${include_pdm_analysis})`
+      );
 
       const ml_service_response = await axios.post(
         `${this.configuration.machinelearning_service_url}/predict`,
         {
           ticker: sanitized_ticker,
           days: prediction_days,
-          include_pdm: include_pdm_analysis
+          include_pdm: include_pdm_analysis,
         },
         {
           timeout: 30000,
           headers: {
             'Content-Type': 'application/json',
-            'User-Agent': 'Roneira-AI-Backend/2.0.0'
-          }
+            'User-Agent': 'Roneira-AI-Backend/2.0.0',
+          },
         }
       );
 
@@ -265,11 +271,15 @@ class BackendServer {
     try {
       const batch_request: BatchPredictionRequest = request.body;
 
-      if (!batch_request.tickers || !Array.isArray(batch_request.tickers) || batch_request.tickers.length === 0) {
+      if (
+        !batch_request.tickers ||
+        !Array.isArray(batch_request.tickers) ||
+        batch_request.tickers.length === 0
+      ) {
         response.status(400).json({
           success: false,
           error: 'Array of ticker symbols is required',
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         });
         return;
       }
@@ -278,36 +288,35 @@ class BackendServer {
         response.status(400).json({
           success: false,
           error: 'Maximum 10 ticker symbols allowed per batch request',
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         });
         return;
       }
 
       const sanitized_tickers = batch_request.tickers
-        .map(ticker => ticker.toUpperCase().trim())
-        .filter(ticker => ticker.length > 0);
+        .map((ticker) => ticker.toUpperCase().trim())
+        .filter((ticker) => ticker.length > 0);
 
       const ml_service_response = await axios.post(
         `${this.configuration.machinelearning_service_url}/batch_predict`,
         {
           tickers: sanitized_tickers,
-          include_pdm: batch_request.include_pdm === true
+          include_pdm: batch_request.include_pdm === true,
         },
         {
           timeout: 60000,
           headers: {
             'Content-Type': 'application/json',
-            'User-Agent': 'Roneira-AI-Backend/2.0.0'
-          }
+            'User-Agent': 'Roneira-AI-Backend/2.0.0',
+          },
         }
       );
 
       response.status(200).json({
         success: true,
         data: ml_service_response.data,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
-
     } catch (error) {
       logger.error('Batch prediction error:', error);
       this.handle_ml_service_error(error as AxiosError, response);
@@ -324,9 +333,8 @@ class BackendServer {
       response.status(200).json({
         success: true,
         data: ml_service_response.data,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
-
     } catch (error) {
       logger.error('PDM scan error:', error);
       this.handle_ml_service_error(error as AxiosError, response);
@@ -348,9 +356,8 @@ class BackendServer {
       response.status(200).json({
         success: true,
         data: ml_service_response.data,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
-
     } catch (error) {
       logger.error('PDM backtest error:', error);
       this.handle_ml_service_error(error as AxiosError, response);
@@ -358,7 +365,10 @@ class BackendServer {
   }
 
   // Simple in-memory storage for portfolio (for testing purposes)
-  private portfolio_storage: Record<string, { ticker: string, shares: number, avg_price: number }[]> = {};
+  private portfolio_storage: Record<
+    string,
+    { ticker: string; shares: number; avg_price: number }[]
+  > = {};
 
   private handle_get_portfolio(request: Request, response: Response): void {
     const user_id = request.params.user_id;
@@ -368,7 +378,7 @@ class BackendServer {
       success: true,
       data: portfolio,
       user_id: user_id,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 
@@ -381,26 +391,27 @@ class BackendServer {
     }
 
     const current_portfolio = this.portfolio_storage[user_id];
-    const existing_position_index = current_portfolio.findIndex(p => p.ticker === ticker);
+    const existing_position_index = current_portfolio.findIndex((p) => p.ticker === ticker);
 
     if (action === 'add') {
       if (existing_position_index >= 0) {
         // Update existing position
         const position = current_portfolio[existing_position_index];
         const new_total_shares = position.shares + shares;
-        const new_avg_price = ((position.shares * position.avg_price) + (shares * price)) / new_total_shares;
+        const new_avg_price =
+          (position.shares * position.avg_price + shares * price) / new_total_shares;
 
         current_portfolio[existing_position_index] = {
           ticker,
           shares: new_total_shares,
-          avg_price: new_avg_price
+          avg_price: new_avg_price,
         };
       } else {
         // Add new position
         current_portfolio.push({
           ticker,
           shares,
-          avg_price: price
+          avg_price: price,
         });
       }
     } else if (action === 'remove' && existing_position_index >= 0) {
@@ -412,7 +423,7 @@ class BackendServer {
       data: current_portfolio,
       message: 'Portfolio updated successfully',
       user_id: user_id,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 
@@ -421,7 +432,11 @@ class BackendServer {
       sendError(response, 'Machine Learning service is currently unavailable', 503);
     } else if (error.response) {
       const errorData = error.response.data as { error?: string };
-      sendError(response, errorData?.error || 'ML service returned an error', error.response.status || 500);
+      sendError(
+        response,
+        errorData?.error || 'ML service returned an error',
+        error.response.status || 500
+      );
     } else {
       sendError(response, 'An internal server error occurred', 500);
     }
@@ -431,7 +446,12 @@ class BackendServer {
     sendError(response, 'API endpoint not found', 404);
   }
 
-  private handle_server_error(error: Error, request: Request, response: Response, next: NextFunction): void {
+  private handle_server_error(
+    error: Error,
+    request: Request,
+    response: Response,
+    next: NextFunction
+  ): void {
     logger.error('Unhandled server error:', error);
     if (response.headersSent) {
       return next(error);
@@ -460,7 +480,9 @@ class BackendServer {
       logger.info(`🔗 ML Service: ${this.configuration.machinelearning_service_url}`);
       logger.info(`🌐 CORS Origins: ${this.configuration.cors_allowed_origins}`);
       logger.info(`🛡️  Environment: ${this.configuration.node_environment}`);
-      logger.info(`⚡ Rate Limit: ${this.configuration.rate_limit_max_requests} requests per ${this.configuration.rate_limit_window_minutes} minutes`);
+      logger.info(
+        `⚡ Rate Limit: ${this.configuration.rate_limit_max_requests} requests per ${this.configuration.rate_limit_window_minutes} minutes`
+      );
       logger.info(`✅ Server is ready and accepting connections`);
       logger.info(`📊 Health check: http://localhost:${this.configuration.port}/health`);
       logger.info('====================================');

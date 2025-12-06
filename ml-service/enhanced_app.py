@@ -1,24 +1,3 @@
-import numpy as np
-import pandas as pd
-from flask import Flask, request, jsonify
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestRegressor
-import yfinance as yf
-from flask_cors import CORS
-import requests
-import os
-from datetime import datetime, timedelta
-import logging
-
-# Initialize the Flask application
-app = Flask(__name__)
-CORS(app)
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-# Hugging Face API configuration (FREE)
 HF_API_URL = "https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium"
 HF_API_KEY = os.getenv("HUGGING_FACE_API_KEY", "")  # Optional for public models
 
