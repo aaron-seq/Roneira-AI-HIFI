@@ -37,7 +37,7 @@ export class ErrorBoundary extends Component<
     console.error("ErrorBoundary caught an error:", error, errorInfo);
 
     // In production, you might want to log this to an error reporting service
-    if (process.env.NODE_ENV === "production") {
+    if (import.meta.env.PROD) {
       // Log to error reporting service
       // e.g., Sentry, LogRocket, etc.
     }
@@ -69,7 +69,7 @@ export class ErrorBoundary extends Component<
               or contact support if the problem persists.
             </p>
 
-            {process.env.NODE_ENV === "development" && this.state.error && (
+            {import.meta.env.DEV && this.state.error && (
               <details className="mb-6 text-left bg-gray-800 p-4 rounded-lg">
                 <summary className="text-red-400 cursor-pointer mb-2">
                   Error Details (Development Mode)

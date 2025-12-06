@@ -1,95 +1,106 @@
-/**
- * Technical Analysis Dashboard Component
- *
- * Comprehensive technical indicators and chart analysis
- *
- * Author: Aaron Sequeira
- * Company: Roneira AI
- */
+import React, { useEffect, useRef } from 'react';
+import { createChart, ColorType } from 'lightweight-charts';
 
-import React from "react";
-import { BarChart3, TrendingUp, Activity, Target } from "lucide-react";
+
+// Mock data generator (since we don't have full historical data API yet)
+const generateData = () => {
+  const initialDate = new Date(2023, 0, 1);
+  const data = [];
+  let price = 150;
+  for (let i = 0; i < 300; i++) {
+    price = price + Math.random() * 10 - 5;
+    const date = new Date(initialDate.valueOf() + i * 24 * 60 * 60 * 1000);
+    data.push({
+      time: date.toISOString().split('T')[0],
+      open: price + Math.random() * 5 - 2.5,
+      high: price + Math.random() * 5,
+      low: price - Math.random() * 5,
+      close: price,
+    });
+  }
+  return data;
+};
 
 interface TechnicalAnalysisDashboardProps {
   selectedTicker: string;
 }
 
-export const TechnicalAnalysisDashboard: React.FC<
-  TechnicalAnalysisDashboardProps
-> = ({ selectedTicker }) => {
+export const TechnicalAnalysisDashboard: React.FC<TechnicalAnalysisDashboardProps> = ({ selectedTicker }) => {
+  const chartContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!chartContainerRef.current) return;
+
+    const chart = createChart(chartContainerRef.current, {
+      layout: {
+        background: { type: ColorType.Solid, color: '#000000' },
+        textColor: '#d1d5db',
+      },
+      grid: {
+        vertLines: { color: '#374151' },
+        horzLines: { color: '#374151' },
+      },
+      width: chartContainerRef.current.clientWidth,
+      height: 500,
+    });
+
+    const candlestickSeries = chart.addCandlestickSeries({
+      upColor: '#10b981',
+      downColor: '#ef4444',
+      borderVisible: false,
+      wickUpColor: '#10b981',
+      wickDownColor: '#ef4444',
+    });
+
+    const data = generateData();
+    candlestickSeries.setData(data);
+
+    const handleResize = () => {
+      if (chartContainerRef.current) {
+        chart.applyOptions({ width: chartContainerRef.current.clientWidth });
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      chart.remove();
+    };
+  }, [selectedTicker]);
+
   return (
-    <div className="space-y-6">
-      {/* Technical Analysis Overview */}
-      <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
-        <h2 className="text-2xl font-bold text-cyan-400 mb-4">
-          Technical Analysis
+    <div className="p-6 bg-gray-900 border border-gray-800 rounded-lg">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-white">
+          Technical Analysis: <span className="text-gold-500">{selectedTicker || "MARKET"}</span>
         </h2>
-        <p className="text-gray-400 mb-4">
-          Comprehensive technical indicators and chart analysis for{" "}
-          {selectedTicker || "selected stocks"}
-        </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-gray-700 p-4 rounded-lg">
-            <div className="flex items-center gap-2 mb-2">
-              <TrendingUp className="w-5 h-5 text-green-400" />
-              <span className="text-gray-400 text-sm">Trend Strength</span>
-            </div>
-            <p className="text-xl font-bold text-green-400">Bullish</p>
-          </div>
-
-          <div className="bg-gray-700 p-4 rounded-lg">
-            <div className="flex items-center gap-2 mb-2">
-              <Activity className="w-5 h-5 text-yellow-400" />
-              <span className="text-gray-400 text-sm">RSI</span>
-            </div>
-            <p className="text-xl font-bold text-yellow-400">65.2</p>
-          </div>
-
-          <div className="bg-gray-700 p-4 rounded-lg">
-            <div className="flex items-center gap-2 mb-2">
-              <Target className="w-5 h-5 text-blue-400" />
-              <span className="text-gray-400 text-sm">MACD</span>
-            </div>
-            <p className="text-xl font-bold text-blue-400">+2.14</p>
-          </div>
-
-          <div className="bg-gray-700 p-4 rounded-lg">
-            <div className="flex items-center gap-2 mb-2">
-              <BarChart3 className="w-5 h-5 text-purple-400" />
-              <span className="text-gray-400 text-sm">Volume</span>
-            </div>
-            <p className="text-xl font-bold text-purple-400">Above Avg</p>
-          </div>
+        <div className="flex gap-2">
+          {['1D', '1W', '1M', '3M', '1Y'].map((tf) => (
+            <button key={tf} className="px-3 py-1 text-sm bg-gray-800 hover:bg-gray-700 rounded text-gray-300">
+              {tf}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Coming Soon */}
-      <div className="bg-gray-800 p-12 rounded-lg shadow-lg text-center">
-        <BarChart3 className="w-16 h-16 text-gray-500 mx-auto mb-4" />
-        <h3 className="text-xl font-semibold text-gray-400 mb-2">
-          Advanced Technical Analysis Coming Soon
-        </h3>
-        <p className="text-gray-500 mb-6">
-          Professional-grade charting and technical analysis tools are being
-          developed.
-        </p>
-        <div className="max-w-md mx-auto">
-          <div className="bg-gray-700 p-4 rounded-lg text-left">
-            <h4 className="text-cyan-400 font-semibold mb-2">
-              Planned Features:
-            </h4>
-            <ul className="space-y-1 text-gray-300 text-sm">
-              <li>• Interactive candlestick charts</li>
-              <li>• 20+ technical indicators (RSI, MACD, Bollinger Bands)</li>
-              <li>• Pattern recognition and alerts</li>
-              <li>• Multi-timeframe analysis</li>
-              <li>• Custom indicator overlays</li>
-              <li>• Support and resistance levels</li>
-              <li>• Volume profile analysis</li>
-              <li>• Fibonacci retracements</li>
-            </ul>
-          </div>
+      <div ref={chartContainerRef} className="w-full h-[500px]" />
+
+      <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+        <div className="p-4 bg-gray-800 rounded">
+          <div className="text-gray-400 text-sm">RSI (14)</div>
+          <div className="text-xl font-bold text-white">58.42</div>
+          <div className="text-xs text-gray-500">Neutral</div>
+        </div>
+        <div className="p-4 bg-gray-800 rounded">
+          <div className="text-gray-400 text-sm">MACD</div>
+          <div className="text-xl font-bold text-green-400">+1.25</div>
+          <div className="text-xs text-gray-500">Bullish Crossover</div>
+        </div>
+        <div className="p-4 bg-gray-800 rounded">
+          <div className="text-gray-400 text-sm">Bollinger Bands</div>
+          <div className="text-xl font-bold text-white"> squeezing</div>
+          <div className="text-xs text-gray-500">Low Volatility</div>
         </div>
       </div>
     </div>

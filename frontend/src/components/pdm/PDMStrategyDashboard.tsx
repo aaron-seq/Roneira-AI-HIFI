@@ -17,19 +17,7 @@ import {
   Zap,
   Clock,
 } from "lucide-react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  ScatterChart,
-  Scatter,
-} from "recharts";
-import type { MarketHealthStatus, PDMOpportunity } from "../../App";
+import type { MarketHealthStatus, PDMOpportunity } from "../../types";
 import { useFinancialDataStore } from "../../store/financialDataStore";
 
 interface PDMStrategyDashboardProps {
@@ -81,11 +69,10 @@ const PDMSignalCard: React.FC<PDMSignalCardProps> = ({ signal }) => {
           </span>
         </div>
         <span
-          className={`px-2 py-1 rounded text-xs font-semibold ${
-            signal.signal_type === "LONG"
-              ? "bg-green-600 text-white"
-              : "bg-gray-600 text-gray-200"
-          }`}
+          className={`px-2 py-1 rounded text-xs font-semibold ${signal.signal_type === "LONG"
+            ? "bg-green-600 text-white"
+            : "bg-gray-600 text-gray-200"
+            }`}
         >
           {signal.signal_type}
         </span>
@@ -118,9 +105,8 @@ const PDMSignalCard: React.FC<PDMSignalCardProps> = ({ signal }) => {
           <div>
             <p className="text-xs text-gray-400">Price Velocity</p>
             <p
-              className={`text-sm font-semibold ${
-                signal.price_velocity > 0 ? "text-green-400" : "text-red-400"
-              }`}
+              className={`text-sm font-semibold ${signal.price_velocity > 0 ? "text-green-400" : "text-red-400"
+                }`}
             >
               {signal.price_velocity > 0 ? "+" : ""}
               {signal.price_velocity.toFixed(2)}
@@ -178,10 +164,14 @@ export const PDMStrategyDashboard: React.FC<PDMStrategyDashboardProps> = ({
       return response.json();
     },
     refetchInterval: 60000, // Refresh every minute
-    onSuccess: (data) => {
-      setPDMOpportunities(data.signals || []);
-    },
   });
+
+  // Sync data to store when fetched
+  useEffect(() => {
+    if (opportunitiesData) {
+      setPDMOpportunities(opportunitiesData.signals || []);
+    }
+  }, [opportunitiesData, setPDMOpportunities]);
 
   const handleScanOpportunities = async () => {
     setPDMScanInProgress(true);
@@ -297,11 +287,10 @@ export const PDMStrategyDashboard: React.FC<PDMStrategyDashboardProps> = ({
             <p className="text-gray-400 text-sm">System Status</p>
             <div className="flex items-center gap-2">
               <div
-                className={`w-3 h-3 rounded-full ${
-                  marketHealthStatus?.service_status === "healthy"
-                    ? "bg-green-500"
-                    : "bg-red-500"
-                }`}
+                className={`w-3 h-3 rounded-full ${marketHealthStatus?.service_status === "healthy"
+                  ? "bg-green-500"
+                  : "bg-red-500"
+                  }`}
               />
               <p className="text-sm font-semibold text-white">
                 {marketHealthStatus?.service_status || "Unknown"}
@@ -353,7 +342,7 @@ export const PDMStrategyDashboard: React.FC<PDMStrategyDashboardProps> = ({
             Active PDM Signals ({pdmOpportunities.length})
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {pdmOpportunities.map((signal, index) => (
+            {pdmOpportunities.map((signal: PDMOpportunity, index: number) => (
               <PDMSignalCard
                 key={`${signal.ticker_symbol}-${index}`}
                 signal={signal}

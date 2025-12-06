@@ -41,8 +41,9 @@ export const MarketOverviewDashboard: React.FC = () => {
   // Loading state
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <LoadingSpinner message="Loading market data..." />
+      <div className="flex flex-col items-center justify-center h-96">
+        <LoadingSpinner />
+        <p className="mt-4 text-gray-400">Loading market data...</p>
       </div>
     );
   }

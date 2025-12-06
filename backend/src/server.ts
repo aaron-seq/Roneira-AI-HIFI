@@ -357,20 +357,61 @@ class BackendServer {
     }
   }
 
+  // Simple in-memory storage for portfolio (for testing purposes)
+  private portfolio_storage: Record<string, { ticker: string, shares: number, avg_price: number }[]> = {};
+
   private handle_get_portfolio(request: Request, response: Response): void {
+    const user_id = request.params.user_id;
+    const portfolio = this.portfolio_storage[user_id] || [];
+
     response.status(200).json({
       success: true,
-      message: 'Portfolio management feature coming soon',
-      user_id: request.params.user_id,
+      data: portfolio,
+      user_id: user_id,
       timestamp: new Date().toISOString()
     });
   }
 
   private handle_update_portfolio(request: Request, response: Response): void {
+    const user_id = request.params.user_id;
+    const { ticker, shares, price, action } = request.body;
+
+    if (!this.portfolio_storage[user_id]) {
+      this.portfolio_storage[user_id] = [];
+    }
+
+    const current_portfolio = this.portfolio_storage[user_id];
+    const existing_position_index = current_portfolio.findIndex(p => p.ticker === ticker);
+
+    if (action === 'add') {
+      if (existing_position_index >= 0) {
+        // Update existing position
+        const position = current_portfolio[existing_position_index];
+        const new_total_shares = position.shares + shares;
+        const new_avg_price = ((position.shares * position.avg_price) + (shares * price)) / new_total_shares;
+
+        current_portfolio[existing_position_index] = {
+          ticker,
+          shares: new_total_shares,
+          avg_price: new_avg_price
+        };
+      } else {
+        // Add new position
+        current_portfolio.push({
+          ticker,
+          shares,
+          avg_price: price
+        });
+      }
+    } else if (action === 'remove' && existing_position_index >= 0) {
+      current_portfolio.splice(existing_position_index, 1);
+    }
+
     response.status(200).json({
       success: true,
-      message: 'Portfolio update feature coming soon',
-      user_id: request.params.user_id,
+      data: current_portfolio,
+      message: 'Portfolio updated successfully',
+      user_id: user_id,
       timestamp: new Date().toISOString()
     });
   }

@@ -1,0 +1,17 @@
+[
+    {
+        "userId": "demo-user",
+        "portfolio": [
+            {
+                "ticker": "AAPL",
+                "shares": 10,
+                "avg_price": 150.00
+            },
+            {
+                "ticker": "NVDA",
+                "shares": 5,
+                "avg_price": 450.00
+            }
+        ]
+    }
+]

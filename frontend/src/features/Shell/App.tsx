@@ -20,6 +20,8 @@ import {
   Routes,
   Route,
   Navigate,
+  useNavigate,
+  useLocation,
 } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 
@@ -32,69 +34,11 @@ import { TechnicalAnalysisDashboard } from "../../components/analysis/TechnicalA
 import { LoadingSpinner } from "../../components/ui/LoadingSpinner";
 import { ErrorBoundary } from "../../components/ui/ErrorBoundary";
 import { MarketOverviewDashboard } from "../../components/overview/MarketOverviewDashboard";
+import { NewsDashboard } from "../../components/news/NewsDashboard";
 // Import utilities and types
 import { useFinancialDataStore } from "../../store/financialDataStore";
-import { ApplicationConfiguration } from "../../config/applicationConfig";
-import { fetchMarketOverview } from "../../services/financialDataService";
-import { NotificationService } from "../../services/notificationService";
+import { fetchMarketHealth } from "../../services/financialDataService";
 
-// Type definitions for better type safety
-export interface StockPredictionResult {
-  ticker_symbol: string;
-  company_name: string;
-  current_market_price: number;
-  ml_predicted_price: number;
-  predicted_price_change: number;
-  predicted_percentage_change: number;
-  prediction_horizon_days: number;
-  model_accuracy_r2_score: number;
-  market_sentiment: {
-    label: string;
-    score: number;
-  };
-  timestamp: string;
-  technical_indicators: {
-    relative_strength_index: number | null;
-    simple_moving_average_5: number | null;
-    simple_moving_average_20: number | null;
-    macd_line: number | null;
-    bollinger_position: number | null;
-  };
-  pdm_strategy_analysis?: {
-    signal_type: string;
-    confidence_score: number;
-    price_velocity: number;
-    price_curvature: number;
-    volume_sensitivity: number;
-    institutional_volume_factor: number;
-    atr_hard_stop_loss: number;
-    atr_trailing_stop: number;
-    strategy_description: string;
-  };
-}
-
-export interface PDMOpportunity {
-  ticker_symbol: string;
-  signal_type: string;
-  current_price: number;
-  confidence_score: number;
-  price_velocity: number;
-  price_curvature: number;
-  volume_sensitivity: number;
-  institutional_factor: number;
-  atr_stop_loss: number;
-  trailing_stop: number;
-  signal_timestamp: string;
-}
-
-export interface MarketHealthStatus {
-  service_status: string;
-  timestamp: string;
-  ml_service_status: string;
-  pdm_engine_status: string;
-  supported_features: string[];
-  version: string;
-}
 
 // Initialize React Query client
 const reactQueryClient = new QueryClient({
@@ -105,15 +49,10 @@ const reactQueryClient = new QueryClient({
       gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
       refetchOnWindowFocus: false,
     },
-    mutations: {
-      retry: 1,
-    },
   },
 });
 
 // Main application configuration
-const applicationConfig = new ApplicationConfiguration();
-const notificationService = new NotificationService();
 
 const MainApplicationContent: React.FC = () => {
   // State management using Zustand store
@@ -123,10 +62,19 @@ const MainApplicationContent: React.FC = () => {
     applicationErrorMessage,
     marketHealthStatus,
     setSelectedStockTicker,
-    setIsApplicationLoading,
-    setApplicationErrorMessage,
     setMarketHealthStatus,
   } = useFinancialDataStore();
+
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Sync active tab with URL location
+  useEffect(() => {
+    const path = location.pathname.substring(1); // remove leading slash
+    if (path) {
+      setActiveNavigationTab(path);
+    }
+  }, [location]);
 
   // Local state for navigation
   const [activeNavigationTab, setActiveNavigationTab] =
@@ -135,28 +83,22 @@ const MainApplicationContent: React.FC = () => {
 
   const initializeApplication = async () => {
     try {
-      // Use the financialDataService instead of undefined fetchWithAuth
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/health`);
-      const healthData = await response.json();
+      // Use the financialDataService helper with correct endpoint
+      const healthData = await fetchMarketHealth();
 
       console.log('Health check response:', healthData);
 
-      // Check if backend is healthy
-      if (!response.ok) {
-        throw new Error('Backend services are not responding');
-      }
-
+      // We consider initialized if we get a response, even if service status is unknown (offline mode support)
+      setMarketHealthStatus(healthData);
       console.log('✅ Backend services initialized successfully');
       setIsInitialized(true);
 
     } catch (error) {
       console.error('Application initialization failed:', error);
       // Just log the error, don't block the app from loading
-      setIsInitialized(true); // Allow app to load anyway
+      setIsInitialized(true);
     }
   };
-
-
 
   // Initialize application on component mount
   useEffect(() => {
@@ -169,8 +111,7 @@ const MainApplicationContent: React.FC = () => {
 
     const healthCheckInterval = setInterval(async () => {
       try {
-        const healthResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/health`);
-        const healthData = await healthResponse.json();
+        const healthData = await fetchMarketHealth();
         setMarketHealthStatus(healthData);
       } catch (error) {
         console.warn("Health check failed:", error);
@@ -183,19 +124,39 @@ const MainApplicationContent: React.FC = () => {
   // Handle navigation tab changes
   const handleNavigationTabChange = useCallback((tabName: string) => {
     setActiveNavigationTab(tabName);
-  }, []);
+    navigate(`/${tabName}`);
+  }, [navigate]);
+
+  // Wait, I need to use navigate.
+  // I will refactor this in a separate step or just assume the user clicks the tab and it updates state?
+  // Actually, NavigationHeader just calls onTabChange.
+  // The Routes are matched by URL path.
+  // We need to sync `activeNavigationTab` state with URL or vice versa.
+  // For now, let's keep it simple and just rely on the user clicking which updates the internal state 
+  // AND pushes a navigation event?
+  // Ah, the `NavigationHeader` uses simple `button`s.
+  // I should update `handleNavigationTabChange` to actually navigate.
+
+  // Let's fix the logic below this comment block with a proper implementation.
+  // Since I can't use hooks conditionally or easily inside `replace`, 
+  // I will just use `window.history.pushState` or similar if I can't import `useNavigate` easily at top level.
+  // But wait, `MainApplicationContent` IS inside `Router`.
+  // So I can use `useNavigate`.
+
+  // I'll skip this specific Replace and do it properly in the next step.
+
 
   // Show loading spinner during initialization
   if (!isInitialized && isApplicationLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
           <LoadingSpinner size="large" />
-          <h2 className="mt-4 text-xl font-semibold text-white">
-            Initializing Roneira AI HIFI
+          <h2 className="mt-4 text-xl font-medium text-gold-400 tracking-wider">
+            INITIALIZING RONEIRA AI
           </h2>
-          <p className="mt-2 text-slate-300">
-            Connecting to financial intelligence services...
+          <p className="mt-2 text-gray-500 text-sm tracking-wide">
+            Establishing Secure Connection...
           </p>
         </div>
       </div>
@@ -205,18 +166,18 @@ const MainApplicationContent: React.FC = () => {
   // Show error screen if initialization failed
   if (applicationErrorMessage && !isInitialized) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-red-900 to-slate-900 flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto p-8">
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-8 border border-red-900/30 rounded-lg bg-red-950/10">
           <div className="text-red-500 text-6xl mb-4"></div>
-          <h2 className="text-2xl font-bold text-white mb-4">
-            System Unavailable
+          <h2 className="text-2xl font-bold text-red-500 mb-2 tracking-wide">
+            SYSTEM UNAVAILABLE
           </h2>
-          <p className="text-slate-300 mb-6">{applicationErrorMessage}</p>
+          <p className="text-gray-400 mb-8">{applicationErrorMessage}</p>
           <button
             onClick={initializeApplication}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200"
+            className="bg-gold-600 hover:bg-gold-500 text-black font-bold py-3 px-8 rounded transition-all duration-300 tracking-wider uppercase text-sm"
           >
-            Retry Initialization
+            Retry Connection
           </button>
         </div>
       </div>
@@ -225,7 +186,7 @@ const MainApplicationContent: React.FC = () => {
 
   // Main application layout
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
+    <div className="min-h-screen bg-black text-gray-100 selection:bg-gold-500 selection:text-black">
       {/* Navigation Header */}
       <NavigationHeader
         activeTab={activeNavigationTab}
@@ -244,7 +205,7 @@ const MainApplicationContent: React.FC = () => {
             path="/prediction"
             element={
               <StockPredictionDashboard
-                selectedTicker={selectedStockTicker}
+                selectedTicker={selectedStockTicker || ""}
                 onTickerChange={setSelectedStockTicker}
               />
             }
@@ -263,7 +224,7 @@ const MainApplicationContent: React.FC = () => {
             path="/portfolio"
             element={
               <PortfolioManagementDashboard
-                selectedTicker={selectedStockTicker}
+                selectedTicker={selectedStockTicker || ""}
               />
             }
           />
@@ -273,10 +234,13 @@ const MainApplicationContent: React.FC = () => {
             path="/analysis"
             element={
               <TechnicalAnalysisDashboard
-                selectedTicker={selectedStockTicker}
+                selectedTicker={selectedStockTicker || ""}
               />
             }
           />
+
+          {/* News Dashboard */}
+          <Route path="/news" element={<NewsDashboard />} />
 
           {/* Default route redirect */}
           <Route path="/" element={<Navigate to="/overview" replace />} />
@@ -322,7 +286,7 @@ const EnhancedFinancialIntelligenceApp: React.FC = () => {
           />
 
           {/* React Query DevTools (only in development) */}
-          {process.env.NODE_ENV === "development" && (
+          {import.meta.env.DEV && (
             <ReactQueryDevtools initialIsOpen={false} />
           )}
         </ErrorBoundary>

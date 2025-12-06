@@ -83,3 +83,5 @@ export class NotificationService {
     toast.dismiss();
   }
 }
+
+export const notificationService = new NotificationService();

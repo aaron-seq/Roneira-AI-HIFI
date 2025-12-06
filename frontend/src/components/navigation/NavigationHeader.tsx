@@ -15,8 +15,10 @@ import {
   Activity,
   Settings,
   LayoutDashboard,
+  Newspaper,
 } from "lucide-react";
-import type { MarketHealthStatus } from "../../features/Shell/App";
+import type { MarketHealthStatus } from "../../types";
+import { SettingsModal } from "../settings/SettingsModal";
 
 interface NavigationHeaderProps {
   activeTab: string;
@@ -62,14 +64,25 @@ const navigationTabs: NavigationTab[] = [
     icon: <BarChart3 className="w-5 h-5" />,
     description: "Comprehensive technical indicators",
   },
+  {
+    id: "news",
+    label: "News",
+    icon: <Newspaper className="w-5 h-5" />,
+    description: "Market news & analysis",
+  },
 ];
+
+
 
 export const NavigationHeader: React.FC<NavigationHeaderProps> = ({
   activeTab,
   onTabChange,
   marketHealthStatus,
 }) => {
+  const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
+
   const getHealthStatusColor = () => {
+    // ... existing logic
     if (!marketHealthStatus) return "bg-gray-500";
 
     switch (marketHealthStatus.service_status) {
@@ -85,93 +98,101 @@ export const NavigationHeader: React.FC<NavigationHeaderProps> = ({
   };
 
   return (
-    <header className="bg-gray-800 border-b border-gray-700 shadow-lg">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo and Brand */}
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-lg flex items-center justify-center">
-                <Activity className="w-5 h-5 text-white" />
+    <>
+      <header className="bg-black border-b border-gold-900/50 shadow-lg relative z-50">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between h-20">
+            {/* Logo and Brand */}
+            <div className="flex items-center space-x-6">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 flex items-center justify-center overflow-hidden rounded-md border border-gold-900/30">
+                  <img src="/logo.jpg" alt="Roneira Logo" className="w-full h-full object-contain filter grayscale contrast-125" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-white tracking-wide uppercase whitespace-nowrap">
+                    Roneira <span className="text-gold-500">Enterprises AI</span>
+                  </h1>
+                  <p className="text-[10px] text-gold-400/80 tracking-[0.2em] uppercase mt-0.5">
+                    Private Equity & Intelligence
+                  </p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-xl font-bold text-white">
-                  Roneira AI HIFI
-                </h1>
-                <p className="text-xs text-gray-400">
-                  High-Impact Finance Intelligence
-                </p>
+            </div>
+
+            {/* Navigation Tabs */}
+            <nav className="hidden md:flex space-x-2">
+              {navigationTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => onTabChange(tab.id)}
+                  className={`
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  ${activeTab === tab.id
+                      ? "bg-gold-500/10 text-gold-400 border-gold-500/20 shadow-[0_0_15px_rgba(212,175,55,0.1)]"
+                      : "text-gray-400 hover:text-gold-200 hover:bg-white/5"
+                    }
+                `}
+                  title={tab.description}
+                >
+                  {/* Render icons in gold for active, gray for inactive */}
+                  <span className={activeTab === tab.id ? "text-gold-500" : "text-gray-500 group-hover:text-gold-300"}>
+                    {tab.icon}
+                  </span>
+                  <span className="font-medium tracking-wide text-sm">{tab.label}</span>
+                </button>
+              ))}
+            </nav>
+
+            {/* System Status and Controls */}
+            <div className="flex items-center space-x-6">
+              {/* Health Status Indicator */}
+              <div className="flex items-center space-x-2 bg-white/5 px-3 py-1.5 rounded-full border border-white/5">
+                <div
+                  className={`w-2 h-2 rounded-full ${getHealthStatusColor()} shadow-[0_0_8px_currentColor]`}
+                />
+                <span className="text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  {marketHealthStatus?.service_status || "Unknown"}
+                </span>
               </div>
+
+              {/* Settings Button */}
+              <button
+                onClick={() => setIsSettingsOpen(true)}
+                className="p-2 text-gold-500/70 hover:text-gold-400 hover:bg-gold-500/10 rounded-full transition-colors"
+                title="Settings"
+              >
+                <Settings className="w-5 h-5" />
+              </button>
             </div>
           </div>
 
-          {/* Navigation Tabs */}
-          <nav className="hidden md:flex space-x-1">
-            {navigationTabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => onTabChange(tab.id)}
-                className={`
-                  flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200
-                  ${
-                    activeTab === tab.id
-                      ? "bg-cyan-600 text-white shadow-md"
-                      : "text-gray-300 hover:text-white hover:bg-gray-700"
-                  }
+          {/* Mobile Navigation */}
+          <div className="md:hidden pb-4">
+            <div className="flex space-x-1 overflow-x-auto scrollbar-hide">
+              {navigationTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => onTabChange(tab.id)}
+                  className={`
+                  flex items-center space-x-2 px-3 py-2 rounded whitespace-nowrap transition-all duration-200
+                  ${activeTab === tab.id
+                      ? "text-gold-400 bg-gold-500/10 border-b border-gold-500"
+                      : "text-gray-400 hover:text-gold-300"
+                    }
                 `}
-                title={tab.description}
-              >
-                {tab.icon}
-                <span className="font-medium">{tab.label}</span>
-              </button>
-            ))}
-          </nav>
-
-          {/* System Status and Controls */}
-          <div className="flex items-center space-x-4">
-            {/* Health Status Indicator */}
-            <div className="flex items-center space-x-2">
-              <div
-                className={`w-3 h-3 rounded-full ${getHealthStatusColor()} animate-pulse`}
-              />
-              <span className="text-sm text-gray-400">
-                {marketHealthStatus?.service_status || "Unknown"}
-              </span>
+                >
+                  <div className={activeTab === tab.id ? "text-gold-500" : "text-gray-500"}>
+                    {tab.icon}
+                  </div>
+                  <span className="text-sm font-medium">{tab.label}</span>
+                </button>
+              ))}
             </div>
-
-            {/* Settings Button */}
-            <button
-              className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-              title="Settings"
-            >
-              <Settings className="w-5 h-5" />
-            </button>
           </div>
         </div>
+      </header>
 
-        {/* Mobile Navigation */}
-        <div className="md:hidden pb-4">
-          <div className="flex space-x-1 overflow-x-auto">
-            {navigationTabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => onTabChange(tab.id)}
-                className={`
-                  flex items-center space-x-2 px-3 py-2 rounded-lg whitespace-nowrap transition-all duration-200
-                  ${
-                    activeTab === tab.id
-                      ? "bg-cyan-600 text-white"
-                      : "text-gray-300 hover:text-white hover:bg-gray-700"
-                  }
-                `}
-              >
-                {tab.icon}
-                <span className="text-sm font-medium">{tab.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    </header>
+      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+    </>
   );
 };

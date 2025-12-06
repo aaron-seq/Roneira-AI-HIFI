@@ -1,0 +1,31 @@
+src/components/overview/MarketOverviewDashboard.tsx(45,25): error TS2322: Type '{ message: string; }' is not assignable to type 'IntrinsicAttributes & LoadingSpinnerProps'.
+  Property 'message' does not exist on type 'IntrinsicAttributes & LoadingSpinnerProps'.
+src/components/pdm/PDMStrategyDashboard.tsx(20,1): error TS6192: All imports in import declaration are unused.
+src/components/prediction/StockPredictionDashboard.tsx(16,3): error TS6133: 'BarChart3' is declared but its value is never read.
+src/components/prediction/StockPredictionDashboard.tsx(20,3): error TS6133: 'LineChart' is declared but its value is never read.
+src/components/prediction/StockPredictionDashboard.tsx(45,28): error TS6133: 'refetch' is declared but its value is never read.
+src/components/prediction/StockPredictionDashboard.tsx(48,40): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/components/ui/ErrorBoundary.tsx(10,8): error TS6133: 'React' is declared but its value is never read.
+src/components/ui/ErrorBoundary.tsx(40,9): error TS2580: Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+src/components/ui/ErrorBoundary.tsx(72,14): error TS2580: Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+src/config/applicationConfig.ts(18,38): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/config/applicationConfig.ts(21,19): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/config/applicationConfig.ts(27,19): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/config/applicationConfig.ts(32,32): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/config/applicationConfig.ts(33,35): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/features/Shell/App.test.tsx(24,1): error TS2304: Cannot find name 'global'.
+src/features/Shell/App.test.tsx(41,40): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<HTMLElement>'.
+src/features/Shell/App.tsx(38,10): error TS6133: 'fetchMarketOverview' is declared but its value is never read.
+src/features/Shell/App.tsx(40,1): error TS6133: 'MarketHealthStatus' is declared but its value is never read.
+src/features/Shell/App.tsx(55,7): error TS6133: 'applicationConfig' is declared but its value is never read.
+src/features/Shell/App.tsx(56,7): error TS6133: 'notificationService' is declared but its value is never read.
+src/features/Shell/App.tsx(66,5): error TS6133: 'setIsApplicationLoading' is declared but its value is never read.
+src/features/Shell/App.tsx(67,5): error TS6133: 'setApplicationErrorMessage' is declared but its value is never read.
+src/features/Shell/App.tsx(258,24): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/services/financialDataService.ts(21,23): error TS6133: 'symbol' is declared but its value is never read.
+src/services/financialDataService.ts(33,35): error TS6133: 'stocks' is declared but its value is never read.
+src/services/financialDataService.ts(38,36): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/services/financialDataService.ts(39,43): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/services/financialDataService.ts(88,36): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/services/financialDataService.ts(101,36): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/services/financialDataService.ts(119,36): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
