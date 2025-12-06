@@ -812,8 +812,16 @@ docker-compose logs -f backend
 
 </details>
 
+</details>
+
 <details>
 <summary><strong>Cloud Deployment</strong></summary>
+
+**Vercel Deployment (Frontend)**
+1. **Root Directory**: Set "Root Directory" to `frontend` in Vercel project settings.
+2. **Build Command**: `npm run build` (or `vite build`)
+3. **Output Directory**: `dist`
+4. **Environment Variables**: Add `legacy-peer-deps=true` (handled automatically by `.npmrc`).
 
 **Free Tier Platforms**
 - **Frontend**: Vercel, Netlify, GitHub Pages
