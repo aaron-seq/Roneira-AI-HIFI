@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
 import axios from 'axios';
-import { getCachedData, setCachedData } from '../services/cacheService.js';
+import { getCachedData, setCachedData } from '../services/cacheService';
 
 const router = express.Router();
 

@@ -21,8 +21,8 @@ import rateLimit from 'express-rate-limit';
 import compression from 'compression';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
-import marketRoutes from './routes/marketRoutes.js';
-const logger = require('./utils/logger');
+import marketRoutes from './routes/marketRoutes';
+import logger from './utils/logger';
 import { sendSuccess, sendError } from './utils/response';
 
 // Load environment variables

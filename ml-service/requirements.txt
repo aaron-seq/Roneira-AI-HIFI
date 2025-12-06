@@ -4,10 +4,10 @@ Flask-CORS==4.0.2
 Werkzeug==3.0.3
 
 # Data Science and Machine Learning
-numpy==1.25.2
-pandas==2.1.4
-scikit-learn==1.5.0
-scipy==1.11.4
+numpy>=1.26.4
+pandas>=2.2.0
+scikit-learn>=1.5.0
+scipy>=1.12.0
 
 # Financial Data and Analysis
 yfinance==0.2.28

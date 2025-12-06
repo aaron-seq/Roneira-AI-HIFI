@@ -1,4 +1,4 @@
-const winston = require('winston');
+import winston from 'winston';
 
 const logger = winston.createLogger({
   level: 'info',
@@ -15,4 +15,4 @@ if (process.env.NODE_ENV !== 'production') {
   logger.add(new winston.transports.File({ filename: 'combined.log' }));
 }
 
-module.exports = logger;
+export default logger;
