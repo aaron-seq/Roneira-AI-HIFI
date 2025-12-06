@@ -49,7 +49,7 @@ jobs:
           VITE_API_BASE_URL: http://localhost:3001
       
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           file: ./frontend/coverage/lcov.info
           flags: frontend
@@ -100,7 +100,7 @@ jobs:
           ML_SERVICE_URL: http://localhost:5000
       
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           file: ./backend/coverage/lcov.info
           flags: backend
@@ -150,7 +150,7 @@ jobs:
           PYTHONPATH: .
       
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           file: ./ml-service/coverage.xml
           flags: ml-service

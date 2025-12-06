@@ -2,7 +2,6 @@ import numpy as np
 import pandas as pd
 from flask import Flask, request, jsonify
 from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 import yfinance as yf
 from flask_cors import CORS
@@ -268,7 +267,7 @@ def predict_stock_price():
         try:
             ticker_info = yf.Ticker(ticker_symbol)
             company_name = ticker_info.info.get("longName", ticker_symbol)
-        except:
+        except Exception:
             company_name = ticker_symbol
 
         # Get sentiment analysis (FREE)

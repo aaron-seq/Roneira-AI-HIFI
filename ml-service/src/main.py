@@ -16,9 +16,9 @@ from pathlib import Path
 src_directory = Path(__file__).parent
 sys.path.insert(0, str(src_directory))
 
-from application_factory import create_financial_intelligence_application
-from configuration.environment_config import EnvironmentConfiguration
-from utilities.application_logger import ApplicationLogger
+from application_factory import create_financial_intelligence_application  # noqa: E402
+from configuration.environment_config import EnvironmentConfiguration  # noqa: E402
+from utilities.application_logger import ApplicationLogger  # noqa: E402
 
 # Initialize logger
 logger = ApplicationLogger.get_instance()

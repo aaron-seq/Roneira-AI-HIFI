@@ -1,7 +1,8 @@
 """Price-Volume Derivatives Momentum Strategy (PDM) Engine
 
-A calculus-driven framework for capturing institutional momentum in Indian equities.
-Implements the PDM strategy using mathematical derivatives of price and volume.
+A calculus-driven framework for capturing institutional momentum
+in Indian equities. Implements the PDM strategy using mathematical
+derivatives of price and volume.
 
 Author: Aaron Sequeira
 Company: Roneira AI
@@ -9,12 +10,11 @@ Company: Roneira AI
 
 import numpy as np
 import pandas as pd
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Optional
 import yfinance as yf
 from datetime import datetime, timedelta
 import logging
 from dataclasses import dataclass
-from sklearn.preprocessing import StandardScaler
 import warnings
 
 warnings.filterwarnings("ignore")

@@ -442,7 +442,7 @@ def generate_stock_prediction():
         try:
             company_ticker = yf.Ticker(ticker_symbol)
             company_name = company_ticker.info.get("longName", ticker_symbol)
-        except:
+        except Exception:
             company_name = ticker_symbol
 
         # Perform sentiment analysis
@@ -499,33 +499,35 @@ def generate_stock_prediction():
 
         # Add PDM strategy analysis if requested
         if include_pdm_analysis:
-            try:
-                pdm_signal = pdm_strategy_engine.generate_pdm_signals(ticker_symbol)
-                if pdm_signal:
-                    prediction_response["pdm_strategy_analysis"] = {
-                        "signal_type": pdm_signal.signal_type,
-                        "confidence_score": round(pdm_signal.confidence_score, 3),
-                        "price_velocity": round(pdm_signal.price_velocity, 4),
-                        "price_curvature": round(pdm_signal.price_curvature, 4),
-                        "volume_sensitivity": round(pdm_signal.volume_sensitivity, 4),
-                        "institutional_volume_factor": round(
-                            pdm_signal.institutional_volume_factor, 3
-                        ),
-                        "atr_hard_stop_loss": round(pdm_signal.atr_stop_loss, 2),
-                        "atr_trailing_stop": round(pdm_signal.trailing_stop, 2),
-                        "strategy_description": "Price-Volume Derivatives Momentum Strategy using calculus-based indicators",
-                    }
-                else:
-                    prediction_response["pdm_strategy_analysis"] = {
-                        "signal_type": "INSUFFICIENT_DATA",
-                        "message": "Unable to generate PDM signal due to insufficient data",
-                    }
-            except Exception as pdm_error:
-                logger.error(f"PDM analysis error for {ticker_symbol}: {pdm_error}")
+        try:
+            pdm_signal = pdm_strategy_engine.generate_pdm_signals(ticker_symbol)
+            if pdm_signal:
                 prediction_response["pdm_strategy_analysis"] = {
-                    "signal_type": "ERROR",
-                    "message": "PDM analysis temporarily unavailable",
+                    "signal_type": pdm_signal.signal_type,
+                    "confidence_score": round(pdm_signal.confidence_score, 3),
+                    "price_velocity": round(pdm_signal.price_velocity, 4),
+                    "price_curvature": round(pdm_signal.price_curvature, 4),
+                    "volume_sensitivity": round(pdm_signal.volume_sensitivity, 4),
+                    "institutional_volume_factor": round(
+                        pdm_signal.institutional_volume_factor, 3
+                    ),
+                    "atr_hard_stop_loss": round(pdm_signal.atr_stop_loss, 2),
+                    "atr_trailing_stop": round(pdm_signal.trailing_stop, 2),
+                    "strategy_description": (
+                        "Price-Volume Derivatives Momentum Strategy using calculus-based indicators"
+                    ),
                 }
+            else:
+                prediction_response["pdm_strategy_analysis"] = {
+                    "signal_type": "INSUFFICIENT_DATA",
+                    "message": "Unable to generate PDM signal due to insufficient data",
+                }
+        except Exception as pdm_error:
+            logger.error(f"PDM analysis error for {ticker_symbol}: {pdm_error}")
+            prediction_response["pdm_strategy_analysis"] = {
+                "signal_type": "ERROR",
+                "message": "PDM analysis temporarily unavailable",
+            }
 
         # Cache the response
         prediction_results_cache[cache_key] = prediction_response
