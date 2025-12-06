@@ -10,7 +10,7 @@
 
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   TrendingUp,
   TrendingDown,
@@ -21,7 +21,6 @@ import {
   Zap,
 } from "lucide-react";
 import {
-  LineChart,
   Line,
   XAxis,
   YAxis,
@@ -47,7 +46,7 @@ export const StockPredictionDashboard: React.FC<
   const [includePDM, setIncludePDM] = useState(true);
 
   // Fetch stock prediction and historical data
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["stock-prediction", selectedTicker, includePDM],
     queryFn: async () => {
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
