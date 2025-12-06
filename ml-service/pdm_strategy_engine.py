@@ -234,7 +234,7 @@ class PriceVolumeDerivativesEngine:
 
         correlation_window = 10
         price_volume_correlation = price_change.rolling(window=correlation_window).corr(
-            volume_change.rolling(window=correlation_window)
+            volume_change
         )
 
         # Institutional factor combines volume surge with price-volume correlation
