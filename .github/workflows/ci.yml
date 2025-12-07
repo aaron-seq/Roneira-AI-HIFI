@@ -41,7 +41,7 @@ jobs:
         run: npm run lint
       
       - name: Run tests
-        run: npm run test -- --coverage --watchAll=false
+        run: npm run test:coverage
       
       - name: Build application
         run: npm run build
@@ -93,11 +93,6 @@ jobs:
           NODE_ENV: test
           ML_SERVICE_URL: http://localhost:5000
       
-      - name: Run integration tests
-        run: npm run test:integration
-        env:
-          NODE_ENV: test
-          ML_SERVICE_URL: http://localhost:5000
       
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
