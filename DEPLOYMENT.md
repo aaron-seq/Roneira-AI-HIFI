@@ -6,14 +6,11 @@ Deploy your AI stock prediction platform using completely **FREE** hosting servi
 - GitHub account
 - [Vercel](https://vercel.com) account (Frontend)
 - [Render](https://render.com) account (Backend)
-- [Railway](https://railway.app) account (ML Service)
-
+- [Render](https://render.com) account (Backend & ML Service)
 ## 🏗️ Deployment Order
 
-### 1️⃣ Deploy ML Service (Railway)
-
-1. **Sign up**: [railway.app](https://railway.app)
-2. **New Project** → **Deploy from GitHub**
+### 1️⃣ Deploy ML Service (Render)
+1. **Sign up**: [render.com](https://render.com)2. **New Project** → **Deploy from GitHub**
 3. **Select**: `aaronseq12/Roneira-AI-HIFI`
 4. **Root Directory**: `ml-service`
 5. **Environment Variables**:
@@ -21,8 +18,7 @@ Deploy your AI stock prediction platform using completely **FREE** hosting servi
    PORT=5000
    FLASK_ENV=production
    ```
-6. **Save the URL**: `https://your-ml-service.railway.app`
-
+6. **Save the URL**: `https://your-ml-service.onrender.com`
 ### 2️⃣ Deploy Backend (Render)
 
 1. **Sign up**: [render.com](https://render.com)
@@ -34,8 +30,7 @@ Deploy your AI stock prediction platform using completely **FREE** hosting servi
 7. **Environment Variables**:
    ```
    NODE_ENV=production
-   ML_SERVICE_URL=https://your-ml-service.railway.app
-   CORS_ORIGIN=*
+   ML_SERVICE_URL=https://your-ml-service.onrender.com   CORS_ORIGIN=*
    ```
 8. **Save the URL**: `https://your-backend.onrender.com`
 
@@ -55,8 +50,7 @@ Deploy your AI stock prediction platform using completely **FREE** hosting servi
 ```bash
 # Test health endpoints
 curl https://your-backend.onrender.com/health
-curl https://your-ml-service.railway.app/health
-
+curl https://your-ml-service.onrender.com/health
 # Test prediction
 curl -X POST https://your-backend.onrender.com/api/predict \
   -H "Content-Type: application/json" \
@@ -70,16 +64,13 @@ curl -X POST https://your-backend.onrender.com/api/predict \
 | ML Service | `PORT` | `5000` |
 | ML Service | `FLASK_ENV` | `production` |
 | Backend | `NODE_ENV` | `production` |
-| Backend | `ML_SERVICE_URL` | Your Railway URL |
-| Backend | `CORS_ORIGIN` | `*` (or specific domain) |
+| Backend | `ML_SERVICE_URL` | Your Render ML URL || Backend | `CORS_ORIGIN` | `*` (or specific domain) |
 | Frontend | `VITE_API_URL` | Your Render backend URL |
 
 ## 💰 Cost: $0/month
 
 - **Vercel**: 100GB bandwidth (free)
-- **Render**: 750 hours/month (free)
-- **Railway**: $5 credit/month (enough for ML service)
-
+- **Render**: 750 hours/month (free) - Backend + ML Service
 ## 🆘 Troubleshooting
 
 - **Cold starts**: First request may take 30 seconds
