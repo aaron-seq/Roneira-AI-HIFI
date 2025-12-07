@@ -200,6 +200,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: [frontend_quality_checks, backend_quality_checks, ml_service_quality_checks]
     
+    permissions:
+      contents: read
+      packages: write
+    
     strategy:
       matrix:
         service: [backend, ml-service]
