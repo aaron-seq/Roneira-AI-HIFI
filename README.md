@@ -889,6 +889,105 @@ spec:
 
 </details>
 
+### Production Infrastructure Status
+
+#### Current Live Deployment
+
+All services are deployed and operational on their respective platforms:
+
+| Service | Platform | Status | URL | Cost |
+|---------|----------|--------|-----|------|
+| **Frontend** | Vercel | 🟢 Live | [roneira-ai-hifi.vercel.app](https://roneira-ai-hifi.vercel.app) | Free |
+| **Backend** | Render | 🟢 Live | [roneira-ai-hifi.onrender.com](https://roneira-ai-hifi.onrender.com) | Free |
+| **ML Service** | Render | 🟢 Live | [roneira-ai-hifi-ml-service.onrender.com](https://roneira-ai-hifi-ml-service.onrender.com) | Free |
+
+#### Service Health Endpoints
+
+```bash
+# Backend Health Check
+curl https://roneira-ai-hifi.onrender.com/health
+# Response: {"success":true,"ml_service_status":"healthy","service_status":"healthy"...}
+
+# ML Service Health Check  
+curl https://roneira-ai-hifi-ml-service.onrender.com/health
+# Response: {"status":"healthy","models_cached":0,"timestamp":"2025-12-07T07:53:08.956957"}
+```
+
+#### ML Service Migration (December 2025)
+
+**Migration: Railway → Render**
+
+The ML service was successfully migrated from Railway to Render on December 7, 2025, due to Railway trial expiration.
+
+**Migration Details:**
+- **Previous Platform**: Railway (Trial expired)
+- **New Platform**: Render (Free tier, Docker-based)
+- **Migration Date**: December 7, 2025
+- **Downtime**: < 5 minutes during environment variable update
+- **Service URL Change**: 
+  - Old: `https://roneira-ai-hifi-production.up.railway.app`
+  - New: `https://roneira-ai-hifi-ml-service.onrender.com`
+
+**Configuration:**
+```yaml
+# ML Service Render Configuration
+Service Name: Roneira-AI-HIFI-ML-Service
+Runtime: Docker
+Root Directory: ml-service
+Branch: main
+Environment Variables:
+  PORT: 5000
+  FLASK_ENV: production
+Instance Type: Free (512 MB RAM, 0.1 CPU)
+```
+
+**Post-Migration Updates:**
+1. ✅ Backend `ML_SERVICE_URL` environment variable updated
+2. ✅ Backend service auto-redeployed with new configuration
+3. ✅ Health checks verified on both services
+4. ✅ Frontend continues to communicate via backend proxy
+
+#### Service Architecture Flow
+
+```
+┌─────────────────┐
+│   Frontend      │
+│   (Vercel)      │
+│                 │
+│ React + Vite    │
+└────────┬────────┘
+         │ HTTPS
+         │ VITE_API_URL
+         ▼
+┌─────────────────┐
+│   Backend       │
+│   (Render)      │
+│                 │
+│ Node.js/Express │
+└────────┬────────┘
+         │ HTTPS
+         │ ML_SERVICE_URL
+         ▼
+┌─────────────────┐
+│  ML Service     │
+│   (Render)      │
+│                 │
+│ Python/Flask    │
+└─────────────────┘
+```
+
+#### Free Tier Limitations
+
+⚠️ **Important**: Both Render services (Backend & ML) use free tier with the following characteristics:
+
+- **Cold Start Delay**: Services spin down after 15 minutes of inactivity
+- **Wake-up Time**: First request after spin-down may take 50+ seconds
+- **Recommended**: Consider upgrading to paid tier for production workloads requiring consistent response times
+
+**Workaround**: Implement a cron job to ping health endpoints every 10 minutes to keep services warm.
+
+
+
 ### Deployment Checklist
 
 - [ ] **Environment Variables**: All secrets configured
