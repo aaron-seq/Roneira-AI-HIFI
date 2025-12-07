@@ -47,6 +47,7 @@ cachetools==5.3.2
 black==24.3.0
 flake8==6.1.0
 mypy==1.8.0
+types-requests==2.31.0.10
 
 # Security
 cryptography==44.0.1

@@ -2,6 +2,7 @@ import os
 import requests
 import logging
 from datetime import datetime, timedelta
+from typing import Dict, Any
 from flask import Flask, request, jsonify
 import yfinance as yf
 from sklearn.model_selection import train_test_split
@@ -17,8 +18,8 @@ HF_API_URL = "https://api-inference.huggingface.co/models/microsoft/DialoGPT-med
 HF_API_KEY = os.getenv("HUGGING_FACE_API_KEY", "")  # Optional for public models
 
 # In-memory cache for trained models
-model_cache = {}
-prediction_cache = {}
+model_cache: Dict[str, Any] = {}
+prediction_cache: Dict[str, Any] = {}
 
 # Free financial data sources
 ALPHA_VANTAGE_KEY = os.getenv("ALPHA_VANTAGE_API_KEY", "demo")  # Free tier: 5 calls/min
