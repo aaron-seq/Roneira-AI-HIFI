@@ -231,7 +231,7 @@ jobs:
       
       - name: Start services with docker-compose
         run: |
-          docker-compose up -d --build
+          docker compose up -d --build
           sleep 30  # Wait for services to start
       
       - name: Run health checks
@@ -258,7 +258,7 @@ jobs:
       
       - name: Stop services
         if: always()
-        run: docker-compose down -v
+        run: docker compose down -v
 
   # Deployment readiness check
   deployment-check:

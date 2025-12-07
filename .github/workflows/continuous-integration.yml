@@ -257,7 +257,7 @@ jobs:
         
       - name: Start application stack with Docker Compose
         run: |
-          docker-compose -f docker-compose.yml -f docker-compose.test.yml up -d
+          docker compose -f docker-compose.yml -f docker-compose.test.yml up -d
           sleep 30  # Allow services to start
           
       - name: Wait for services to be healthy
@@ -273,7 +273,7 @@ jobs:
             
       - name: Stop application stack
         if: always()
-        run: docker-compose down
+        run: docker compose down
 
   deployment_staging:
     name: Deploy to Staging Environment
