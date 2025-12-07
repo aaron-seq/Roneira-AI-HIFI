@@ -2,20 +2,21 @@ import { render, screen, waitFor } from '@testing-library/react';
 import App from './App';
 import { describe, it, expect, vi } from 'vitest';
 
-vi.mock('../../services/financialDataService', () => {
-  const FinancialDataService = vi.fn();
-  FinancialDataService.prototype.checkSystemHealth = vi.fn().mockResolvedValue({ service_status: 'healthy' });
-  FinancialDataService.prototype.getMarketOverview = vi.fn().mockResolvedValue({
-    indices: [],
-    topPerformers: [],
-  });
+vi.mock('../../services/financialDataService', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../services/financialDataService')>();
   return {
-    FinancialDataService,
+    ...actual,
     fetchMarketOverview: vi.fn().mockResolvedValue({
       trending_stocks: [],
       indices: [],
       market_sentiment: { overall: 'Neutral', score: 50 },
       last_updated: new Date().toISOString()
+    }),
+    fetchMarketHealth: vi.fn().mockResolvedValue({
+      service_status: 'healthy',
+      timestamp: new Date().toISOString(),
+      cached_models_count: 5,
+      pdm_engine_status: 'active'
     })
   };
 });

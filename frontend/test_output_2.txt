@@ -1,0 +1,2705 @@
+﻿
+> roneira-financial-intelligence-frontend@3.0.0 test:coverage
+> vitest run --coverage
+
+
+[1m[46m RUN [49m[22m [36mv4.0.5 [39m[90mC:/Users/Aaron Sequeira/Roneira-AI-HIFI/frontend[39m
+      [2mCoverage enabled with [22m[33mv8[39m
+
+[90mstdout[2m | src/features/Shell/App.test.tsx[2m > [22m[2mApp[2m > [22m[2mrenders the main application container
+[22m[39m[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"min-h-screen bg-black text-gray-100 selection:bg-gold-500 selection:text-black"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"bg-black border-b border-gold-900/50 shadow-lg relative z-50"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"container mx-auto px-4"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center justify-between h-20"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center space-x-6"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center space-x-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"w-12 h-12 flex items-center justify-center overflow-hidden rounded-md border border-gold-900/30"[39m
+                [36m>[39m
+                  [36m<img[39m
+                    [33malt[39m=[32m"Roneira Logo"[39m
+                    [33mclass[39m=[32m"w-full h-full object-contain filter grayscale contrast-125"[39m
+                    [33msrc[39m=[32m"/logo.jpg"[39m
+                  [36m/>[39m
+                [36m</div>[39m
+                [36m<div>[39m
+                  [36m<h1[39m
+                    [33mclass[39m=[32m"text-2xl font-bold text-white tracking-wide uppercase whitespace-nowrap"[39m
+                  [36m>[39m
+                    [0mRoneira [0m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-gold-500"[39m
+                    [36m>[39m
+                      [0mEnterprises AI[0m
+                    [36m</span>[39m
+                  [36m</h1>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-[10px] text-gold-400/80 tracking-[0.2em] uppercase mt-0.5"[39m
+                  [36m>[39m
+                    [0mPrivate Equity & Intelligence[0m
+                  [36m</p>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<nav[39m
+              [33mclass[39m=[32m"hidden md:flex space-x-2"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  bg-gold-500/10 text-gold-400 border-gold-500/20 shadow-[0_0_15px_rgba(212,175,55,0.1)]
+                "[39m
+                [33mtitle[39m=[32m"Real-time market overview and top performers"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gold-500"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-layout-dashboard w-5 h-5"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"9"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"3"[39m
+                      [33my[39m=[32m"3"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"5"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"14"[39m
+                      [33my[39m=[32m"3"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"9"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"14"[39m
+                      [33my[39m=[32m"12"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"5"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"3"[39m
+                      [33my[39m=[32m"16"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"font-medium tracking-wide text-sm"[39m
+                [36m>[39m
+                  [0mMarket Overview[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  text-gray-400 hover:text-gold-200 hover:bg-white/5
+                "[39m
+                [33mtitle[39m=[32m"AI-powered stock price predictions"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gray-500 group-hover:text-gold-300"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-trending-up w-5 h-5"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"22 7 13.5 15.5 8.5 10.5 2 17"[39m
+                    [36m/>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"16 7 22 7 22 13"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"font-medium tracking-wide text-sm"[39m
+                [36m>[39m
+                  [0mStock Prediction[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+       ...
+Health check response: {
+  service_status: [32m'healthy'[39m,
+  timestamp: [32m'2025-12-07T06:57:42.418Z'[39m,
+  cached_models_count: [33m5[39m,
+  pdm_engine_status: [32m'active'[39m
+}
+Γ£à Backend services initialized successfully
+
+[90mstdout[2m | src/features/Shell/App.test.tsx[2m > [22m[2mApp[2m > [22m[2mrenders the main application container
+[22m[39m[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"min-h-screen bg-black text-gray-100 selection:bg-gold-500 selection:text-black"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"bg-black border-b border-gold-900/50 shadow-lg relative z-50"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"container mx-auto px-4"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center justify-between h-20"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center space-x-6"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center space-x-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"w-12 h-12 flex items-center justify-center overflow-hidden rounded-md border border-gold-900/30"[39m
+                [36m>[39m
+                  [36m<img[39m
+                    [33malt[39m=[32m"Roneira Logo"[39m
+                    [33mclass[39m=[32m"w-full h-full object-contain filter grayscale contrast-125"[39m
+                    [33msrc[39m=[32m"/logo.jpg"[39m
+                  [36m/>[39m
+                [36m</div>[39m
+                [36m<div>[39m
+                  [36m<h1[39m
+                    [33mclass[39m=[32m"text-2xl font-bold text-white tracking-wide uppercase whitespace-nowrap"[39m
+                  [36m>[39m
+                    [0mRoneira [0m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-gold-500"[39m
+                    [36m>[39m
+                      [0mEnterprises AI[0m
+                    [36m</span>[39m
+                  [36m</h1>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-[10px] text-gold-400/80 tracking-[0.2em] uppercase mt-0.5"[39m
+                  [36m>[39m
+                    [0mPrivate Equity & Intelligence[0m
+                  [36m</p>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<nav[39m
+              [33mclass[39m=[32m"hidden md:flex space-x-2"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  bg-gold-500/10 text-gold-400 border-gold-500/20 shadow-[0_0_15px_rgba(212,175,55,0.1)]
+                "[39m
+                [33mtitle[39m=[32m"Real-time market overview and top performers"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gold-500"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-layout-dashboard w-5 h-5"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"9"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"3"[39m
+                      [33my[39m=[32m"3"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"5"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"14"[39m
+                      [33my[39m=[32m"3"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"9"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"14"[39m
+                      [33my[39m=[32m"12"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"5"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"3"[39m
+                      [33my[39m=[32m"16"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"font-medium tracking-wide text-sm"[39m
+                [36m>[39m
+                  [0mMarket Overview[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  text-gray-400 hover:text-gold-200 hover:bg-white/5
+                "[39m
+                [33mtitle[39m=[32m"AI-powered stock price predictions"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gray-500 group-hover:text-gold-300"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-trending-up w-5 h-5"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"22 7 13.5 15.5 8.5 10.5 2 17"[39m
+                    [36m/>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"16 7 22 7 22 13"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"font-medium tracking-wide text-sm"[39m
+                [36m>[39m
+                  [0mStock Prediction[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+       ...
+
+[90mstdout[2m | src/features/Shell/App.test.tsx[2m > [22m[2mApp[2m > [22m[2mrenders the main application container
+[22m[39m[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"min-h-screen bg-black text-gray-100 selection:bg-gold-500 selection:text-black"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"bg-black border-b border-gold-900/50 shadow-lg relative z-50"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"container mx-auto px-4"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center justify-between h-20"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center space-x-6"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center space-x-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"w-12 h-12 flex items-center justify-center overflow-hidden rounded-md border border-gold-900/30"[39m
+                [36m>[39m
+                  [36m<img[39m
+                    [33malt[39m=[32m"Roneira Logo"[39m
+                    [33mclass[39m=[32m"w-full h-full object-contain filter grayscale contrast-125"[39m
+                    [33msrc[39m=[32m"/logo.jpg"[39m
+                  [36m/>[39m
+                [36m</div>[39m
+                [36m<div>[39m
+                  [36m<h1[39m
+                    [33mclass[39m=[32m"text-2xl font-bold text-white tracking-wide uppercase whitespace-nowrap"[39m
+                  [36m>[39m
+                    [0mRoneira [0m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-gold-500"[39m
+                    [36m>[39m
+                      [0mEnterprises AI[0m
+                    [36m</span>[39m
+                  [36m</h1>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-[10px] text-gold-400/80 tracking-[0.2em] uppercase mt-0.5"[39m
+                  [36m>[39m
+                    [0mPrivate Equity & Intelligence[0m
+                  [36m</p>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<nav[39m
+              [33mclass[39m=[32m"hidden md:flex space-x-2"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  bg-gold-500/10 text-gold-400 border-gold-500/20 shadow-[0_0_15px_rgba(212,175,55,0.1)]
+                "[39m
+                [33mtitle[39m=[32m"Real-time market overview and top performers"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gold-500"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-layout-dashboard w-5 h-5"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"9"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"3"[39m
+                      [33my[39m=[32m"3"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"5"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"14"[39m
+                      [33my[39m=[32m"3"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"9"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"14"[39m
+                      [33my[39m=[32m"12"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"5"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"3"[39m
+                      [33my[39m=[32m"16"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"font-medium tracking-wide text-sm"[39m
+                [36m>[39m
+                  [0mMarket Overview[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  text-gray-400 hover:text-gold-200 hover:bg-white/5
+                "[39m
+                [33mtitle[39m=[32m"AI-powered stock price predictions"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gray-500 group-hover:text-gold-300"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-trending-up w-5 h-5"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"22 7 13.5 15.5 8.5 10.5 2 17"[39m
+                    [36m/>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"16 7 22 7 22 13"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"font-medium tracking-wide text-sm"[39m
+                [36m>[39m
+                  [0mStock Prediction[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+       ...
+
+[90mstdout[2m | src/features/Shell/App.test.tsx[2m > [22m[2mApp[2m > [22m[2mrenders the main application container
+[22m[39m[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"min-h-screen bg-black text-gray-100 selection:bg-gold-500 selection:text-black"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"bg-black border-b border-gold-900/50 shadow-lg relative z-50"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"container mx-auto px-4"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center justify-between h-20"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center space-x-6"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center space-x-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"w-12 h-12 flex items-center justify-center overflow-hidden rounded-md border border-gold-900/30"[39m
+                [36m>[39m
+                  [36m<img[39m
+                    [33malt[39m=[32m"Roneira Logo"[39m
+                    [33mclass[39m=[32m"w-full h-full object-contain filter grayscale contrast-125"[39m
+                    [33msrc[39m=[32m"/logo.jpg"[39m
+                  [36m/>[39m
+                [36m</div>[39m
+                [36m<div>[39m
+                  [36m<h1[39m
+                    [33mclass[39m=[32m"text-2xl font-bold text-white tracking-wide uppercase whitespace-nowrap"[39m
+                  [36m>[39m
+                    [0mRoneira [0m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-gold-500"[39m
+                    [36m>[39m
+                      [0mEnterprises AI[0m
+                    [36m</span>[39m
+                  [36m</h1>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-[10px] text-gold-400/80 tracking-[0.2em] uppercase mt-0.5"[39m
+                  [36m>[39m
+                    [0mPrivate Equity & Intelligence[0m
+                  [36m</p>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<nav[39m
+              [33mclass[39m=[32m"hidden md:flex space-x-2"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  bg-gold-500/10 text-gold-400 border-gold-500/20 shadow-[0_0_15px_rgba(212,175,55,0.1)]
+                "[39m
+                [33mtitle[39m=[32m"Real-time market overview and top performers"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gold-500"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-layout-dashboard w-5 h-5"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"9"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"3"[39m
+                      [33my[39m=[32m"3"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"5"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"14"[39m
+                      [33my[39m=[32m"3"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"9"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"14"[39m
+                      [33my[39m=[32m"12"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"5"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"3"[39m
+                      [33my[39m=[32m"16"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"font-medium tracking-wide text-sm"[39m
+                [36m>[39m
+                  [0mMarket Overview[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  text-gray-400 hover:text-gold-200 hover:bg-white/5
+                "[39m
+                [33mtitle[39m=[32m"AI-powered stock price predictions"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gray-500 group-hover:text-gold-300"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-trending-up w-5 h-5"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"22 7 13.5 15.5 8.5 10.5 2 17"[39m
+                    [36m/>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"16 7 22 7 22 13"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"font-medium tracking-wide text-sm"[39m
+                [36m>[39m
+                  [0mStock Prediction[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+       ...
+
+[90mstdout[2m | src/features/Shell/App.test.tsx[2m > [22m[2mApp[2m > [22m[2mrenders the main application container
+[22m[39m[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"min-h-screen bg-black text-gray-100 selection:bg-gold-500 selection:text-black"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"bg-black border-b border-gold-900/50 shadow-lg relative z-50"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"container mx-auto px-4"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center justify-between h-20"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center space-x-6"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center space-x-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"w-12 h-12 flex items-center justify-center overflow-hidden rounded-md border border-gold-900/30"[39m
+                [36m>[39m
+                  [36m<img[39m
+                    [33malt[39m=[32m"Roneira Logo"[39m
+                    [33mclass[39m=[32m"w-full h-full object-contain filter grayscale contrast-125"[39m
+                    [33msrc[39m=[32m"/logo.jpg"[39m
+                  [36m/>[39m
+                [36m</div>[39m
+                [36m<div>[39m
+                  [36m<h1[39m
+                    [33mclass[39m=[32m"text-2xl font-bold text-white tracking-wide uppercase whitespace-nowrap"[39m
+                  [36m>[39m
+                    [0mRoneira [0m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-gold-500"[39m
+                    [36m>[39m
+                      [0mEnterprises AI[0m
+                    [36m</span>[39m
+                  [36m</h1>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-[10px] text-gold-400/80 tracking-[0.2em] uppercase mt-0.5"[39m
+                  [36m>[39m
+                    [0mPrivate Equity & Intelligence[0m
+                  [36m</p>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<nav[39m
+              [33mclass[39m=[32m"hidden md:flex space-x-2"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  bg-gold-500/10 text-gold-400 border-gold-500/20 shadow-[0_0_15px_rgba(212,175,55,0.1)]
+                "[39m
+                [33mtitle[39m=[32m"Real-time market overview and top performers"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gold-500"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-layout-dashboard w-5 h-5"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"9"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"3"[39m
+                      [33my[39m=[32m"3"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"5"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"14"[39m
+                      [33my[39m=[32m"3"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"9"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"14"[39m
+                      [33my[39m=[32m"12"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"5"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"3"[39m
+                      [33my[39m=[32m"16"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"font-medium tracking-wide text-sm"[39m
+                [36m>[39m
+                  [0mMarket Overview[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  text-gray-400 hover:text-gold-200 hover:bg-white/5
+                "[39m
+                [33mtitle[39m=[32m"AI-powered stock price predictions"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gray-500 group-hover:text-gold-300"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-trending-up w-5 h-5"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"22 7 13.5 15.5 8.5 10.5 2 17"[39m
+                    [36m/>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"16 7 22 7 22 13"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"font-medium tracking-wide text-sm"[39m
+                [36m>[39m
+                  [0mStock Prediction[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+       ...
+
+[90mstdout[2m | src/features/Shell/App.test.tsx[2m > [22m[2mApp[2m > [22m[2mrenders the main application container
+[22m[39m[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"min-h-screen bg-black text-gray-100 selection:bg-gold-500 selection:text-black"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"bg-black border-b border-gold-900/50 shadow-lg relative z-50"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"container mx-auto px-4"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center justify-between h-20"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center space-x-6"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center space-x-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"w-12 h-12 flex items-center justify-center overflow-hidden rounded-md border border-gold-900/30"[39m
+                [36m>[39m
+                  [36m<img[39m
+                    [33malt[39m=[32m"Roneira Logo"[39m
+                    [33mclass[39m=[32m"w-full h-full object-contain filter grayscale contrast-125"[39m
+                    [33msrc[39m=[32m"/logo.jpg"[39m
+                  [36m/>[39m
+                [36m</div>[39m
+                [36m<div>[39m
+                  [36m<h1[39m
+                    [33mclass[39m=[32m"text-2xl font-bold text-white tracking-wide uppercase whitespace-nowrap"[39m
+                  [36m>[39m
+                    [0mRoneira [0m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-gold-500"[39m
+                    [36m>[39m
+                      [0mEnterprises AI[0m
+                    [36m</span>[39m
+                  [36m</h1>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-[10px] text-gold-400/80 tracking-[0.2em] uppercase mt-0.5"[39m
+                  [36m>[39m
+                    [0mPrivate Equity & Intelligence[0m
+                  [36m</p>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<nav[39m
+              [33mclass[39m=[32m"hidden md:flex space-x-2"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  bg-gold-500/10 text-gold-400 border-gold-500/20 shadow-[0_0_15px_rgba(212,175,55,0.1)]
+                "[39m
+                [33mtitle[39m=[32m"Real-time market overview and top performers"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gold-500"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-layout-dashboard w-5 h-5"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"9"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"3"[39m
+                      [33my[39m=[32m"3"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"5"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"14"[39m
+                      [33my[39m=[32m"3"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"9"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"14"[39m
+                      [33my[39m=[32m"12"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"5"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"3"[39m
+                      [33my[39m=[32m"16"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"font-medium tracking-wide text-sm"[39m
+                [36m>[39m
+                  [0mMarket Overview[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  text-gray-400 hover:text-gold-200 hover:bg-white/5
+                "[39m
+                [33mtitle[39m=[32m"AI-powered stock price predictions"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gray-500 group-hover:text-gold-300"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-trending-up w-5 h-5"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"22 7 13.5 15.5 8.5 10.5 2 17"[39m
+                    [36m/>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"16 7 22 7 22 13"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"font-medium tracking-wide text-sm"[39m
+                [36m>[39m
+                  [0mStock Prediction[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+       ...
+
+[90mstdout[2m | src/features/Shell/App.test.tsx[2m > [22m[2mApp[2m > [22m[2mrenders the main application container
+[22m[39m[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"min-h-screen bg-black text-gray-100 selection:bg-gold-500 selection:text-black"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"bg-black border-b border-gold-900/50 shadow-lg relative z-50"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"container mx-auto px-4"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center justify-between h-20"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center space-x-6"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center space-x-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"w-12 h-12 flex items-center justify-center overflow-hidden rounded-md border border-gold-900/30"[39m
+                [36m>[39m
+                  [36m<img[39m
+                    [33malt[39m=[32m"Roneira Logo"[39m
+                    [33mclass[39m=[32m"w-full h-full object-contain filter grayscale contrast-125"[39m
+                    [33msrc[39m=[32m"/logo.jpg"[39m
+                  [36m/>[39m
+                [36m</div>[39m
+                [36m<div>[39m
+                  [36m<h1[39m
+                    [33mclass[39m=[32m"text-2xl font-bold text-white tracking-wide uppercase whitespace-nowrap"[39m
+                  [36m>[39m
+                    [0mRoneira [0m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-gold-500"[39m
+                    [36m>[39m
+                      [0mEnterprises AI[0m
+                    [36m</span>[39m
+                  [36m</h1>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-[10px] text-gold-400/80 tracking-[0.2em] uppercase mt-0.5"[39m
+                  [36m>[39m
+                    [0mPrivate Equity & Intelligence[0m
+                  [36m</p>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<nav[39m
+              [33mclass[39m=[32m"hidden md:flex space-x-2"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  bg-gold-500/10 text-gold-400 border-gold-500/20 shadow-[0_0_15px_rgba(212,175,55,0.1)]
+                "[39m
+                [33mtitle[39m=[32m"Real-time market overview and top performers"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gold-500"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-layout-dashboard w-5 h-5"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"9"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"3"[39m
+                      [33my[39m=[32m"3"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"5"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"14"[39m
+                      [33my[39m=[32m"3"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"9"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"14"[39m
+                      [33my[39m=[32m"12"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"5"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"3"[39m
+                      [33my[39m=[32m"16"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"font-medium tracking-wide text-sm"[39m
+                [36m>[39m
+                  [0mMarket Overview[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  text-gray-400 hover:text-gold-200 hover:bg-white/5
+                "[39m
+                [33mtitle[39m=[32m"AI-powered stock price predictions"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gray-500 group-hover:text-gold-300"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-trending-up w-5 h-5"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"22 7 13.5 15.5 8.5 10.5 2 17"[39m
+                    [36m/>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"16 7 22 7 22 13"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"font-medium tracking-wide text-sm"[39m
+                [36m>[39m
+                  [0mStock Prediction[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+       ...
+
+[90mstdout[2m | src/features/Shell/App.test.tsx[2m > [22m[2mApp[2m > [22m[2mrenders the main application container
+[22m[39m[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"min-h-screen bg-black text-gray-100 selection:bg-gold-500 selection:text-black"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"bg-black border-b border-gold-900/50 shadow-lg relative z-50"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"container mx-auto px-4"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center justify-between h-20"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center space-x-6"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center space-x-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"w-12 h-12 flex items-center justify-center overflow-hidden rounded-md border border-gold-900/30"[39m
+                [36m>[39m
+                  [36m<img[39m
+                    [33malt[39m=[32m"Roneira Logo"[39m
+                    [33mclass[39m=[32m"w-full h-full object-contain filter grayscale contrast-125"[39m
+                    [33msrc[39m=[32m"/logo.jpg"[39m
+                  [36m/>[39m
+                [36m</div>[39m
+                [36m<div>[39m
+                  [36m<h1[39m
+                    [33mclass[39m=[32m"text-2xl font-bold text-white tracking-wide uppercase whitespace-nowrap"[39m
+                  [36m>[39m
+                    [0mRoneira [0m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-gold-500"[39m
+                    [36m>[39m
+                      [0mEnterprises AI[0m
+                    [36m</span>[39m
+                  [36m</h1>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-[10px] text-gold-400/80 tracking-[0.2em] uppercase mt-0.5"[39m
+                  [36m>[39m
+                    [0mPrivate Equity & Intelligence[0m
+                  [36m</p>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<nav[39m
+              [33mclass[39m=[32m"hidden md:flex space-x-2"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  bg-gold-500/10 text-gold-400 border-gold-500/20 shadow-[0_0_15px_rgba(212,175,55,0.1)]
+                "[39m
+                [33mtitle[39m=[32m"Real-time market overview and top performers"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gold-500"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-layout-dashboard w-5 h-5"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"9"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"3"[39m
+                      [33my[39m=[32m"3"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"5"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"14"[39m
+                      [33my[39m=[32m"3"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"9"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"14"[39m
+                      [33my[39m=[32m"12"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"5"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"3"[39m
+                      [33my[39m=[32m"16"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"font-medium tracking-wide text-sm"[39m
+                [36m>[39m
+                  [0mMarket Overview[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  text-gray-400 hover:text-gold-200 hover:bg-white/5
+                "[39m
+                [33mtitle[39m=[32m"AI-powered stock price predictions"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gray-500 group-hover:text-gold-300"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-trending-up w-5 h-5"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"22 7 13.5 15.5 8.5 10.5 2 17"[39m
+                    [36m/>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"16 7 22 7 22 13"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"font-medium tracking-wide text-sm"[39m
+                [36m>[39m
+                  [0mStock Prediction[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+       ...
+
+[90mstdout[2m | src/features/Shell/App.test.tsx[2m > [22m[2mApp[2m > [22m[2mrenders the main application container
+[22m[39m[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"min-h-screen bg-black text-gray-100 selection:bg-gold-500 selection:text-black"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"bg-black border-b border-gold-900/50 shadow-lg relative z-50"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"container mx-auto px-4"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center justify-between h-20"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center space-x-6"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center space-x-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"w-12 h-12 flex items-center justify-center overflow-hidden rounded-md border border-gold-900/30"[39m
+                [36m>[39m
+                  [36m<img[39m
+                    [33malt[39m=[32m"Roneira Logo"[39m
+                    [33mclass[39m=[32m"w-full h-full object-contain filter grayscale contrast-125"[39m
+                    [33msrc[39m=[32m"/logo.jpg"[39m
+                  [36m/>[39m
+                [36m</div>[39m
+                [36m<div>[39m
+                  [36m<h1[39m
+                    [33mclass[39m=[32m"text-2xl font-bold text-white tracking-wide uppercase whitespace-nowrap"[39m
+                  [36m>[39m
+                    [0mRoneira [0m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-gold-500"[39m
+                    [36m>[39m
+                      [0mEnterprises AI[0m
+                    [36m</span>[39m
+                  [36m</h1>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-[10px] text-gold-400/80 tracking-[0.2em] uppercase mt-0.5"[39m
+                  [36m>[39m
+                    [0mPrivate Equity & Intelligence[0m
+                  [36m</p>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<nav[39m
+              [33mclass[39m=[32m"hidden md:flex space-x-2"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  bg-gold-500/10 text-gold-400 border-gold-500/20 shadow-[0_0_15px_rgba(212,175,55,0.1)]
+                "[39m
+                [33mtitle[39m=[32m"Real-time market overview and top performers"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gold-500"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-layout-dashboard w-5 h-5"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"9"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"3"[39m
+                      [33my[39m=[32m"3"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"5"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"14"[39m
+                      [33my[39m=[32m"3"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"9"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"14"[39m
+                      [33my[39m=[32m"12"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"5"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"3"[39m
+                      [33my[39m=[32m"16"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"font-medium tracking-wide text-sm"[39m
+                [36m>[39m
+                  [0mMarket Overview[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  text-gray-400 hover:text-gold-200 hover:bg-white/5
+                "[39m
+                [33mtitle[39m=[32m"AI-powered stock price predictions"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gray-500 group-hover:text-gold-300"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-trending-up w-5 h-5"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"22 7 13.5 15.5 8.5 10.5 2 17"[39m
+                    [36m/>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"16 7 22 7 22 13"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"font-medium tracking-wide text-sm"[39m
+                [36m>[39m
+                  [0mStock Prediction[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+       ...
+
+[90mstdout[2m | src/features/Shell/App.test.tsx[2m > [22m[2mApp[2m > [22m[2mrenders the main application container
+[22m[39m[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"min-h-screen bg-black text-gray-100 selection:bg-gold-500 selection:text-black"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"bg-black border-b border-gold-900/50 shadow-lg relative z-50"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"container mx-auto px-4"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center justify-between h-20"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center space-x-6"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center space-x-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"w-12 h-12 flex items-center justify-center overflow-hidden rounded-md border border-gold-900/30"[39m
+                [36m>[39m
+                  [36m<img[39m
+                    [33malt[39m=[32m"Roneira Logo"[39m
+                    [33mclass[39m=[32m"w-full h-full object-contain filter grayscale contrast-125"[39m
+                    [33msrc[39m=[32m"/logo.jpg"[39m
+                  [36m/>[39m
+                [36m</div>[39m
+                [36m<div>[39m
+                  [36m<h1[39m
+                    [33mclass[39m=[32m"text-2xl font-bold text-white tracking-wide uppercase whitespace-nowrap"[39m
+                  [36m>[39m
+                    [0mRoneira [0m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-gold-500"[39m
+                    [36m>[39m
+                      [0mEnterprises AI[0m
+                    [36m</span>[39m
+                  [36m</h1>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-[10px] text-gold-400/80 tracking-[0.2em] uppercase mt-0.5"[39m
+                  [36m>[39m
+                    [0mPrivate Equity & Intelligence[0m
+                  [36m</p>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<nav[39m
+              [33mclass[39m=[32m"hidden md:flex space-x-2"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  bg-gold-500/10 text-gold-400 border-gold-500/20 shadow-[0_0_15px_rgba(212,175,55,0.1)]
+                "[39m
+                [33mtitle[39m=[32m"Real-time market overview and top performers"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gold-500"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-layout-dashboard w-5 h-5"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"9"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"3"[39m
+                      [33my[39m=[32m"3"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"5"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"14"[39m
+                      [33my[39m=[32m"3"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"9"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"14"[39m
+                      [33my[39m=[32m"12"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"5"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"3"[39m
+                      [33my[39m=[32m"16"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"font-medium tracking-wide text-sm"[39m
+                [36m>[39m
+                  [0mMarket Overview[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  text-gray-400 hover:text-gold-200 hover:bg-white/5
+                "[39m
+                [33mtitle[39m=[32m"AI-powered stock price predictions"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gray-500 group-hover:text-gold-300"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-trending-up w-5 h-5"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"22 7 13.5 15.5 8.5 10.5 2 17"[39m
+                    [36m/>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"16 7 22 7 22 13"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"font-medium tracking-wide text-sm"[39m
+                [36m>[39m
+                  [0mStock Prediction[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+       ...
+
+[90mstdout[2m | src/features/Shell/App.test.tsx[2m > [22m[2mApp[2m > [22m[2mrenders the main application container
+[22m[39m[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"min-h-screen bg-black text-gray-100 selection:bg-gold-500 selection:text-black"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"bg-black border-b border-gold-900/50 shadow-lg relative z-50"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"container mx-auto px-4"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center justify-between h-20"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center space-x-6"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center space-x-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"w-12 h-12 flex items-center justify-center overflow-hidden rounded-md border border-gold-900/30"[39m
+                [36m>[39m
+                  [36m<img[39m
+                    [33malt[39m=[32m"Roneira Logo"[39m
+                    [33mclass[39m=[32m"w-full h-full object-contain filter grayscale contrast-125"[39m
+                    [33msrc[39m=[32m"/logo.jpg"[39m
+                  [36m/>[39m
+                [36m</div>[39m
+                [36m<div>[39m
+                  [36m<h1[39m
+                    [33mclass[39m=[32m"text-2xl font-bold text-white tracking-wide uppercase whitespace-nowrap"[39m
+                  [36m>[39m
+                    [0mRoneira [0m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-gold-500"[39m
+                    [36m>[39m
+                      [0mEnterprises AI[0m
+                    [36m</span>[39m
+                  [36m</h1>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-[10px] text-gold-400/80 tracking-[0.2em] uppercase mt-0.5"[39m
+                  [36m>[39m
+                    [0mPrivate Equity & Intelligence[0m
+                  [36m</p>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<nav[39m
+              [33mclass[39m=[32m"hidden md:flex space-x-2"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  bg-gold-500/10 text-gold-400 border-gold-500/20 shadow-[0_0_15px_rgba(212,175,55,0.1)]
+                "[39m
+                [33mtitle[39m=[32m"Real-time market overview and top performers"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gold-500"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-layout-dashboard w-5 h-5"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"9"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"3"[39m
+                      [33my[39m=[32m"3"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"5"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"14"[39m
+                      [33my[39m=[32m"3"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"9"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"14"[39m
+                      [33my[39m=[32m"12"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"5"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"3"[39m
+                      [33my[39m=[32m"16"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"font-medium tracking-wide text-sm"[39m
+                [36m>[39m
+                  [0mMarket Overview[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  text-gray-400 hover:text-gold-200 hover:bg-white/5
+                "[39m
+                [33mtitle[39m=[32m"AI-powered stock price predictions"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gray-500 group-hover:text-gold-300"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-trending-up w-5 h-5"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"22 7 13.5 15.5 8.5 10.5 2 17"[39m
+                    [36m/>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"16 7 22 7 22 13"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"font-medium tracking-wide text-sm"[39m
+                [36m>[39m
+                  [0mStock Prediction[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+       ...
+
+[90mstdout[2m | src/features/Shell/App.test.tsx[2m > [22m[2mApp[2m > [22m[2mrenders the main application container
+[22m[39m[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"min-h-screen bg-black text-gray-100 selection:bg-gold-500 selection:text-black"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"bg-black border-b border-gold-900/50 shadow-lg relative z-50"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"container mx-auto px-4"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center justify-between h-20"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center space-x-6"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center space-x-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"w-12 h-12 flex items-center justify-center overflow-hidden rounded-md border border-gold-900/30"[39m
+                [36m>[39m
+                  [36m<img[39m
+                    [33malt[39m=[32m"Roneira Logo"[39m
+                    [33mclass[39m=[32m"w-full h-full object-contain filter grayscale contrast-125"[39m
+                    [33msrc[39m=[32m"/logo.jpg"[39m
+                  [36m/>[39m
+                [36m</div>[39m
+                [36m<div>[39m
+                  [36m<h1[39m
+                    [33mclass[39m=[32m"text-2xl font-bold text-white tracking-wide uppercase whitespace-nowrap"[39m
+                  [36m>[39m
+                    [0mRoneira [0m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-gold-500"[39m
+                    [36m>[39m
+                      [0mEnterprises AI[0m
+                    [36m</span>[39m
+                  [36m</h1>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-[10px] text-gold-400/80 tracking-[0.2em] uppercase mt-0.5"[39m
+                  [36m>[39m
+                    [0mPrivate Equity & Intelligence[0m
+                  [36m</p>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<nav[39m
+              [33mclass[39m=[32m"hidden md:flex space-x-2"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  bg-gold-500/10 text-gold-400 border-gold-500/20 shadow-[0_0_15px_rgba(212,175,55,0.1)]
+                "[39m
+                [33mtitle[39m=[32m"Real-time market overview and top performers"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gold-500"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-layout-dashboard w-5 h-5"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"9"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"3"[39m
+                      [33my[39m=[32m"3"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"5"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"14"[39m
+                      [33my[39m=[32m"3"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"9"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"14"[39m
+                      [33my[39m=[32m"12"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"5"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"3"[39m
+                      [33my[39m=[32m"16"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"font-medium tracking-wide text-sm"[39m
+                [36m>[39m
+                  [0mMarket Overview[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  text-gray-400 hover:text-gold-200 hover:bg-white/5
+                "[39m
+                [33mtitle[39m=[32m"AI-powered stock price predictions"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gray-500 group-hover:text-gold-300"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-trending-up w-5 h-5"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"22 7 13.5 15.5 8.5 10.5 2 17"[39m
+                    [36m/>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"16 7 22 7 22 13"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"font-medium tracking-wide text-sm"[39m
+                [36m>[39m
+                  [0mStock Prediction[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+       ...
+
+[90mstdout[2m | src/features/Shell/App.test.tsx[2m > [22m[2mApp[2m > [22m[2mrenders the main application container
+[22m[39m[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"min-h-screen bg-black text-gray-100 selection:bg-gold-500 selection:text-black"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"bg-black border-b border-gold-900/50 shadow-lg relative z-50"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"container mx-auto px-4"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center justify-between h-20"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center space-x-6"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center space-x-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"w-12 h-12 flex items-center justify-center overflow-hidden rounded-md border border-gold-900/30"[39m
+                [36m>[39m
+                  [36m<img[39m
+                    [33malt[39m=[32m"Roneira Logo"[39m
+                    [33mclass[39m=[32m"w-full h-full object-contain filter grayscale contrast-125"[39m
+                    [33msrc[39m=[32m"/logo.jpg"[39m
+                  [36m/>[39m
+                [36m</div>[39m
+                [36m<div>[39m
+                  [36m<h1[39m
+                    [33mclass[39m=[32m"text-2xl font-bold text-white tracking-wide uppercase whitespace-nowrap"[39m
+                  [36m>[39m
+                    [0mRoneira [0m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-gold-500"[39m
+                    [36m>[39m
+                      [0mEnterprises AI[0m
+                    [36m</span>[39m
+                  [36m</h1>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-[10px] text-gold-400/80 tracking-[0.2em] uppercase mt-0.5"[39m
+                  [36m>[39m
+                    [0mPrivate Equity & Intelligence[0m
+                  [36m</p>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<nav[39m
+              [33mclass[39m=[32m"hidden md:flex space-x-2"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  bg-gold-500/10 text-gold-400 border-gold-500/20 shadow-[0_0_15px_rgba(212,175,55,0.1)]
+                "[39m
+                [33mtitle[39m=[32m"Real-time market overview and top performers"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gold-500"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-layout-dashboard w-5 h-5"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"9"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"3"[39m
+                      [33my[39m=[32m"3"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"5"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"14"[39m
+                      [33my[39m=[32m"3"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"9"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"14"[39m
+                      [33my[39m=[32m"12"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"5"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"3"[39m
+                      [33my[39m=[32m"16"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"font-medium tracking-wide text-sm"[39m
+                [36m>[39m
+                  [0mMarket Overview[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  text-gray-400 hover:text-gold-200 hover:bg-white/5
+                "[39m
+                [33mtitle[39m=[32m"AI-powered stock price predictions"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gray-500 group-hover:text-gold-300"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-trending-up w-5 h-5"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"22 7 13.5 15.5 8.5 10.5 2 17"[39m
+                    [36m/>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"16 7 22 7 22 13"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"font-medium tracking-wide text-sm"[39m
+                [36m>[39m
+                  [0mStock Prediction[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+       ...
+
+[90mstdout[2m | src/features/Shell/App.test.tsx[2m > [22m[2mApp[2m > [22m[2mrenders the main application container
+[22m[39m[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"min-h-screen bg-black text-gray-100 selection:bg-gold-500 selection:text-black"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"bg-black border-b border-gold-900/50 shadow-lg relative z-50"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"container mx-auto px-4"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center justify-between h-20"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center space-x-6"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center space-x-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"w-12 h-12 flex items-center justify-center overflow-hidden rounded-md border border-gold-900/30"[39m
+                [36m>[39m
+                  [36m<img[39m
+                    [33malt[39m=[32m"Roneira Logo"[39m
+                    [33mclass[39m=[32m"w-full h-full object-contain filter grayscale contrast-125"[39m
+                    [33msrc[39m=[32m"/logo.jpg"[39m
+                  [36m/>[39m
+                [36m</div>[39m
+                [36m<div>[39m
+                  [36m<h1[39m
+                    [33mclass[39m=[32m"text-2xl font-bold text-white tracking-wide uppercase whitespace-nowrap"[39m
+                  [36m>[39m
+                    [0mRoneira [0m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-gold-500"[39m
+                    [36m>[39m
+                      [0mEnterprises AI[0m
+                    [36m</span>[39m
+                  [36m</h1>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-[10px] text-gold-400/80 tracking-[0.2em] uppercase mt-0.5"[39m
+                  [36m>[39m
+                    [0mPrivate Equity & Intelligence[0m
+                  [36m</p>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<nav[39m
+              [33mclass[39m=[32m"hidden md:flex space-x-2"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  bg-gold-500/10 text-gold-400 border-gold-500/20 shadow-[0_0_15px_rgba(212,175,55,0.1)]
+                "[39m
+                [33mtitle[39m=[32m"Real-time market overview and top performers"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gold-500"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-layout-dashboard w-5 h-5"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"9"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"3"[39m
+                      [33my[39m=[32m"3"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"5"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"14"[39m
+                      [33my[39m=[32m"3"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"9"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"14"[39m
+                      [33my[39m=[32m"12"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"5"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"3"[39m
+                      [33my[39m=[32m"16"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"font-medium tracking-wide text-sm"[39m
+                [36m>[39m
+                  [0mMarket Overview[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  text-gray-400 hover:text-gold-200 hover:bg-white/5
+                "[39m
+                [33mtitle[39m=[32m"AI-powered stock price predictions"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gray-500 group-hover:text-gold-300"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-trending-up w-5 h-5"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"22 7 13.5 15.5 8.5 10.5 2 17"[39m
+                    [36m/>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"16 7 22 7 22 13"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"font-medium tracking-wide text-sm"[39m
+                [36m>[39m
+                  [0mStock Prediction[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+       ...
+
+[90mstdout[2m | src/features/Shell/App.test.tsx[2m > [22m[2mApp[2m > [22m[2mrenders the main application container
+[22m[39m[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"min-h-screen bg-black text-gray-100 selection:bg-gold-500 selection:text-black"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"bg-black border-b border-gold-900/50 shadow-lg relative z-50"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"container mx-auto px-4"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center justify-between h-20"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center space-x-6"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center space-x-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"w-12 h-12 flex items-center justify-center overflow-hidden rounded-md border border-gold-900/30"[39m
+                [36m>[39m
+                  [36m<img[39m
+                    [33malt[39m=[32m"Roneira Logo"[39m
+                    [33mclass[39m=[32m"w-full h-full object-contain filter grayscale contrast-125"[39m
+                    [33msrc[39m=[32m"/logo.jpg"[39m
+                  [36m/>[39m
+                [36m</div>[39m
+                [36m<div>[39m
+                  [36m<h1[39m
+                    [33mclass[39m=[32m"text-2xl font-bold text-white tracking-wide uppercase whitespace-nowrap"[39m
+                  [36m>[39m
+                    [0mRoneira [0m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-gold-500"[39m
+                    [36m>[39m
+                      [0mEnterprises AI[0m
+                    [36m</span>[39m
+                  [36m</h1>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-[10px] text-gold-400/80 tracking-[0.2em] uppercase mt-0.5"[39m
+                  [36m>[39m
+                    [0mPrivate Equity & Intelligence[0m
+                  [36m</p>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<nav[39m
+              [33mclass[39m=[32m"hidden md:flex space-x-2"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  bg-gold-500/10 text-gold-400 border-gold-500/20 shadow-[0_0_15px_rgba(212,175,55,0.1)]
+                "[39m
+                [33mtitle[39m=[32m"Real-time market overview and top performers"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gold-500"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-layout-dashboard w-5 h-5"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"9"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"3"[39m
+                      [33my[39m=[32m"3"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"5"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"14"[39m
+                      [33my[39m=[32m"3"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"9"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"14"[39m
+                      [33my[39m=[32m"12"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"5"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"3"[39m
+                      [33my[39m=[32m"16"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"font-medium tracking-wide text-sm"[39m
+                [36m>[39m
+                  [0mMarket Overview[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  text-gray-400 hover:text-gold-200 hover:bg-white/5
+                "[39m
+                [33mtitle[39m=[32m"AI-powered stock price predictions"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gray-500 group-hover:text-gold-300"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-trending-up w-5 h-5"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"22 7 13.5 15.5 8.5 10.5 2 17"[39m
+                    [36m/>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"16 7 22 7 22 13"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"font-medium tracking-wide text-sm"[39m
+                [36m>[39m
+                  [0mStock Prediction[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+       ...
+
+[90mstdout[2m | src/features/Shell/App.test.tsx[2m > [22m[2mApp[2m > [22m[2mrenders the main application container
+[22m[39m[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"min-h-screen bg-black text-gray-100 selection:bg-gold-500 selection:text-black"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"bg-black border-b border-gold-900/50 shadow-lg relative z-50"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"container mx-auto px-4"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center justify-between h-20"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center space-x-6"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center space-x-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"w-12 h-12 flex items-center justify-center overflow-hidden rounded-md border border-gold-900/30"[39m
+                [36m>[39m
+                  [36m<img[39m
+                    [33malt[39m=[32m"Roneira Logo"[39m
+                    [33mclass[39m=[32m"w-full h-full object-contain filter grayscale contrast-125"[39m
+                    [33msrc[39m=[32m"/logo.jpg"[39m
+                  [36m/>[39m
+                [36m</div>[39m
+                [36m<div>[39m
+                  [36m<h1[39m
+                    [33mclass[39m=[32m"text-2xl font-bold text-white tracking-wide uppercase whitespace-nowrap"[39m
+                  [36m>[39m
+                    [0mRoneira [0m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-gold-500"[39m
+                    [36m>[39m
+                      [0mEnterprises AI[0m
+                    [36m</span>[39m
+                  [36m</h1>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-[10px] text-gold-400/80 tracking-[0.2em] uppercase mt-0.5"[39m
+                  [36m>[39m
+                    [0mPrivate Equity & Intelligence[0m
+                  [36m</p>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<nav[39m
+              [33mclass[39m=[32m"hidden md:flex space-x-2"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  bg-gold-500/10 text-gold-400 border-gold-500/20 shadow-[0_0_15px_rgba(212,175,55,0.1)]
+                "[39m
+                [33mtitle[39m=[32m"Real-time market overview and top performers"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gold-500"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-layout-dashboard w-5 h-5"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"9"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"3"[39m
+                      [33my[39m=[32m"3"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"5"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"14"[39m
+                      [33my[39m=[32m"3"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"9"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"14"[39m
+                      [33my[39m=[32m"12"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"5"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"3"[39m
+                      [33my[39m=[32m"16"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"font-medium tracking-wide text-sm"[39m
+                [36m>[39m
+                  [0mMarket Overview[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  text-gray-400 hover:text-gold-200 hover:bg-white/5
+                "[39m
+                [33mtitle[39m=[32m"AI-powered stock price predictions"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gray-500 group-hover:text-gold-300"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-trending-up w-5 h-5"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"22 7 13.5 15.5 8.5 10.5 2 17"[39m
+                    [36m/>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"16 7 22 7 22 13"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"font-medium tracking-wide text-sm"[39m
+                [36m>[39m
+                  [0mStock Prediction[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+       ...
+
+[90mstdout[2m | src/features/Shell/App.test.tsx[2m > [22m[2mApp[2m > [22m[2mrenders the main application container
+[22m[39m[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"min-h-screen bg-black text-gray-100 selection:bg-gold-500 selection:text-black"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"bg-black border-b border-gold-900/50 shadow-lg relative z-50"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"container mx-auto px-4"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center justify-between h-20"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center space-x-6"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center space-x-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"w-12 h-12 flex items-center justify-center overflow-hidden rounded-md border border-gold-900/30"[39m
+                [36m>[39m
+                  [36m<img[39m
+                    [33malt[39m=[32m"Roneira Logo"[39m
+                    [33mclass[39m=[32m"w-full h-full object-contain filter grayscale contrast-125"[39m
+                    [33msrc[39m=[32m"/logo.jpg"[39m
+                  [36m/>[39m
+                [36m</div>[39m
+                [36m<div>[39m
+                  [36m<h1[39m
+                    [33mclass[39m=[32m"text-2xl font-bold text-white tracking-wide uppercase whitespace-nowrap"[39m
+                  [36m>[39m
+                    [0mRoneira [0m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-gold-500"[39m
+                    [36m>[39m
+                      [0mEnterprises AI[0m
+                    [36m</span>[39m
+                  [36m</h1>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-[10px] text-gold-400/80 tracking-[0.2em] uppercase mt-0.5"[39m
+                  [36m>[39m
+                    [0mPrivate Equity & Intelligence[0m
+                  [36m</p>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<nav[39m
+              [33mclass[39m=[32m"hidden md:flex space-x-2"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  bg-gold-500/10 text-gold-400 border-gold-500/20 shadow-[0_0_15px_rgba(212,175,55,0.1)]
+                "[39m
+                [33mtitle[39m=[32m"Real-time market overview and top performers"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gold-500"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-layout-dashboard w-5 h-5"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"9"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"3"[39m
+                      [33my[39m=[32m"3"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"5"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"14"[39m
+                      [33my[39m=[32m"3"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"9"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"14"[39m
+                      [33my[39m=[32m"12"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"5"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"3"[39m
+                      [33my[39m=[32m"16"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"font-medium tracking-wide text-sm"[39m
+                [36m>[39m
+                  [0mMarket Overview[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  text-gray-400 hover:text-gold-200 hover:bg-white/5
+                "[39m
+                [33mtitle[39m=[32m"AI-powered stock price predictions"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gray-500 group-hover:text-gold-300"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-trending-up w-5 h-5"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"22 7 13.5 15.5 8.5 10.5 2 17"[39m
+                    [36m/>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"16 7 22 7 22 13"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"font-medium tracking-wide text-sm"[39m
+                [36m>[39m
+                  [0mStock Prediction[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+       ...
+
+[90mstdout[2m | src/features/Shell/App.test.tsx[2m > [22m[2mApp[2m > [22m[2mrenders the main application container
+[22m[39m[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"min-h-screen bg-black text-gray-100 selection:bg-gold-500 selection:text-black"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"bg-black border-b border-gold-900/50 shadow-lg relative z-50"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"container mx-auto px-4"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center justify-between h-20"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center space-x-6"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center space-x-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"w-12 h-12 flex items-center justify-center overflow-hidden rounded-md border border-gold-900/30"[39m
+                [36m>[39m
+                  [36m<img[39m
+                    [33malt[39m=[32m"Roneira Logo"[39m
+                    [33mclass[39m=[32m"w-full h-full object-contain filter grayscale contrast-125"[39m
+                    [33msrc[39m=[32m"/logo.jpg"[39m
+                  [36m/>[39m
+                [36m</div>[39m
+                [36m<div>[39m
+                  [36m<h1[39m
+                    [33mclass[39m=[32m"text-2xl font-bold text-white tracking-wide uppercase whitespace-nowrap"[39m
+                  [36m>[39m
+                    [0mRoneira [0m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-gold-500"[39m
+                    [36m>[39m
+                      [0mEnterprises AI[0m
+                    [36m</span>[39m
+                  [36m</h1>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-[10px] text-gold-400/80 tracking-[0.2em] uppercase mt-0.5"[39m
+                  [36m>[39m
+                    [0mPrivate Equity & Intelligence[0m
+                  [36m</p>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<nav[39m
+              [33mclass[39m=[32m"hidden md:flex space-x-2"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  bg-gold-500/10 text-gold-400 border-gold-500/20 shadow-[0_0_15px_rgba(212,175,55,0.1)]
+                "[39m
+                [33mtitle[39m=[32m"Real-time market overview and top performers"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gold-500"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-layout-dashboard w-5 h-5"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"9"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"3"[39m
+                      [33my[39m=[32m"3"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"5"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"14"[39m
+                      [33my[39m=[32m"3"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"9"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"14"[39m
+                      [33my[39m=[32m"12"[39m
+                    [36m/>[39m
+                    [36m<rect[39m
+                      [33mheight[39m=[32m"5"[39m
+                      [33mrx[39m=[32m"1"[39m
+                      [33mwidth[39m=[32m"7"[39m
+                      [33mx[39m=[32m"3"[39m
+                      [33my[39m=[32m"16"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"font-medium tracking-wide text-sm"[39m
+                [36m>[39m
+                  [0mMarket Overview[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"
+                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
+                  text-gray-400 hover:text-gold-200 hover:bg-white/5
+                "[39m
+                [33mtitle[39m=[32m"AI-powered stock price predictions"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-gray-500 group-hover:text-gold-300"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33mclass[39m=[32m"lucide lucide-trending-up w-5 h-5"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"24"[39m
+                    [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                  [36m>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"22 7 13.5 15.5 8.5 10.5 2 17"[39m
+                    [36m/>[39m
+                    [36m<polyline[39m
+                      [33mpoints[39m=[32m"16 7 22 7 22 13"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"font-medium tracking-wide text-sm"[39m
+                [36m>[39m
+                  [0mStock Prediction[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+       ...
+
+ [31mΓ¥»[39m src/features/Shell/App.test.tsx [2m([22m[2m1 test[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 1067[2mms[22m[39m
+[31m     [31m├ù[31m renders the main application container[39m[33m 1066[2mms[22m[39m
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m   Start at [22m 09:57:39
+[2m   Duration [22m 4.31s[2m (transform 216ms, setup 0ms, collect 1.19s, tests 1.07s, environment 779ms, prepare 21ms)[22m
+
