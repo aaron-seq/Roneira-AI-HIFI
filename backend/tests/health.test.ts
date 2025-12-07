@@ -1,5 +1,5 @@
-const request = require('supertest');
-const Server = require('../src/server');
+import request from 'supertest';
+import Server from '../src/server';
 
 const server = new Server();
 const app = server.get_application();

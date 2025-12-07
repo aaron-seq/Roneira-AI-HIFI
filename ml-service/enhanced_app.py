@@ -1,3 +1,18 @@
+import os
+import requests
+import logging
+from datetime import datetime, timedelta
+from flask import Flask, request, jsonify
+import yfinance as yf
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+app = Flask(__name__)
+
 HF_API_URL = "https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium"
 HF_API_KEY = os.getenv("HUGGING_FACE_API_KEY", "")  # Optional for public models
 

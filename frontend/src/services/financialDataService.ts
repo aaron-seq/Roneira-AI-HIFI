@@ -22,7 +22,13 @@ const getMarketCap = (): number => {
   return 1000000000; // Mock value
 };
 
-const fetchMajorIndices = async (): Promise<any[]> => {
+interface MarketIndex {
+  name: string;
+  value: number;
+  change: number;
+}
+
+const fetchMajorIndices = async (): Promise<MarketIndex[]> => {
   return [
     { name: 'S&P 500', value: 4500, change: 0.5 },
     { name: 'NASDAQ', value: 14000, change: 0.8 },
@@ -61,15 +67,18 @@ export const fetchMarketOverview = async () => {
     const data = await response.json();
 
     // Transform the data
-    const stocks = Object.entries(data).map(([symbol, quoteData]: [string, any]) => ({
-      symbol: symbol,
-      name: quoteData.name || getCompanyName(symbol),
-      price: parseFloat(quoteData.close || 0),
-      change: parseFloat(quoteData.change || 0),
-      changePercent: parseFloat(quoteData.percent_change || 0),
-      volume: parseInt(quoteData.volume || 0),
-      marketCap: getMarketCap()
-    }));
+    const stocks = Object.entries(data).map(([symbol, quoteData]: [string, unknown]) => {
+      const q = quoteData as { name?: string; close?: string; change?: string; percent_change?: string; volume?: string };
+      return {
+        symbol: symbol,
+        name: q.name || getCompanyName(symbol),
+        price: parseFloat(q.close || '0'),
+        change: parseFloat(q.change || '0'),
+        changePercent: parseFloat(q.percent_change || '0'),
+        volume: parseInt(q.volume || '0'),
+        marketCap: getMarketCap()
+      };
+    });
 
     return {
       trending_stocks: stocks,

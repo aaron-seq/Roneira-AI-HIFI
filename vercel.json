@@ -1,0 +1,34 @@
+{
+    "version": 2,
+    "builds": [
+        {
+            "src": "frontend/package.json",
+            "use": "@vercel/static-build",
+            "config": {
+                "distDir": "build"
+            }
+        },
+        {
+            "src": "backend/src/server.ts",
+            "use": "@vercel/node"
+        },
+        {
+            "src": "ml-service/enhanced_app.py",
+            "use": "@vercel/python"
+        }
+    ],
+    "routes": [
+        {
+            "src": "/api/(.*)",
+            "dest": "backend/src/server.ts"
+        },
+        {
+            "src": "/ml/(.*)",
+            "dest": "ml-service/enhanced_app.py"
+        },
+        {
+            "src": "/(.*)",
+            "dest": "frontend/$1"
+        }
+    ]
+}

@@ -144,7 +144,15 @@ export const PDMStrategyDashboard: React.FC<PDMStrategyDashboardProps> = ({
     setPDMScanInProgress,
   } = useFinancialDataStore();
 
-  const [backtestResults, setBacktestResults] = useState<any>(null);
+  interface BacktestResults {
+    backtest_results?: {
+      period: string;
+      strategy_return: string;
+      benchmark_return: string;
+    };
+  }
+
+  const [backtestResults, setBacktestResults] = useState<BacktestResults | null>(null);
   const [isBacktestLoading, setIsBacktestLoading] = useState(false);
 
   // Query for PDM opportunities

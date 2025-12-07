@@ -44,7 +44,7 @@ export const PortfolioManagementDashboard: React.FC<
     try {
       const data = await fetchPortfolio(userId);
       setPortfolio(data);
-    } catch (error) {
+    } catch {
       toast.error("Failed to load portfolio");
     }
   };
@@ -61,7 +61,7 @@ export const PortfolioManagementDashboard: React.FC<
       setTicker('');
       setShares(1);
       setPrice(0);
-    } catch (error) {
+    } catch {
       toast.error("Failed to add stock");
     } finally {
       setIsLoading(false);
@@ -76,7 +76,7 @@ export const PortfolioManagementDashboard: React.FC<
       const updatedPortfolio = await updatePortfolio(userId, tickerToRemove, 0, 0, 'remove');
       setPortfolio(updatedPortfolio);
       toast.success(`Removed ${tickerToRemove}`);
-    } catch (error) {
+    } catch {
       toast.error("Failed to remove stock");
     } finally {
       setIsLoading(false);

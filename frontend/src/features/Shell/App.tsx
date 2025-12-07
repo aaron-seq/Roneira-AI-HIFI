@@ -81,7 +81,7 @@ const MainApplicationContent: React.FC = () => {
     useState<string>("overview");
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
 
-  const initializeApplication = async () => {
+  const initializeApplication = useCallback(async () => {
     try {
       // Use the financialDataService helper with correct endpoint
       const healthData = await fetchMarketHealth();
@@ -98,7 +98,7 @@ const MainApplicationContent: React.FC = () => {
       // Just log the error, don't block the app from loading
       setIsInitialized(true);
     }
-  };
+  }, [setMarketHealthStatus]);
 
   // Initialize application on component mount
   useEffect(() => {
