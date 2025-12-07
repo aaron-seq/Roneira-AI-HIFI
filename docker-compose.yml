@@ -46,6 +46,8 @@ services:
     environment:
       - FLASK_ENV=development
       - PORT=5000
+      - HUGGING_FACE_API_KEY=${HUGGING_FACE_API_KEY}
+      - ALPHA_VANTAGE_API_KEY=${ALPHA_VANTAGE_API_KEY}
 
   db:
     image: postgres:15
