@@ -253,7 +253,7 @@ export const PDMStrategyDashboard: React.FC<PDMStrategyDashboardProps> = ({
             <button
               onClick={handleRunBacktest}
               disabled={isBacktestLoading}
-              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-500 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+              className="btn-secondary disabled:bg-gray-500 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
             >
               {isBacktestLoading ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
@@ -275,7 +275,7 @@ export const PDMStrategyDashboard: React.FC<PDMStrategyDashboardProps> = ({
           </div>
           <div className="bg-gray-700 p-4 rounded-lg">
             <p className="text-gray-400 text-sm">NIFTY 50 Benchmark</p>
-            <p className="text-xl font-bold text-blue-400">
+            <p className="text-xl font-bold text-white">
               {strategyStats.benchmarkReturn}
             </p>
           </div>
@@ -381,7 +381,7 @@ export const PDMStrategyDashboard: React.FC<PDMStrategyDashboardProps> = ({
             </div>
             <div className="bg-gray-700 p-4 rounded-lg">
               <p className="text-gray-400 text-sm">Benchmark Return</p>
-              <p className="text-lg font-semibold text-blue-400">
+              <p className="text-lg font-semibold text-white">
                 {backtestResults.backtest_results?.benchmark_return || "+7.1%"}
               </p>
             </div>

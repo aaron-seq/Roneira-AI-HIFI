@@ -111,7 +111,7 @@ export const StockPredictionDashboard: React.FC<
         animate={{ opacity: 1, y: 0 }}
         className="bg-gray-900/80 backdrop-blur-xl border border-white/10 p-8 rounded-2xl shadow-2xl relative overflow-hidden group"
       >
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+        <div className="absolute inset-0 bg-gradient-to-r from-white/5 to-slate-700/10 opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
 
         <div className="relative z-10">
           <h2 className="text-3xl font-bold text-white mb-2 tracking-tight">
@@ -129,7 +129,7 @@ export const StockPredictionDashboard: React.FC<
                 value={ticker}
                 onChange={(e) => setTicker(e.target.value.toUpperCase())}
                 placeholder="SEARCH TICKER (e.g. AAPL)"
-                className="w-full bg-black/50 text-white placeholder-gray-500 rounded-xl pl-12 pr-4 py-4 border border-white/10 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-mono tracking-wider"
+                className="w-full bg-black/50 text-white placeholder-gray-500 rounded-xl pl-12 pr-4 py-4 border border-white/10 focus:outline-none focus:border-white focus:ring-1 focus:ring-white/50 transition-all font-mono tracking-wider"
               />
             </div>
 
@@ -139,7 +139,7 @@ export const StockPredictionDashboard: React.FC<
                   type="checkbox"
                   checked={includePDM}
                   onChange={(e) => setIncludePDM(e.target.checked)}
-                  className="w-4 h-4 rounded border-gray-600 text-blue-500 focus:ring-blue-500 bg-black/50"
+                  className="w-4 h-4 rounded border-gray-600 text-white focus:ring-white bg-black/50"
                 />
                 <span className="font-medium">Enable PDM Engine</span>
               </label>
@@ -149,7 +149,7 @@ export const StockPredictionDashboard: React.FC<
               type="submit"
               onClick={handleSubmit}
               disabled={isLoading || !ticker.trim()}
-              className="bg-blue-600 hover:bg-blue-500 disabled:bg-gray-800 disabled:text-gray-600 text-white font-bold py-4 px-8 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 active:scale-95"
+              className="btn-primary disabled:bg-gray-800 disabled:text-gray-600 text-black font-bold py-4 px-8 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 shadow-lg active:scale-95"
             >
               {isLoading ? (
                 <LoadingSpinner size="small" />
@@ -188,12 +188,12 @@ export const StockPredictionDashboard: React.FC<
             </div>
 
             <div className="space-y-6">
-              <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-900/20 to-black p-4 border border-blue-500/20">
+              <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-slate-900/40 to-black p-4 border border-white/10">
                 <div className="flex justify-between items-center relative z-10">
                   <span className="text-gray-400 text-xs uppercase font-medium">ML Predicted Price</span>
-                  <Activity className="w-4 h-4 text-blue-500" />
+                  <Activity className="w-4 h-4 text-white" />
                 </div>
-                <p className="text-4xl font-bold text-blue-400 font-mono mt-2">
+                <p className="text-4xl font-bold text-white font-mono mt-2">
                   {formatCurrency(prediction?.ml_predicted_price)}
                 </p>
               </div>
@@ -217,7 +217,7 @@ export const StockPredictionDashboard: React.FC<
                 <div className="bg-black/40 p-4 rounded-xl border border-white/5">
                   <p className="text-gray-500 text-xs uppercase mb-2">Accuracy</p>
                   <div className="flex items-end gap-2">
-                    <span className="text-lg font-bold text-blue-300 font-mono">
+                    <span className="text-lg font-bold text-white font-mono">
                       {((prediction?.model_accuracy_r2_score || 0) * 100).toFixed(1)}%
                     </span>
                     <span className="text-xs text-gray-500 mb-1">R² Score</span>
@@ -269,7 +269,7 @@ export const StockPredictionDashboard: React.FC<
 
               <div className="flex justify-between items-center p-3 rounded-lg bg-black/40 border border-white/5">
                 <span className="text-gray-400 text-sm">SMA (20)</span>
-                <span className="font-mono font-bold text-blue-300">
+                <span className="font-mono font-bold text-white">
                   {formatCurrency(prediction?.technical_indicators?.simple_moving_average_20)}
                 </span>
               </div>
@@ -295,9 +295,9 @@ export const StockPredictionDashboard: React.FC<
 
           {/* PDM Strategy Card */}
           {includePDM && prediction?.pdm_strategy_analysis && (
-            <motion.div variants={itemVariants} className="bg-gradient-to-b from-gray-900/80 to-black/80 backdrop-blur-md border border-blue-500/20 p-6 rounded-2xl shadow-xl relative overflow-hidden">
+            <motion.div variants={itemVariants} className="bg-gradient-to-b from-gray-900/80 to-black/80 backdrop-blur-md border border-white/10 p-6 rounded-2xl shadow-xl relative overflow-hidden">
               <div className="absolute top-0 right-0 p-4 opacity-10">
-                <Activity className="w-24 h-24 text-blue-500" />
+                <Activity className="w-24 h-24 text-slate-700" />
               </div>
 
               <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2 relative z-10">
@@ -352,7 +352,7 @@ export const StockPredictionDashboard: React.FC<
           {/* Historical Chart - Full Width */}
           <motion.div variants={itemVariants} className="col-span-full bg-gray-900/60 backdrop-blur-md border border-white/10 p-6 rounded-2xl shadow-xl mt-4">
             <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-              <LineChartIcon className="w-5 h-5 text-blue-500" />
+              <LineChartIcon className="w-5 h-5 text-white" />
               Price Action History
             </h3>
             <div className="h-[400px] w-full">
@@ -360,8 +360,8 @@ export const StockPredictionDashboard: React.FC<
                 <ComposedChart data={prediction?.historical_data || []}>
                   <defs>
                     <linearGradient id="colorClose" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                      <stop offset="5%" stopColor="#ffffff" stopOpacity={0.2} />
+                      <stop offset="95%" stopColor="#ffffff" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
@@ -404,7 +404,7 @@ export const StockPredictionDashboard: React.FC<
                     yAxisId="left"
                     type="monotone"
                     dataKey="close"
-                    stroke="#3b82f6"
+                    stroke="#ffffff"
                     strokeWidth={2}
                     fillOpacity={1}
                     fill="url(#colorClose)"
@@ -443,7 +443,7 @@ export const StockPredictionDashboard: React.FC<
           className="flex flex-col items-center justify-center p-20 border border-white/5 rounded-3xl bg-black/20"
         >
           <div className="bg-gray-900 p-6 rounded-full mb-6 border border-white/10 shadow-xl">
-            <LineChartIcon className="w-12 h-12 text-blue-500/50" />
+            <LineChartIcon className="w-12 h-12 text-slate-600" />
           </div>
           <h3 className="text-xl font-medium text-white mb-2">Ready to Analyze</h3>
           <p className="text-gray-500 max-w-md text-center text-sm">

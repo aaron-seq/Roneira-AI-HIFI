@@ -2,6 +2,108 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  @apply bg-black text-white antialiased font-sans;
+@layer base {
+  :root {
+    /* Monochrome color system */
+    --color-bg-primary: #000000;
+    --color-bg-secondary: #0f172a;
+    --color-bg-tertiary: #1e293b;
+    --color-text-primary: #ffffff;
+    --color-text-secondary: #cbd5e1;
+    --color-text-muted: #64748b;
+    --color-border: #334155;
+    
+    /* Semantic colors */
+    --color-bullish: #22c55e;
+    --color-bearish: #ef4444;
+    --color-neutral: #eab308;
+    
+    /* Glassmorphism */
+    --glass-bg: rgba(15, 23, 42, 0.7);
+    --glass-border: rgba(203, 213, 225, 0.1);
+  }
+
+  body {
+    @apply bg-black text-white antialiased font-sans;
+    font-feature-settings: 'tnum' 1, 'lnum' 1;
+  }
+
+  * {
+    @apply transition-colors duration-200;
+  }
+}
+
+@layer components {
+  /* Glassmorphism card */
+  .glass-card {
+    @apply bg-slate-900/70 backdrop-blur-md border border-white/10 rounded-xl;
+  }
+
+  /* Financial data typography */
+  .financial-value {
+    @apply font-mono font-bold tabular-nums tracking-tight;
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    @apply bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent;
+  }
+
+  /* Hover glow effect */
+  .hover-glow {
+    @apply transition-all duration-300 hover:shadow-glow-white;
+  }
+
+  /* Loading skeleton */
+  .skeleton {
+    @apply animate-shimmer bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 bg-[length:1000px_100%];
+  }
+
+  /* Chart container */
+  .chart-container {
+    @apply relative w-full h-full bg-slate-950/50 rounded-lg border border-slate-800 p-4;
+  }
+
+  /* Button variants */
+  .btn-primary {
+    @apply px-6 py-3 bg-white text-black font-semibold rounded-lg hover:bg-slate-200 active:scale-95 transition-all duration-200 shadow-lg;
+  }
+
+  .btn-secondary {
+    @apply px-6 py-3 bg-slate-800 text-white font-semibold rounded-lg hover:bg-slate-700 active:scale-95 transition-all duration-200 border border-slate-700;
+  }
+
+  .btn-bullish {
+    @apply px-6 py-3 bg-bullish-600 text-white font-semibold rounded-lg hover:bg-bullish-500 active:scale-95 transition-all duration-200 shadow-glow-green;
+  }
+
+  .btn-bearish {
+    @apply px-6 py-3 bg-bearish-600 text-white font-semibold rounded-lg hover:bg-bearish-500 active:scale-95 transition-all duration-200 shadow-glow-red;
+  }
+}
+
+@layer utilities {
+  /* Scrollbar styling */
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    @apply bg-slate-900;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-slate-700 rounded-full hover:bg-slate-600;
+  }
+
+  /* Text shadow for better readability */
+  .text-shadow {
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  }
+
+  /* Border gradient */
+  .border-gradient {
+    border-image: linear-gradient(to right, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.1)) 1;
+  }
 }
