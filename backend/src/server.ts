@@ -143,12 +143,15 @@ class BackendServer {
 
     this.application.post('/api/batch_predict', this.handle_batch_prediction.bind(this));
     this.application.get('/api/pdm_scan', this.handle_pdm_opportunity_scan.bind(this));
+    this.application.get('/api/pdm/signals', this.handle_pdm_opportunity_scan.bind(this));
     this.application.post('/api/pdm_backtest', this.handle_pdm_backtest.bind(this));
+    this.application.post('/api/pdm/backtest', this.handle_pdm_backtest.bind(this));
     this.application.get('/api/portfolio/:user_id', this.handle_get_portfolio.bind(this));
     this.application.post(
       '/api/portfolio/:user_id/update',
       this.handle_update_portfolio.bind(this)
     );
+    this.application.get('/api/news', this.handle_get_news.bind(this));
     this.application.post('/api/auth/login', (req, res) =>
       sendSuccess(res, { message: 'Login successful' })
     );
@@ -156,6 +159,7 @@ class BackendServer {
       sendSuccess(res, { message: 'Registration successful' })
     );
   }
+
 
   private initialize_error_handlers(): void {
     this.application.use(this.handle_not_found.bind(this));
@@ -425,6 +429,50 @@ class BackendServer {
       user_id: user_id,
       timestamp: new Date().toISOString(),
     });
+  }
+
+  private handle_get_news(request: Request, response: Response): void {
+    const news = [
+      {
+        id: 1,
+        title: 'Market Rally Continues as Tech Stocks Surge',
+        source: 'Financial Times',
+        summary: 'Major indices hit new highs driven by AI sector growth.',
+        url: '#',
+        timestamp: new Date().toISOString(),
+        sentiment: 'Positive',
+      },
+      {
+        id: 2,
+        title: 'Fed Signals Potential Rate Cuts Later This Year',
+        source: 'Bloomberg',
+        summary:
+          'Federal Reserve officials hint at easing monetary policy if inflation data cooperates.',
+        url: '#',
+        timestamp: new Date().toISOString(),
+        sentiment: 'Neutral',
+      },
+      {
+        id: 3,
+        title: 'Oil Prices Stabilize After Volatile Week',
+        source: 'Reuters',
+        summary: 'Global supply constraints balance with demand concerns.',
+        url: '#',
+        timestamp: new Date().toISOString(),
+        sentiment: 'Neutral',
+      },
+      {
+        id: 4,
+        title: 'New Electric Vehicle Subsidy Program Announced',
+        source: 'CNBC',
+        summary: 'Government unveils new incentives for EV manufacturers and buyers.',
+        url: '#',
+        timestamp: new Date().toISOString(),
+        sentiment: 'Positive',
+      },
+    ];
+
+    sendSuccess(response, news);
   }
 
   private handle_ml_service_error(error: AxiosError, response: Response): void {

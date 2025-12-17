@@ -44,10 +44,17 @@ export const StockPredictionDashboard: React.FC<
 > = ({ selectedTicker, onTickerChange }) => {
   const [ticker, setTicker] = useState(selectedTicker);
   const [includePDM, setIncludePDM] = useState(true);
+  const [modelType, setModelType] = useState<'random_forest' | 'lstm' | 'gan'>('random_forest');
+
+  const MODEL_OPTIONS = [
+    { value: 'random_forest', label: 'Random Forest', description: 'Ensemble tree-based model, fast and reliable' },
+    { value: 'lstm', label: 'LSTM Neural Network', description: 'Deep learning for sequence prediction (Coming Soon)' },
+    { value: 'gan', label: 'GAN Model', description: 'Generative adversarial network (Coming Soon)' },
+  ];
 
   // Fetch stock prediction and historical data
-  const { data, isLoading } = useQuery({
-    queryKey: ["stock-prediction", selectedTicker, includePDM],
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["stock-prediction", selectedTicker, includePDM, modelType],
     queryFn: async () => {
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
       const response = await fetch(`${API_BASE_URL}/api/predict`, {
@@ -56,18 +63,22 @@ export const StockPredictionDashboard: React.FC<
         body: JSON.stringify({
           ticker: selectedTicker,
           include_pdm: includePDM,
+          model_type: modelType,
         }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to fetch prediction");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to fetch prediction");
       }
 
       return response.json();
     },
     enabled: !!selectedTicker,
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchInterval: 30000,
+    retry: 1,
   });
+
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,46 +132,77 @@ export const StockPredictionDashboard: React.FC<
             AI-Powered Predictive Analytics & PDM Strategy
           </p>
 
-          <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                value={ticker}
-                onChange={(e) => setTicker(e.target.value.toUpperCase())}
-                placeholder="SEARCH TICKER (e.g. AAPL)"
-                className="w-full bg-black/50 text-white placeholder-gray-500 rounded-xl pl-12 pr-4 py-4 border border-white/10 focus:outline-none focus:border-white focus:ring-1 focus:ring-white/50 transition-all font-mono tracking-wider"
-              />
-            </div>
-
-            <div className="flex items-center gap-4 bg-black/30 px-6 rounded-xl border border-white/5">
-              <label className="flex items-center gap-3 text-sm text-gray-300 cursor-pointer select-none">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
-                  type="checkbox"
-                  checked={includePDM}
-                  onChange={(e) => setIncludePDM(e.target.checked)}
-                  className="w-4 h-4 rounded border-gray-600 text-white focus:ring-white bg-black/50"
+                  type="text"
+                  value={ticker}
+                  onChange={(e) => setTicker(e.target.value.toUpperCase())}
+                  placeholder="SEARCH TICKER (e.g. AAPL)"
+                  className="w-full bg-black/50 text-white placeholder-gray-500 rounded-xl pl-12 pr-4 py-4 border border-white/10 focus:outline-none focus:border-white focus:ring-1 focus:ring-white/50 transition-all font-mono tracking-wider"
                 />
-                <span className="font-medium">Enable PDM Engine</span>
-              </label>
+              </div>
+
+              {/* Model Selection Dropdown */}
+              <div className="relative">
+                <select
+                  value={modelType}
+                  onChange={(e) => setModelType(e.target.value as 'random_forest' | 'lstm' | 'gan')}
+                  className="appearance-none bg-black/50 text-white rounded-xl px-4 py-4 border border-white/10 focus:outline-none focus:border-white cursor-pointer pr-10 min-w-[180px]"
+                >
+                  {MODEL_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <BarChart3 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+              </div>
+
+              <div className="flex items-center gap-4 bg-black/30 px-6 rounded-xl border border-white/5">
+                <label className="flex items-center gap-3 text-sm text-gray-300 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={includePDM}
+                    onChange={(e) => setIncludePDM(e.target.checked)}
+                    className="w-4 h-4 rounded border-gray-600 text-white focus:ring-white bg-black/50"
+                  />
+                  <span className="font-medium">Enable PDM</span>
+                </label>
+              </div>
+
+              <button
+                type="submit"
+                onClick={handleSubmit}
+                disabled={isLoading || !ticker.trim()}
+                className="btn-primary disabled:bg-gray-800 disabled:text-gray-600 text-black font-bold py-4 px-8 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 shadow-lg active:scale-95"
+              >
+                {isLoading ? (
+                  <LoadingSpinner size="small" />
+                ) : (
+                  <Zap className="w-5 h-5 fill-current" />
+                )}
+                {isLoading ? "ANALYZING..." : "PREDICT"}
+              </button>
             </div>
 
-            <button
-              type="submit"
-              onClick={handleSubmit}
-              disabled={isLoading || !ticker.trim()}
-              className="btn-primary disabled:bg-gray-800 disabled:text-gray-600 text-black font-bold py-4 px-8 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 shadow-lg active:scale-95"
-            >
-              {isLoading ? (
-                <LoadingSpinner size="small" />
-              ) : (
-                <Zap className="w-5 h-5 fill-current" />
-              )}
-              {isLoading ? "ANALYZING..." : "PREDICT"}
-            </button>
+            {/* Model Description */}
+            <div className="text-xs text-gray-500">
+              {MODEL_OPTIONS.find(m => m.value === modelType)?.description}
+            </div>
+
+            {/* Error Display */}
+            {error && (
+              <div className="bg-red-900/20 border border-red-500/50 rounded-lg p-3 text-red-400 text-sm">
+                {(error as Error).message}
+              </div>
+            )}
           </form>
         </div>
       </motion.div>
+
 
       {/* Prediction Results */}
       {prediction && !isLoading && (

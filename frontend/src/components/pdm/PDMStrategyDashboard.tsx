@@ -214,13 +214,17 @@ export const PDMStrategyDashboard: React.FC<PDMStrategyDashboardProps> = ({
     }
   };
 
+  // Strategy stats derived from backtestResults if available, otherwise show N/A
   const strategyStats = {
-    strategyReturn: "+42.8%",
-    benchmarkReturn: "+7.1%",
-    outperformance: "+35.7%",
+    strategyReturn: backtestResults?.backtest_results?.strategy_return || "Run Backtest",
+    benchmarkReturn: backtestResults?.backtest_results?.benchmark_return || "N/A",
+    outperformance: backtestResults?.backtest_results?.strategy_return && backtestResults?.backtest_results?.benchmark_return 
+      ? `${(parseFloat(backtestResults.backtest_results.strategy_return) - parseFloat(backtestResults.backtest_results.benchmark_return)).toFixed(1)}%`
+      : "N/A",
     maxPositions: 25,
     currentPositions: pdmOpportunities.length,
   };
+
 
   return (
     <div className="space-y-6">
@@ -389,24 +393,61 @@ export const PDMStrategyDashboard: React.FC<PDMStrategyDashboardProps> = ({
         </div>
       )}
 
-      {/* Empty State */}
+      {/* Empty State with Data Format Documentation */}
       {pdmOpportunities.length === 0 && !pdmScanInProgress && (
-        <div className="bg-gray-800 p-12 rounded-lg shadow-lg text-center">
-          <Activity className="w-16 h-16 text-gray-500 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-400 mb-2">
-            No PDM Signals Currently Active
-          </h3>
-          <p className="text-gray-500 mb-6">
-            Click "Scan Universe" to search for new momentum opportunities in
-            the NIFTY 500 universe
-          </p>
-          <button
-            onClick={handleScanOpportunities}
-            className="bg-cyan-600 hover:bg-cyan-700 text-white px-6 py-3 rounded-lg transition-colors inline-flex items-center gap-2"
-          >
-            <Zap className="w-5 h-5" />
-            Scan for Opportunities
-          </button>
+        <div className="bg-gray-800 p-8 rounded-lg shadow-lg">
+          <div className="text-center mb-8">
+            <Activity className="w-16 h-16 text-gray-500 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-400 mb-2">
+              No PDM Signals Currently Active
+            </h3>
+            <p className="text-gray-500 mb-6">
+              Click "Scan Universe" to search for new momentum opportunities in
+              the NIFTY 500 universe
+            </p>
+            <button
+              onClick={handleScanOpportunities}
+              className="bg-cyan-600 hover:bg-cyan-700 text-white px-6 py-3 rounded-lg transition-colors inline-flex items-center gap-2"
+            >
+              <Zap className="w-5 h-5" />
+              Scan for Opportunities
+            </button>
+          </div>
+
+          {/* API Data Format Documentation */}
+          <div className="border-t border-gray-700 pt-6 mt-6">
+            <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
+              API Request Format
+            </h4>
+            <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm">
+              <pre className="text-gray-300 overflow-x-auto">
+{`POST /api/pdm/signals
+Content-Type: application/json
+
+{
+  "lookback_days": 252,
+  "min_liquidity": 1000000
+}
+
+// Response Format:
+{
+  "signals": [
+    {
+      "ticker_symbol": "RELIANCE.NS",
+      "signal_type": "LONG" | "EXIT",
+      "current_price": 2850.50,
+      "confidence_score": 0.85,
+      "price_velocity": 2.34,
+      "institutional_factor": 1.45,
+      "atr_stop_loss": 2720.00,
+      "trailing_stop": 2780.00,
+      "signal_timestamp": "2025-12-17T..."
+    }
+  ]
+}`}
+              </pre>
+            </div>
+          </div>
         </div>
       )}
     </div>
