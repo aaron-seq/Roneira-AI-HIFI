@@ -8,7 +8,7 @@
  * Company: Roneira AI
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
@@ -76,6 +76,13 @@ export const StockPredictionDashboard: React.FC<
     }
   };
 
+  // Sync local ticker state with selectedTicker prop
+  useEffect(() => {
+    if (selectedTicker) {
+      setTicker(selectedTicker);
+    }
+  }, [selectedTicker]);
+
   const formatCurrency = (value: number | undefined | null) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -140,6 +147,7 @@ export const StockPredictionDashboard: React.FC<
 
             <button
               type="submit"
+              onClick={handleSubmit}
               disabled={isLoading || !ticker.trim()}
               className="bg-blue-600 hover:bg-blue-500 disabled:bg-gray-800 disabled:text-gray-600 text-white font-bold py-4 px-8 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 active:scale-95"
             >
