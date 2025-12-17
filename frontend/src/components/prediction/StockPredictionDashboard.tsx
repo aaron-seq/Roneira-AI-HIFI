@@ -140,6 +140,7 @@ export const StockPredictionDashboard: React.FC<
 
             <button
               type="submit"
+              onClick={handleSubmit}
               disabled={isLoading || !ticker.trim()}
               className="bg-blue-600 hover:bg-blue-500 disabled:bg-gray-800 disabled:text-gray-600 text-white font-bold py-4 px-8 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 active:scale-95"
             >
