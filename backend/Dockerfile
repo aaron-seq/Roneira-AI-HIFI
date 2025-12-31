@@ -9,7 +9,8 @@ COPY package*.json ./
 COPY tsconfig.json ./
 
 # Install all dependencies including development packages
-RUN npm ci --include=dev
+# Use npm install instead of npm ci for workspaces (package-lock.json is in root)
+RUN npm install
 
 # Copy source code
 COPY src/ ./src/
@@ -31,7 +32,7 @@ RUN addgroup -g 1001 -S nodejs_group && \
 COPY package*.json ./
 
 # Install only production dependencies
-RUN npm ci --only=production && \
+RUN npm install --omit=dev && \
     npm cache clean --force
 
 # Copy built application from development stage
@@ -39,8 +40,8 @@ COPY --from=development_dependencies /application/dist ./dist
 
 # Create health check script
 RUN echo '#!/bin/sh\n\
-wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1' > /usr/local/bin/health_check.sh && \
-chmod +x /usr/local/bin/health_check.sh
+    wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1' > /usr/local/bin/health_check.sh && \
+    chmod +x /usr/local/bin/health_check.sh
 
 # Install wget for health checks
 RUN apk add --no-cache wget

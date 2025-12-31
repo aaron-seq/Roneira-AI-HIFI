@@ -46,8 +46,9 @@ const REQUEST_TIMEOUT = 30000;
 
 /**
  * Maximum retries for failed requests
+ * @todo Implement retry logic using this constant
  */
-const MAX_RETRIES = 2;
+// const MAX_RETRIES = 2;
 
 // =====================================================
 // ERROR HANDLING
