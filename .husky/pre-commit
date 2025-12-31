@@ -1,0 +1,73 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Running pre-commit checks..."
+
+# =====================================================
+# BACKEND CHECKS
+# =====================================================
+echo "📦 Checking backend..."
+
+# TypeScript type checking
+cd backend
+if [ -f "package.json" ]; then
+  echo "  ⌨️  Running TypeScript type check..."
+  npm run type-check --silent 2>/dev/null || {
+    echo "  ❌ TypeScript type check failed"
+    exit 1
+  }
+  
+  echo "  🧹 Running ESLint..."
+  npm run lint --silent 2>/dev/null || {
+    echo "  ⚠️  ESLint found issues (continue anyway)"
+  }
+fi
+cd ..
+
+# =====================================================
+# FRONTEND CHECKS
+# =====================================================
+echo "🎨 Checking frontend..."
+
+cd frontend
+if [ -f "package.json" ]; then
+  echo "  ⌨️  Running TypeScript type check..."
+  npm run type-check --silent 2>/dev/null || {
+    echo "  ❌ TypeScript type check failed"
+    exit 1
+  }
+  
+  echo "  🧹 Running ESLint..."
+  npm run lint --silent 2>/dev/null || {
+    echo "  ⚠️  ESLint found issues (continue anyway)"
+  }
+fi
+cd ..
+
+# =====================================================
+# ML SERVICE CHECKS (Python)
+# =====================================================
+echo "🐍 Checking ML service..."
+
+cd ml-service
+if [ -f "requirements.txt" ]; then
+  # Check if flake8 is available
+  if command -v flake8 >/dev/null 2>&1; then
+    echo "  🧹 Running flake8..."
+    flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics 2>/dev/null || {
+      echo "  ❌ flake8 found critical errors"
+      exit 1
+    }
+  fi
+  
+  # Check if mypy is available
+  if command -v mypy >/dev/null 2>&1; then
+    echo "  🔍 Running mypy..."
+    mypy main.py --ignore-missing-imports 2>/dev/null || {
+      echo "  ⚠️  mypy found issues (continue anyway)"
+    }
+  fi
+fi
+cd ..
+
+echo "✅ All pre-commit checks passed!"

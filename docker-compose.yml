@@ -1,69 +1,233 @@
 version: '3.8'
 
-services:
-  frontend:
-    build: ./frontend
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    environment:
-      - VITE_API_BASE_URL=http://localhost:3001
-      - VITE_ML_API_BASE_URL=http://localhost:5000
-      - VITE_APP_NAME=Roneira AI HIFI
-      - VITE_APP_VERSION=2.0.0
-      - CHOKIDAR_USEPOLLING=true
-    depends_on:
-      - backend
-      - ml-service
+# =====================================================
+# Roneira AI HIFI - Production-Ready Infrastructure
+# C4 Container Architecture with Guardrails
+# =====================================================
 
+services:
+  # ===================================================
+  # 1. GUARDRAILS & ENTRY POINT - Traefik Reverse Proxy
+  # ===================================================
+  traefik:
+    image: traefik:v2.9
+    container_name: roneira-traefik
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--log.level=INFO"
+      - "--accesslog=true"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"  # Traefik Dashboard
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    networks:
+      - roneira-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===================================================
+  # 2. FRONTEND LAYER - React + Vite (Nginx in production)
+  # ===================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: roneira-frontend
+    environment:
+      - VITE_API_BASE_URL=/api
+      - VITE_ML_API_BASE_URL=/api/ml
+      - VITE_APP_NAME=Roneira AI HIFI
+      - VITE_APP_VERSION=3.0.0
+      - CHOKIDAR_USEPOLLING=true
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`localhost`)"
+      - "traefik.http.routers.frontend.entrypoints=web"
+      - "traefik.http.services.frontend.loadbalancer.server.port=3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - roneira-network
+    restart: unless-stopped
+
+  # ===================================================
+  # 3. BACKEND LAYER - Node.js/TypeScript API Gateway
+  # ===================================================
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    ports:
-      - "3001:3001"
+    container_name: roneira-backend
     environment:
       - PORT=3001
-      - NODE_ENV=development
-      - ML_SERVICE_URL=http://ml-service:5000
-      - CORS_ORIGIN=http://localhost:3000
+      - NODE_ENV=${NODE_ENV:-development}
+      - DATABASE_URL=postgresql://roneira:${POSTGRES_PASSWORD:-password}@db:5432/roneira_hifi
+      - REDIS_URL=redis://cache:6379
+      - ML_SERVICE_URL=http://ml-service:8000
+      - CORS_ORIGIN=http://localhost,http://localhost:3000
       - ALPHA_VANTAGE_API_KEY=${ALPHA_VANTAGE_API_KEY}
+      - RATE_LIMIT_WINDOW_MS=900000
+      - RATE_LIMIT_MAX_REQUESTS=100
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend.rule=Host(`localhost`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.backend.entrypoints=web"
+      - "traefik.http.middlewares.backend-stripprefix.stripprefix.prefixes=/api"
+      - "traefik.http.routers.backend.middlewares=backend-stripprefix"
+      - "traefik.http.services.backend.loadbalancer.server.port=3001"
     depends_on:
-      - db
-      - redis
-      - ml-service
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_started
+      ml-service:
+        condition: service_healthy
     networks:
-      - default
+      - roneira-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "check_health.js"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
+  # ===================================================
+  # 4. ML & ANALYTICS LAYER - Python FastAPI
+  # ===================================================
   ml-service:
-    build: ./ml-service
-    ports:
-      - "5000:5000"
-    volumes:
-      - ./ml-service:/app
+    build:
+      context: ./ml-service
+      dockerfile: Dockerfile
+    container_name: roneira-ml-service
     environment:
-      - FLASK_ENV=development
-      - PORT=5000
+      - PORT=8000
+      - FLASK_ENV=${FLASK_ENV:-development}
+      - DATABASE_URL=postgresql://roneira:${POSTGRES_PASSWORD:-password}@db:5432/roneira_hifi
+      - REDIS_URL=redis://cache:6379
       - HUGGING_FACE_API_KEY=${HUGGING_FACE_API_KEY}
       - ALPHA_VANTAGE_API_KEY=${ALPHA_VANTAGE_API_KEY}
+      - MODEL_PATH=/app/models
+      - CELERY_BROKER_URL=redis://task-queue:6379/0
+      - CELERY_RESULT_BACKEND=redis://task-queue:6379/1
+    volumes:
+      - ml-models:/app/models  # Persist trained models
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ml-service.rule=Host(`localhost`) && PathPrefix(`/api/ml`)"
+      - "traefik.http.routers.ml-service.entrypoints=web"
+      - "traefik.http.middlewares.ml-stripprefix.stripprefix.prefixes=/api/ml"
+      - "traefik.http.routers.ml-service.middlewares=ml-stripprefix"
+      - "traefik.http.services.ml-service.loadbalancer.server.port=8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_started
+    networks:
+      - roneira-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 60s
 
+  # ===================================================
+  # 5. PERSISTENCE - TimescaleDB (Time-Series Optimized)
+  # ===================================================
   db:
-    image: postgres:15
+    image: timescale/timescaledb:latest-pg14
+    container_name: roneira-db
     environment:
-      - POSTGRES_DB=stock_portfolio
-      - POSTGRES_USER=postgres
+      - POSTGRES_DB=roneira_hifi
+      - POSTGRES_USER=roneira
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - PGDATA=/var/lib/postgresql/data/pgdata
     ports:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ./infrastructure/init-scripts:/docker-entrypoint-initdb.d:ro
+    networks:
+      - roneira-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U roneira -d roneira_hifi"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
-  redis:
-    image: redis:7
+  # ===================================================
+  # 6. CACHE - Redis (Hot Data / Sessions)
+  # ===================================================
+  cache:
+    image: redis:7-alpine
+    container_name: roneira-cache
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     ports:
       - "6379:6379"
+    volumes:
+      - cache-data:/data
+    networks:
+      - roneira-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
+  # ===================================================
+  # 7. TASK QUEUE - Redis for Async Jobs (BullMQ/Celery)
+  # ===================================================
+  task-queue:
+    image: redis:7-alpine
+    container_name: roneira-task-queue
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy noeviction
+    ports:
+      - "6380:6379"
+    volumes:
+      - queue-data:/data
+    networks:
+      - roneira-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+# =====================================================
+# NETWORKS
+# =====================================================
+networks:
+  roneira-network:
+    driver: bridge
+    name: roneira-network
+
+# =====================================================
+# VOLUMES
+# =====================================================
 volumes:
   postgres-data:
+    name: roneira-postgres-data
+  cache-data:
+    name: roneira-cache-data
+  queue-data:
+    name: roneira-queue-data
+  ml-models:
+    name: roneira-ml-models
