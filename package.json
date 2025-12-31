@@ -1,9 +1,57 @@
 {
+  "name": "roneira-ai-hifi",
+  "version": "3.0.0",
+  "description": "AI-powered financial intelligence platform with C4 Container architecture",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
   "scripts": {
-    "type-check": "npm run type-check --workspace=frontend"
+    "dev": "docker-compose up -d",
+    "dev:build": "docker-compose up -d --build",
+    "stop": "docker-compose down",
+    "logs": "docker-compose logs -f",
+    "type-check": "npm run type-check --workspace=frontend && npm run type-check --workspace=backend",
+    "lint": "npm run lint --workspace=frontend && npm run lint --workspace=backend",
+    "test": "npm run test --workspace=frontend && npm run test --workspace=backend",
+    "test:ml": "cd ml-service && pytest test_ml_service.py -v",
+    "prepare": "husky install"
   },
   "dependencies": {
     "rimraf": "^6.1.2",
     "typescript": "^5.9.3"
-  }
+  },
+  "devDependencies": {
+    "husky": "^9.0.11",
+    "lint-staged": "^15.2.0"
+  },
+  "lint-staged": {
+    "backend/src/**/*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "frontend/src/**/*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "ml-service/**/*.py": [
+      "flake8 --select=E9,F63,F7,F82"
+    ]
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "keywords": [
+    "finance",
+    "ai",
+    "machine-learning",
+    "stock-prediction",
+    "fastapi",
+    "react",
+    "typescript"
+  ],
+  "author": "Aaron Sequeira <aaronsequeira12@gmail.com>",
+  "license": "MIT"
 }
