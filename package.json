@@ -16,7 +16,7 @@
     "lint": "npm run lint --workspace=frontend && npm run lint --workspace=backend",
     "test": "npm run test --workspace=frontend && npm run test --workspace=backend",
     "test:ml": "cd ml-service && pytest test_ml_service.py -v",
-    "prepare": "husky install"
+    "prepare": "node -e \"try { require('husky').install() } catch (e) { if (e.code !== 'MODULE_NOT_FOUND') throw e }\""
   },
   "dependencies": {
     "rimraf": "^6.1.2",

@@ -89,7 +89,7 @@ export function validate<T extends ZodSchema>(schema: T, target: ValidationTarge
     }
 
     // Replace request data with validated and transformed data
-    (req as Record<string, unknown>)[target] = result.data;
+    (req as unknown as Record<string, unknown>)[target] = result.data;
     next();
   };
 }
@@ -124,7 +124,7 @@ export function validateAll(
       if (!result.success) {
         errors.push({ target, error: result.error });
       } else {
-        (req as Record<string, unknown>)[target] = result.data;
+        (req as unknown as Record<string, unknown>)[target] = result.data;
       }
     }
 

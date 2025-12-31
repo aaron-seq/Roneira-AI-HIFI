@@ -111,7 +111,7 @@ export function createCircuitBreaker<TParams extends unknown[], TResult>(
   }
 
   // Set up event handlers
-  const handlers = createStateChangeHandlers<TResult>(name, fallbackFn ? () => fallbackFn(...([] as unknown as TParams)) : undefined);
+  const handlers = createStateChangeHandlers<TResult>(name, fallbackFn ? () => fallbackFn(...([] as unknown as TParams)) as TResult : undefined);
   breaker.on('open', handlers.onOpen);
   breaker.on('close', handlers.onClose);
   breaker.on('halfOpen', handlers.onHalfOpen);
