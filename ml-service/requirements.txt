@@ -1,10 +1,10 @@
 # Core FastAPI Framework
-fastapi==0.109.0
-uvicorn[standard]==0.27.0
-starlette==0.35.1
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+starlette==0.47.2
 
 # CORS and Security
-python-multipart==0.0.6
+python-multipart==0.0.18
 
 # Data Science and Machine Learning
 numpy>=1.26.4
