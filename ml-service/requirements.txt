@@ -3,9 +3,6 @@
 fastapi==0.115.0
 uvicorn[standard]==0.32.0
 
-# Flask (for legacy test compatibility)
-Flask>=2.3.0
-
 # CORS and Security
 python-multipart==0.0.18
 

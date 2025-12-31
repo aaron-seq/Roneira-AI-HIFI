@@ -8,7 +8,7 @@
  * @module services/databaseService
  */
 
-import { Pool, PoolConfig, QueryResult, QueryResultRow } from 'pg';
+import { Pool, PoolConfig, QueryResult } from 'pg';
 import logger from '../utils/logger';
 
 /**
@@ -172,7 +172,7 @@ class DatabaseService {
    * @param query - SQL query string
    * @param params - Query parameters
    */
-  private async query<T extends QueryResultRow>(query: string, params?: unknown[]): Promise<QueryResult<T>> {
+  private async query<T>(query: string, params?: unknown[]): Promise<QueryResult<T>> {
     if (!this.isAvailable()) {
       throw new Error('Database not connected');
     }
