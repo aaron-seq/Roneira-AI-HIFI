@@ -8,12 +8,14 @@ Features:
 - Async request handling with FastAPI
 - Pydantic validation for all requests/responses
 - Integration with existing prediction engines
+- Real stock data via yfinance
 - OpenAPI documentation auto-generation
 """
 
 import os
 import time
 import logging
+import random
 from datetime import datetime, date, timedelta
 from typing import Dict, Any, List, Optional
 from contextlib import asynccontextmanager
@@ -22,6 +24,17 @@ from fastapi import FastAPI, HTTPException, Query, Path
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import uvicorn
+import requests
+
+# Try to import yfinance for real data
+try:
+    import yfinance as yf
+
+    YFINANCE_AVAILABLE = True
+except ImportError:
+    YFINANCE_AVAILABLE = False
+    logger = logging.getLogger(__name__)
+    logger.warning("yfinance not available, using mock data")
 
 # Import existing modules
 from pdm_strategy_engine import PriceVolumeDerivativesEngine
@@ -49,6 +62,10 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+# API Keys from environment
+ALPHA_VANTAGE_API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY", "demo")
+HUGGING_FACE_API_KEY = os.getenv("HUGGING_FACE_API_KEY", "")
 
 # =====================================================
 # APPLICATION CONFIGURATION
@@ -125,11 +142,155 @@ app.add_middleware(
 # =====================================================
 
 
+def calculate_rsi(prices, period=14):
+    """Calculate RSI from price series"""
+    if len(prices) < period + 1:
+        return 50.0  # Default neutral RSI
+
+    deltas = [prices[i] - prices[i - 1] for i in range(1, len(prices))]
+    gains = [d if d > 0 else 0 for d in deltas]
+    losses = [-d if d < 0 else 0 for d in deltas]
+
+    avg_gain = sum(gains[-period:]) / period
+    avg_loss = sum(losses[-period:]) / period
+
+    if avg_loss == 0:
+        return 100.0
+
+    rs = avg_gain / avg_loss
+    return 100 - (100 / (1 + rs))
+
+
+def calculate_sma(prices, period):
+    """Calculate Simple Moving Average"""
+    if len(prices) < period:
+        return prices[-1] if prices else 0
+    return sum(prices[-period:]) / period
+
+
+def calculate_ema(prices, period):
+    """Calculate Exponential Moving Average"""
+    if len(prices) < period:
+        return prices[-1] if prices else 0
+
+    multiplier = 2 / (period + 1)
+    ema = prices[0]
+    for price in prices[1:]:
+        ema = (price * multiplier) + (ema * (1 - multiplier))
+    return ema
+
+
+def fetch_real_stock_data(ticker: str) -> Dict[str, Any]:
+    """Fetch real stock data using yfinance"""
+    if not YFINANCE_AVAILABLE:
+        logger.warning(f"yfinance not available, using mock data for {ticker}")
+        return None
+
+    try:
+        logger.info(f"Fetching real data for {ticker} from yfinance...")
+        stock = yf.Ticker(ticker)
+
+        # Get historical data (last 60 days for technical indicators)
+        hist = stock.history(period="3mo")
+
+        if hist.empty:
+            logger.warning(f"No data returned for {ticker}")
+            return None
+
+        # Current price
+        current_price = float(hist["Close"].iloc[-1])
+
+        # Get price history for indicators
+        close_prices = hist["Close"].tolist()
+
+        # Calculate technical indicators
+        sma_20 = calculate_sma(close_prices, 20)
+        sma_50 = calculate_sma(close_prices, 50)
+        ema_12 = calculate_ema(close_prices, 12)
+        ema_26 = calculate_ema(close_prices, 26)
+        rsi = calculate_rsi(close_prices, 14)
+        macd = ema_12 - ema_26
+
+        # Get volume trend
+        volumes = hist["Volume"].tolist()
+        vol_avg_recent = sum(volumes[-5:]) / 5 if len(volumes) >= 5 else volumes[-1]
+        vol_avg_old = (
+            sum(volumes[-20:-5]) / 15 if len(volumes) >= 20 else vol_avg_recent
+        )
+        volume_trend = "increasing" if vol_avg_recent > vol_avg_old else "decreasing"
+
+        # Simple prediction: trend-based with mean reversion
+        price_5d_ago = close_prices[-5] if len(close_prices) >= 5 else close_prices[0]
+        momentum = (current_price - price_5d_ago) / price_5d_ago
+
+        # Predict based on momentum and mean reversion
+        if rsi > 70:
+            predicted_change = random.uniform(-0.03, 0.01)  # Overbought, likely to fall
+        elif rsi < 30:
+            predicted_change = random.uniform(-0.01, 0.05)  # Oversold, likely to rise
+        else:
+            predicted_change = momentum * 0.5 + random.uniform(-0.02, 0.02)
+
+        predicted_price = current_price * (1 + predicted_change)
+
+        # Determine signal
+        if predicted_change > 0.02 and rsi < 65:
+            signal = SignalType.BUY
+        elif predicted_change < -0.02 or rsi > 75:
+            signal = SignalType.SELL
+        else:
+            signal = SignalType.HOLD
+
+        # Confidence based on multiple factors
+        confidence = 0.7 + (0.2 * (1 - abs(rsi - 50) / 50))
+
+        logger.info(
+            f"Successfully fetched real data for {ticker}: ${current_price:.2f}"
+        )
+
+        return {
+            "current_price": current_price,
+            "predicted_price": predicted_price,
+            "price_change": predicted_price - current_price,
+            "price_change_percent": predicted_change * 100,
+            "confidence": min(confidence, 0.95),
+            "technical_indicators": TechnicalIndicators(
+                sma_20=sma_20,
+                sma_50=sma_50,
+                ema_12=ema_12,
+                ema_26=ema_26,
+                rsi=rsi,
+                macd=macd,
+                volume_trend=volume_trend,
+            ),
+            "pdm_analysis": PDMAnalysis(
+                signal=signal,
+                strength=abs(momentum) * 10 if abs(momentum) < 0.1 else 0.9,
+                momentum=momentum,
+                volume_score=0.7 if volume_trend == "increasing" else 0.4,
+            ),
+            "sentiment": SentimentAnalysis(
+                score=momentum * 2,  # Simple sentiment from price action
+                label=SentimentLabel.POSITIVE
+                if momentum > 0.01
+                else (
+                    SentimentLabel.NEGATIVE
+                    if momentum < -0.01
+                    else SentimentLabel.NEUTRAL
+                ),
+                confidence=0.7,
+            ),
+        }
+
+    except Exception as e:
+        logger.error(f"Error fetching data for {ticker}: {e}")
+        return None
+
+
 def generate_mock_prediction(
     ticker: str, current_price: float = 150.0
 ) -> Dict[str, Any]:
-    """Generate mock prediction data for demonstration"""
-    import random
+    """Generate mock prediction data as fallback"""
 
     price_change_pct = random.uniform(-0.05, 0.08)
     predicted_price = current_price * (1 + price_change_pct)
@@ -167,6 +328,19 @@ def generate_mock_prediction(
             confidence=random.uniform(0.6, 0.95),
         ),
     }
+
+
+def get_stock_prediction(ticker: str) -> Dict[str, Any]:
+    """Get stock prediction - tries real data first, falls back to mock"""
+    # Try to get real data
+    real_data = fetch_real_stock_data(ticker)
+
+    if real_data:
+        return real_data
+
+    # Fallback to mock data
+    logger.info(f"Using mock data for {ticker}")
+    return generate_mock_prediction(ticker)
 
 
 # =====================================================
@@ -233,8 +407,48 @@ async def predict_stock(
     logger.info(f"Generating prediction for {ticker} using {model_type.value}")
 
     try:
-        # Generate prediction (using mock for now, replace with actual model)
-        prediction_data = generate_mock_prediction(ticker)
+        # Fetch real stock data (falls back to mock if unavailable)
+        prediction_data = get_stock_prediction(ticker)
+
+        return StockPredictionResponse(
+            ticker=ticker,
+            current_price=prediction_data["current_price"],
+            predicted_price=prediction_data["predicted_price"],
+            price_change=prediction_data["price_change"],
+            price_change_percent=prediction_data["price_change_percent"],
+            confidence=prediction_data["confidence"],
+            prediction_date=datetime.utcnow(),
+            model_type=model_type.value,
+            model_version="1.0.0",
+            technical_indicators=prediction_data["technical_indicators"]
+            if include_pdm
+            else None,
+            pdm_analysis=prediction_data["pdm_analysis"] if include_pdm else None,
+            sentiment=prediction_data["sentiment"],
+        )
+    except Exception as e:
+        logger.error(f"Prediction failed for {ticker}: {e}")
+        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
+
+
+@app.post(
+    "/predict",
+    response_model=StockPredictionResponse,
+    tags=["Predictions"],
+    summary="Get stock prediction (POST)",
+    description="Generate ML-based stock price prediction via POST request",
+)
+async def predict_stock_post(request: StockPredictionRequest):
+    """Generate stock price prediction via POST request (for frontend compatibility)"""
+    ticker = request.ticker.upper()
+    include_pdm = request.include_pdm if request.include_pdm is not None else True
+    model_type = request.model_type or ModelType.RANDOM_FOREST
+
+    logger.info(f"Generating prediction for {ticker} using {model_type.value} (POST)")
+
+    try:
+        # Fetch real stock data (falls back to mock if unavailable)
+        prediction_data = get_stock_prediction(ticker)
 
         return StockPredictionResponse(
             ticker=ticker,

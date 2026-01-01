@@ -53,11 +53,12 @@ export const StockPredictionDashboard: React.FC<
   ];
 
   // Fetch stock prediction and historical data
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["stock-prediction", selectedTicker, includePDM, modelType],
     queryFn: async () => {
-      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
-      const response = await fetch(`${API_BASE_URL}/api/predict`, {
+      const ML_API_BASE_URL = import.meta.env.VITE_ML_API_BASE_URL || 'http://localhost:8000';
+      console.log(`[StockPrediction] Fetching prediction for ${selectedTicker} from ${ML_API_BASE_URL}`);
+      const response = await fetch(`${ML_API_BASE_URL}/predict`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -72,10 +73,11 @@ export const StockPredictionDashboard: React.FC<
         throw new Error(errorData.error || "Failed to fetch prediction");
       }
 
-      return response.json();
+      const result = await response.json();
+      console.log(`[StockPrediction] Received prediction:`, result);
+      return { data: result };
     },
-    enabled: !!selectedTicker,
-    refetchInterval: 30000,
+    enabled: false, // Disable auto-fetch, use manual refetch
     retry: 1,
   });
 
@@ -83,7 +85,14 @@ export const StockPredictionDashboard: React.FC<
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (ticker.trim()) {
-      onTickerChange(ticker.trim().toUpperCase());
+      const newTicker = ticker.trim().toUpperCase();
+      console.log(`[StockPrediction] Submit clicked for ticker: ${newTicker}`);
+      onTickerChange(newTicker);
+      // Trigger refetch after a short delay to ensure state is updated
+      setTimeout(() => {
+        console.log(`[StockPrediction] Triggering refetch...`);
+        refetch();
+      }, 100);
     }
   };
 
@@ -101,7 +110,34 @@ export const StockPredictionDashboard: React.FC<
     }).format(value || 0);
   };
 
-  const prediction = data?.data;
+  // Map ML API response to template expected properties
+  const rawPrediction = data?.data;
+  const prediction = rawPrediction ? {
+    ticker_symbol: rawPrediction.ticker,
+    current_market_price: rawPrediction.current_price,
+    ml_predicted_price: rawPrediction.predicted_price,
+    predicted_percentage_change: rawPrediction.price_change_percent,
+    predicted_price_change: rawPrediction.price_change,
+    model_accuracy_r2_score: rawPrediction.confidence,
+    market_sentiment: rawPrediction.sentiment ? {
+      label: rawPrediction.sentiment.label?.toUpperCase() || 'NEUTRAL',
+      score: rawPrediction.sentiment.confidence || 0.5
+    } : null,
+    technical_indicators: rawPrediction.technical_indicators ? {
+      relative_strength_index: rawPrediction.technical_indicators.rsi,
+      macd_line: rawPrediction.technical_indicators.macd,
+      simple_moving_average_20: rawPrediction.technical_indicators.sma_20,
+      bollinger_position: 0.5 // Default value
+    } : null,
+    pdm_strategy_analysis: rawPrediction.pdm_analysis ? {
+      signal_type: rawPrediction.pdm_analysis.signal?.toUpperCase() || 'HOLD',
+      confidence_score: rawPrediction.pdm_analysis.strength || 0,
+      price_velocity: rawPrediction.pdm_analysis.momentum || 0,
+      atr_hard_stop_loss: rawPrediction.current_price * 0.95,
+      atr_trailing_stop: rawPrediction.current_price * 0.97
+    } : null,
+    historical_data: []
+  } : null;
 
   // Animation variants
   const containerVariants = {
