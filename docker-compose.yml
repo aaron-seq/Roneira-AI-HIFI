@@ -25,7 +25,8 @@ services:
       - "443:443"
       - "8080:8080"  # Traefik Dashboard
     volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      # For Windows, use npipe. For Linux/Mac, use unix socket
+      - "//var/run/docker.sock:/var/run/docker.sock:ro"
     networks:
       - roneira-network
     restart: unless-stopped
@@ -44,8 +45,8 @@ services:
       dockerfile: Dockerfile
     container_name: roneira-frontend
     environment:
-      - VITE_API_BASE_URL=/api
-      - VITE_ML_API_BASE_URL=/api/ml
+      - VITE_API_BASE_URL=http://localhost:3001
+      - VITE_ML_API_BASE_URL=http://localhost:8000
       - VITE_APP_NAME=Roneira AI HIFI
       - VITE_APP_VERSION=3.0.0
       - CHOKIDAR_USEPOLLING=true
@@ -54,6 +55,8 @@ services:
       - "traefik.http.routers.frontend.rule=Host(`localhost`)"
       - "traefik.http.routers.frontend.entrypoints=web"
       - "traefik.http.services.frontend.loadbalancer.server.port=3000"
+    ports:
+      - "3000:3000"  # Direct access for development/Windows
     depends_on:
       backend:
         condition: service_healthy
@@ -86,6 +89,8 @@ services:
       - "traefik.http.middlewares.backend-stripprefix.stripprefix.prefixes=/api"
       - "traefik.http.routers.backend.middlewares=backend-stripprefix"
       - "traefik.http.services.backend.loadbalancer.server.port=3001"
+    ports:
+      - "3001:3001"  # Direct access for development/Windows
     depends_on:
       db:
         condition: service_healthy
@@ -97,7 +102,7 @@ services:
       - roneira-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "node", "check_health.js"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -130,6 +135,8 @@ services:
       - "traefik.http.middlewares.ml-stripprefix.stripprefix.prefixes=/api/ml"
       - "traefik.http.routers.ml-service.middlewares=ml-stripprefix"
       - "traefik.http.services.ml-service.loadbalancer.server.port=8000"
+    ports:
+      - "8000:8000"  # Direct access for development/Windows
     depends_on:
       db:
         condition: service_healthy
