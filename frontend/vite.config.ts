@@ -12,4 +12,12 @@ export default defineConfig({
             usePolling: true,
         },
     },
+    optimizeDeps: {
+        include: [
+            'react-window',
+            'react',
+            'react-dom',
+            'framer-motion',
+        ],
+    },
 });
