@@ -7,59 +7,117 @@ module.exports = {
     extend: {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'Courier New', 'monospace'],
+        display: ['Inter', 'system-ui', 'sans-serif'],
+        mono: ['Roboto Mono', 'JetBrains Mono', 'monospace'],
       },
       colors: {
-        // Monochrome palette - black, grey, white
-        slate: {
-          50: '#f8fafc',
-          100: '#f1f5f9',
-          200: '#e2e8f0',
-          300: '#cbd5e1',
-          400: '#94a3b8',
-          500: '#64748b',
-          600: '#475569',
-          700: '#334155',
-          800: '#1e293b',
-          900: '#0f172a',
-          950: '#020617',
+        // ============================================
+        // RONEIRA BRAND CORE
+        // ============================================
+        brand: {
+          charcoal: '#313131',
+          offwhite: '#FDFDFC',
+          'neutral-light': '#EDEDEC',
+          'neutral-mid': '#ADADAD',
+          'neutral-dark': '#6D6D6C',
         },
-        // Semantic market colors
+        
+        // ============================================
+        // DARK UI SURFACES
+        // ============================================
+        bg: {
+          0: '#0B0B0C',     // App background (deepest)
+          1: '#121214',     // Sidebar/topbar
+        },
+        surface: {
+          1: '#17171A',     // Cards
+          2: '#1E1E22',     // Hover/raised
+          3: '#252528',     // Active/selected
+        },
+        
+        // ============================================
+        // TEXT HIERARCHY
+        // ============================================
+        text: {
+          primary: '#FDFDFC',
+          main: '#FDFDFC',
+          secondary: 'rgba(253, 253, 252, 0.72)',
+          muted: 'rgba(253, 253, 252, 0.52)',
+          disabled: 'rgba(253, 253, 252, 0.36)',
+        },
+        
+        // ============================================
+        // PRIMARY ACCENT
+        // ============================================
+        primary: '#5A7FFF',
+        'primary-light': '#7A9AFF',
+        'primary-dark': '#4060D0',
+        
+        // ============================================
+        // SEMANTIC COLORS
+        // ============================================
+        secondary: '#00D09C',    // Success/Bullish
+        danger: '#EB5B3C',       // Error/Bearish
+        warning: '#F59E0B',      // Caution/Neutral
+        
+        // Market colors with full scales
         bullish: {
-          50: '#f0fdf4',
-          100: '#dcfce7',
-          200: '#bbf7d0',
-          300: '#86efac',
-          400: '#4ade80',
-          500: '#22c55e', // Primary green for bullish
-          600: '#16a34a',
-          700: '#15803d',
-          800: '#166534',
-          900: '#14532d',
+          50: 'rgba(0, 208, 156, 0.08)',
+          100: 'rgba(0, 208, 156, 0.12)',
+          200: 'rgba(0, 208, 156, 0.20)',
+          300: '#5BCE96',
+          400: '#2EBF7A',
+          500: '#00D09C',
+          600: '#00B087',
+          700: '#009170',
+          800: '#007258',
+          900: '#005341',
         },
         bearish: {
-          50: '#fef2f2',
-          100: '#fee2e2',
-          200: '#fecaca',
-          300: '#fca5a5',
-          400: '#f87171',
-          500: '#ef4444', // Primary red for bearish
-          600: '#dc2626',
-          700: '#b91c1c',
-          800: '#991b1b',
-          900: '#7f1d1d',
+          50: 'rgba(235, 91, 60, 0.08)',
+          100: 'rgba(235, 91, 60, 0.12)',
+          200: 'rgba(235, 91, 60, 0.20)',
+          300: '#F08571',
+          400: '#EB5B3C',
+          500: '#D94C2F',
+          600: '#C03D23',
+          700: '#A62E18',
+          800: '#8C200F',
+          900: '#721207',
         },
         neutral: {
-          50: '#fefce8',
-          100: '#fef9c3',
-          200: '#fef08a',
-          300: '#fde047',
-          400: '#facc15',
-          500: '#eab308', // Primary yellow for neutral/cautious
-          600: '#ca8a04',
-          700: '#a16207',
-          800: '#854d0e',
-          900: '#713f12',
+          50: 'rgba(245, 158, 11, 0.08)',
+          100: 'rgba(245, 158, 11, 0.12)',
+          200: 'rgba(245, 158, 11, 0.20)',
+          300: '#FCD34D',
+          400: '#FBBF24',
+          500: '#F59E0B',
+          600: '#D97706',
+          700: '#B45309',
+          800: '#92400E',
+          900: '#78350F',
+        },
+        
+        // Slate scale for borders and subtle elements (dark theme)
+        slate: {
+          50: 'rgba(253, 253, 252, 0.04)',
+          100: 'rgba(253, 253, 252, 0.06)',
+          200: 'rgba(253, 253, 252, 0.10)',
+          300: 'rgba(253, 253, 252, 0.16)',
+          400: 'rgba(253, 253, 252, 0.28)',
+          500: 'rgba(253, 253, 252, 0.44)',
+          600: '#6D6D6C',
+          700: '#4A4A4A',
+          800: '#313131',
+          900: '#1A1A1A',
+        },
+        
+        // Legacy support
+        background: '#0B0B0C',
+        'dark': {
+          background: '#0B0B0C',
+          surface: '#17171A',
+          text: '#FDFDFC',
         },
       },
       animation: {
@@ -69,8 +127,10 @@ module.exports = {
         'scale-in': 'scaleIn 0.3s ease-out',
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'shimmer': 'shimmer 2s linear infinite',
-        'glow': 'glow 2s ease-in-out infinite alternate',
-        'marquee': 'marquee 25s linear infinite',
+        // Groww-style soft animations
+        'lift': 'lift 0.2s ease-out',
+        'bounce-soft': 'bounceSoft 0.4s ease-out',
+        'float': 'float 3s ease-in-out infinite',
       },
       keyframes: {
         fadeIn: {
@@ -93,23 +153,46 @@ module.exports = {
           '0%': { backgroundPosition: '-1000px 0' },
           '100%': { backgroundPosition: '1000px 0' },
         },
-        glow: {
-          '0%': { boxShadow: '0 0 5px rgba(255, 255, 255, 0.2)' },
-          '100%': { boxShadow: '0 0 20px rgba(255, 255, 255, 0.4)' },
+        lift: {
+          '0%': { transform: 'translateY(0)' },
+          '100%': { transform: 'translateY(-4px)' },
         },
-        marquee: {
-          '0%': { transform: 'translateX(0%)' },
-          '100%': { transform: 'translateX(-50%)' },
+        bounceSoft: {
+          '0%': { transform: 'scale(0.97)' },
+          '50%': { transform: 'scale(1.02)' },
+          '100%': { transform: 'scale(1)' },
         },
-      },
-      backdropBlur: {
-        xs: '2px',
+        float: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-6px)' },
+        },
       },
       boxShadow: {
-        'glow-white': '0 0 15px rgba(255, 255, 255, 0.1)',
-        'glow-green': '0 0 15px rgba(34, 197, 94, 0.3)',
-        'glow-red': '0 0 15px rgba(239, 68, 68, 0.3)',
-        'glow-yellow': '0 0 15px rgba(234, 179, 8, 0.3)',
+        // Groww-style soft shadows
+        'soft': '0 4px 24px rgba(0, 0, 0, 0.04)',
+        'soft-md': '0 8px 32px rgba(0, 0, 0, 0.06)',
+        'soft-lg': '0 12px 48px rgba(0, 0, 0, 0.08)',
+        'soft-xl': '0 20px 60px rgba(0, 0, 0, 0.10)',
+        'lift': '0 8px 30px rgba(80, 118, 238, 0.15)',
+        'card': '0 2px 8px rgba(0, 0, 0, 0.04)',
+        'card-hover': '0 8px 24px rgba(0, 0, 0, 0.08)',
+        'button': '0 2px 8px rgba(80, 118, 238, 0.25)',
+        'button-hover': '0 4px 16px rgba(80, 118, 238, 0.35)',
+      },
+      borderRadius: {
+        'card': '20px',
+        'btn': '50px',           // Pill shapes
+        '4xl': '2rem',
+        '5xl': '2.5rem',
+      },
+      transitionTimingFunction: {
+        'smooth': 'cubic-bezier(0.4, 0, 0.2, 1)',
+        'spring': 'cubic-bezier(0.68, -0.55, 0.27, 1.55)',
+        'out-expo': 'cubic-bezier(0.16, 1, 0.3, 1)',
+      },
+      spacing: {
+        '18': '4.5rem',
+        '22': '5.5rem',
       },
     },
   },

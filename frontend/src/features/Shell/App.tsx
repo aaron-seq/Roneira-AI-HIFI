@@ -149,15 +149,17 @@ const MainApplicationContent: React.FC = () => {
   // Show loading spinner during initialization
   if (!isInitialized && isApplicationLoading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center">
-          <LoadingSpinner size="large" />
-          <h2 className="mt-4 text-xl font-medium text-gold-400 tracking-wider">
-            INITIALIZING RONEIRA AI
-          </h2>
-          <p className="mt-2 text-gray-500 text-sm tracking-wide">
-            Establishing Secure Connection...
-          </p>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center relative">
+          <div className="relative">
+            <LoadingSpinner size="large" />
+            <h2 className="mt-6 text-xl font-semibold tracking-tight text-text-main">
+              Initializing Roneira AI
+            </h2>
+            <p className="mt-2 text-text-muted text-sm">
+              Establishing connection...
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -166,16 +168,20 @@ const MainApplicationContent: React.FC = () => {
   // Show error screen if initialization failed
   if (applicationErrorMessage && !isInitialized) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto p-8 border border-red-900/30 rounded-lg bg-red-950/10">
-          <div className="text-red-500 text-6xl mb-4"></div>
-          <h2 className="text-2xl font-bold text-red-500 mb-2 tracking-wide">
-            SYSTEM UNAVAILABLE
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="card text-center max-w-md mx-auto p-8">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-bearish-50 flex items-center justify-center">
+            <svg className="w-8 h-8 text-danger" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-semibold text-danger mb-2">
+            System Unavailable
           </h2>
-          <p className="text-gray-400 mb-8">{applicationErrorMessage}</p>
+          <p className="text-text-muted mb-8">{applicationErrorMessage}</p>
           <button
             onClick={initializeApplication}
-            className="bg-gold-600 hover:bg-gold-500 text-black font-bold py-3 px-8 rounded transition-all duration-300 tracking-wider uppercase text-sm"
+            className="btn-primary"
           >
             Retry Connection
           </button>
@@ -186,7 +192,7 @@ const MainApplicationContent: React.FC = () => {
 
   // Main application layout
   return (
-    <div className="min-h-screen bg-black text-gray-100 selection:bg-gold-500 selection:text-black">
+    <div className="min-h-screen bg-background text-text-main selection:bg-primary/20 selection:text-primary">
       {/* Navigation Header */}
       <NavigationHeader
         activeTab={activeNavigationTab}
@@ -195,7 +201,7 @@ const MainApplicationContent: React.FC = () => {
       />
 
       {/* Main Content Area */}
-      <main className="container mx-auto px-4 py-6">
+      <main className="animate-fade-in">
         <Routes>
           {/* Market Overview Dashboard */}
           <Route path="/overview" element={<MarketOverviewDashboard />} />
@@ -260,26 +266,28 @@ const EnhancedFinancialIntelligenceApp: React.FC = () => {
         <ErrorBoundary>
           <MainApplicationContent />
 
-          {/* Toast notifications */}
+          {/* Toast notifications - Groww style */}
           <Toaster
             position="top-right"
             toastOptions={{
               duration: 4000,
               style: {
-                background: "#1f2937",
-                color: "#f9fafb",
-                border: "1px solid #374151",
+                background: "#FFFFFF",
+                color: "#44475B",
+                border: "1px solid #E8EAED",
+                borderRadius: "12px",
+                boxShadow: "0 4px 24px rgba(0, 0, 0, 0.08)",
               },
               success: {
                 iconTheme: {
-                  primary: "#10b981",
-                  secondary: "#f9fafb",
+                  primary: "#00D09C",
+                  secondary: "#FFFFFF",
                 },
               },
               error: {
                 iconTheme: {
-                  primary: "#ef4444",
-                  secondary: "#f9fafb",
+                  primary: "#EB5B3C",
+                  secondary: "#FFFFFF",
                 },
               },
             }}

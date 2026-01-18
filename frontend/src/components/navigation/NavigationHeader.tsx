@@ -1,21 +1,24 @@
 /**
  * Navigation Header Component
  *
- * Main navigation bar for the application with tabs and health status
+ * Main navigation bar for the application with tabs and health status.
+ * Groww-Inspired 2026 Theme - White navbar with soft shadows.
  *
  * Author: Aaron Sequeira
- * Company: Roneira AI
+ * Company: Roneira Enterprises AI
+ * @version 2026 Groww Theme
  */
 
 import React from "react";
+import { motion } from "framer-motion";
 import {
-  TrendingUp,
   BarChart3,
   PieChart,
   Activity,
   Settings,
   LayoutDashboard,
   Newspaper,
+  Sparkles,
 } from "lucide-react";
 import type { MarketHealthStatus } from "../../types";
 import { SettingsModal } from "../settings/SettingsModal";
@@ -42,9 +45,9 @@ const navigationTabs: NavigationTab[] = [
   },
   {
     id: "prediction",
-    label: "Stock Prediction",
-    icon: <TrendingUp className="w-5 h-5" />,
-    description: "AI-powered stock price predictions",
+    label: "AI Prediction",
+    icon: <Sparkles className="w-5 h-5" />,
+    description: "ML-powered stock price predictions",
   },
   {
     id: "pdm-strategy",
@@ -60,7 +63,7 @@ const navigationTabs: NavigationTab[] = [
   },
   {
     id: "analysis",
-    label: "Technical Analysis",
+    label: "Technical",
     icon: <BarChart3 className="w-5 h-5" />,
     description: "Comprehensive technical indicators",
   },
@@ -72,8 +75,6 @@ const navigationTabs: NavigationTab[] = [
   },
 ];
 
-
-
 export const NavigationHeader: React.FC<NavigationHeaderProps> = ({
   activeTab,
   onTabChange,
@@ -81,111 +82,151 @@ export const NavigationHeader: React.FC<NavigationHeaderProps> = ({
 }) => {
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
 
-  const getHealthStatusColor = () => {
-    // ... existing logic
-    if (!marketHealthStatus) return "bg-gray-500";
+  const getHealthStatusConfig = () => {
+    if (!marketHealthStatus) {
+      return { color: "bg-slate-400", label: "Unknown", textColor: "text-slate-500" };
+    }
 
     switch (marketHealthStatus.service_status) {
       case "healthy":
-        return "bg-green-500";
+        return { 
+          color: "bg-secondary", 
+          label: "Online",
+          textColor: "text-secondary"
+        };
       case "degraded":
-        return "bg-yellow-500";
+        return { 
+          color: "bg-neutral-500", 
+          label: "Degraded",
+          textColor: "text-neutral-500"
+        };
       case "unhealthy":
-        return "bg-red-500";
+        return { 
+          color: "bg-danger", 
+          label: "Offline",
+          textColor: "text-danger"
+        };
       default:
-        return "bg-gray-500";
+        return { color: "bg-slate-400", label: "Unknown", textColor: "text-slate-500" };
     }
   };
 
+  const healthConfig = getHealthStatusConfig();
+
   return (
     <>
-      <header className="bg-black border-b border-gold-900/50 shadow-lg relative z-50">
+      {/* Main Header - White navbar */}
+      <header className="navbar">
         <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-20">
+          <div className="flex items-center justify-between h-16 lg:h-20">
             {/* Logo and Brand */}
-            <div className="flex items-center space-x-6">
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 flex items-center justify-center overflow-hidden rounded-md border border-gold-900/30">
-                  <img src="/logo.jpg" alt="Roneira Logo" className="w-full h-full object-contain filter grayscale contrast-125" />
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
+                {/* Logo - Inverted for light theme */}
+                <div className="relative w-10 h-10 lg:w-12 lg:h-12 flex items-center justify-center rounded-xl overflow-hidden">
+                  <img 
+                    src="/roneira_enterprises_logo.png" 
+                    alt="Roneira Enterprises AI Logo" 
+                    className="w-full h-full object-contain logo-light"
+                  />
                 </div>
-                <div>
-                  <h1 className="text-2xl font-bold text-white tracking-wide uppercase whitespace-nowrap">
-                    Roneira <span className="text-gold-500">Enterprises AI</span>
+                
+                <div className="hidden sm:block">
+                  <h1 className="text-xl lg:text-2xl font-semibold tracking-tight">
+                    <span className="text-text-main">Roneira</span>
+                    <span className="text-primary ml-2">AI HIFI</span>
                   </h1>
-                  <p className="text-[10px] text-gold-400/80 tracking-[0.2em] uppercase mt-0.5">
-                    Private Equity & Intelligence
+                  <p className="text-xs text-text-muted tracking-wide">
+                    Financial Intelligence Platform
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Navigation Tabs */}
-            <nav className="hidden md:flex space-x-2">
+            {/* Navigation Tabs - Desktop */}
+            <nav className="hidden lg:flex items-center gap-1">
               {navigationTabs.map((tab) => (
-                <button
+                <motion.button
                   key={tab.id}
                   onClick={() => onTabChange(tab.id)}
                   className={`
-                  flex items-center space-x-2 px-5 py-2.5 rounded transition-all duration-300 border border-transparent
-                  ${activeTab === tab.id
-                      ? "bg-gold-500/10 text-gold-400 border-gold-500/20 shadow-[0_0_15px_rgba(212,175,55,0.1)]"
-                      : "text-gray-400 hover:text-gold-200 hover:bg-white/5"
+                    relative flex items-center gap-2 px-4 py-2.5 rounded-xl
+                    transition-all duration-200 focus-ring
+                    ${activeTab === tab.id
+                      ? "text-primary"
+                      : "text-text-muted hover:text-text-main hover:bg-slate-50"
                     }
-                `}
+                  `}
                   title={tab.description}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                 >
-                  {/* Render icons in gold for active, gray for inactive */}
-                  <span className={activeTab === tab.id ? "text-gold-500" : "text-gray-500 group-hover:text-gold-300"}>
+                  {/* Active tab background */}
+                  {activeTab === tab.id && (
+                    <motion.div
+                      layoutId="activeTab"
+                      className="absolute inset-0 rounded-xl bg-primary/10"
+                      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                    />
+                  )}
+                  
+                  <span className={`relative z-10 ${activeTab === tab.id ? "text-primary" : ""}`}>
                     {tab.icon}
                   </span>
-                  <span className="font-medium tracking-wide text-sm">{tab.label}</span>
-                </button>
+                  <span className="relative z-10 font-medium text-sm">{tab.label}</span>
+                </motion.button>
               ))}
             </nav>
 
             {/* System Status and Controls */}
-            <div className="flex items-center space-x-6">
+            <div className="flex items-center gap-4">
               {/* Health Status Indicator */}
-              <div className="flex items-center space-x-2 bg-white/5 px-3 py-1.5 rounded-full border border-white/5">
-                <div
-                  className={`w-2 h-2 rounded-full ${getHealthStatusColor()} shadow-[0_0_8px_currentColor]`}
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-100">
+                <motion.div
+                  className={`w-2 h-2 rounded-full ${healthConfig.color}`}
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
                 />
-                <span className="text-xs font-medium text-gray-300 uppercase tracking-wider">
-                  {marketHealthStatus?.service_status || "Unknown"}
+                <span className={`text-xs font-medium uppercase tracking-wider hidden sm:inline ${healthConfig.textColor}`}>
+                  {healthConfig.label}
                 </span>
               </div>
 
               {/* Settings Button */}
-              <button
+              <motion.button
                 onClick={() => setIsSettingsOpen(true)}
-                className="p-2 text-gold-500/70 hover:text-gold-400 hover:bg-gold-500/10 rounded-full transition-colors"
+                className="p-2.5 text-text-muted hover:text-primary hover:bg-primary/10 rounded-xl transition-colors focus-ring"
                 title="Settings"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
                 <Settings className="w-5 h-5" />
-              </button>
+              </motion.button>
             </div>
           </div>
 
           {/* Mobile Navigation */}
-          <div className="md:hidden pb-4">
-            <div className="flex space-x-1 overflow-x-auto scrollbar-hide">
+          <div className="lg:hidden pb-3 -mx-2">
+            <div className="flex gap-1 overflow-x-auto scrollbar-hide px-2">
               {navigationTabs.map((tab) => (
-                <button
+                <motion.button
                   key={tab.id}
                   onClick={() => onTabChange(tab.id)}
                   className={`
-                  flex items-center space-x-2 px-3 py-2 rounded whitespace-nowrap transition-all duration-200
-                  ${activeTab === tab.id
-                      ? "text-gold-400 bg-gold-500/10 border-b border-gold-500"
-                      : "text-gray-400 hover:text-gold-300"
+                    flex items-center gap-2 px-3 py-2 rounded-xl whitespace-nowrap
+                    transition-all duration-200 focus-ring
+                    ${activeTab === tab.id
+                      ? "bg-primary/10 text-primary"
+                      : "text-text-muted hover:text-text-main hover:bg-slate-50"
                     }
-                `}
+                  `}
+                  whileTap={{ scale: 0.95 }}
                 >
-                  <div className={activeTab === tab.id ? "text-gold-500" : "text-gray-500"}>
+                  <span className={activeTab === tab.id ? "text-primary" : ""}>
                     {tab.icon}
-                  </div>
+                  </span>
                   <span className="text-sm font-medium">{tab.label}</span>
-                </button>
+                </motion.button>
               ))}
             </div>
           </div>
