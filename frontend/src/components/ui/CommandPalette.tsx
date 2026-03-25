@@ -18,7 +18,7 @@ export interface CommandItem {
   id: string;
   label: string;
   shortcut?: string;
-  icon?: React.ComponentType<{ size?: number; className?: string }>;
+  icon?: React.ComponentType<React.SVGProps<SVGSVGElement> & { size?: number | string }>;
   category?: string;
   action: () => void;
   keywords?: string[];
