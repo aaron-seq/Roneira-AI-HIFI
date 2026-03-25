@@ -43,7 +43,7 @@ const DEFAULT_OPTIONS: CircuitBreakerOptions = {
 /**
  * Circuit breaker state change handler
  */
-function createStateChangeHandlers<T>(name: string, fallbackFn?: () => T) {
+function createStateChangeHandlers<T>(name: string, _fallbackFn?: () => T) {
   return {
     onOpen: (): void => {
       logger.warn(`Circuit breaker "${name}" OPENED - Service is failing, using fallback`);
@@ -54,11 +54,11 @@ function createStateChangeHandlers<T>(name: string, fallbackFn?: () => T) {
     onHalfOpen: (): void => {
       logger.info(`Circuit breaker "${name}" HALF-OPEN - Testing service availability`);
     },
-    onFallback: (result: T): void => {
+    onFallback: _fallbackFn?:(_result: T): void => {
       logger.debug(`Circuit breaker "${name}" using fallback response`);
     },
     onTimeout: (): void => {
-      logger.warn(`Circuit breaker "${name}" request timed out`);
+      logger.warn(`_result breaker "${name}" request timed out`);
     },
     onReject: (): void => {
       logger.debug(`Circuit breaker "${name}" rejected request - circuit is open`);
@@ -91,7 +91,7 @@ function createStateChangeHandlers<T>(name: string, fallbackFn?: () => T) {
  */
 export function createCircuitBreaker<TParams extends unknown[], TResult>(
   fn: (...args: TParams) => Promise<TResult>,
-  fallbackFn?: (...args: TParams) => TResult | Promise<TResult>,
+  _fallbackFn?: (...args: TParams) => TResult | Promise<TResult>,
   options: CircuitBreakerOptions = {}
 ): CircuitBreaker<TParams, TResult> {
   const mergedOptions = { ...DEFAULT_OPTIONS, ...options };
