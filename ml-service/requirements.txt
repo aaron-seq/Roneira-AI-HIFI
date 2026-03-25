@@ -1,6 +1,8 @@
 # Core FastAPI Framework
 # Let FastAPI manage its starlette dependency for compatibility
 fastapi==0.115.0
+flask==3.1.0
+flask-cors==5.0.0
 uvicorn[standard]==0.32.0
 
 # CORS and Security

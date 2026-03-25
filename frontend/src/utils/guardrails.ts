@@ -101,7 +101,7 @@ export function validatePortfolio(data: unknown): ValidationResult<z.infer<typeo
       success: false, 
       errors: result.error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
     };
-  } catch (error) {
+  } catch (_error) {
     return { success: false, errors: ['Invalid portfolio data format'] };
   }
 }
@@ -119,7 +119,7 @@ export function validatePortfolioItem(data: unknown): ValidationResult<z.infer<t
       success: false, 
       errors: result.error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
     };
-  } catch (error) {
+  } catch (_error) {
     return { success: false, errors: ['Invalid portfolio item format'] };
   }
 }
@@ -137,7 +137,7 @@ export function validatePrediction(data: unknown): ValidationResult<z.infer<type
       success: false, 
       errors: result.error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
     };
-  } catch (error) {
+  } catch (_error) {
     return { success: false, errors: ['Invalid prediction data format'] };
   }
 }
@@ -314,7 +314,7 @@ export function withGuardrails<T, Args extends unknown[]>(
       }
       
       return result;
-    } catch (error) {
+    } catch (_error) {
       // If fallback provided, return it on error
       if (options.fallback !== undefined) {
         console.warn('Guardrails: Using fallback due to error:', error);

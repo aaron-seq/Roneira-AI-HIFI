@@ -193,7 +193,7 @@ export const PDMStrategyDashboard: React.FC<PDMStrategyDashboardProps> = ({
   const [isBacktestLoading, setIsBacktestLoading] = useState(false);
 
   // Query for single stock PDM analysis
-  const { data: pdmAnalysis, isLoading: isAnalyzing, error: analysisError, refetch: refetchAnalysis } = useQuery<PDMAnalysisResult>({
+  const { data: pdmAnalysis, isLoading: isAnalyzing, error: analysisError, refetch: _refetchAnalysis } = useQuery<PDMAnalysisResult>({
     queryKey: ['pdm-analysis', activeTicker],
     queryFn: async () => {
       const ML_API_BASE_URL = import.meta.env.VITE_ML_API_BASE_URL || 'http://localhost:8000';

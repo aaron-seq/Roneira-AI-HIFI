@@ -47,7 +47,6 @@ const REQUEST_TIMEOUT = 30000;
 /**
  * Maximum retries for failed requests
  */
-const MAX_RETRIES = 2;
 
 // =====================================================
 // ERROR HANDLING
