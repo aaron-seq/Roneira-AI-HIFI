@@ -10,7 +10,7 @@
  */
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { PieChart, TrendingUp, DollarSign, Plus, Trash2, Mic, AlertCircle, Sparkles } from "lucide-react";
+import { PieChart, DollarSign, Plus, Trash2, Mic, AlertCircle, Sparkles } from "lucide-react";
 import { fetchPortfolio, updatePortfolio } from "../../services/financialDataService";
 import toast from 'react-hot-toast';
 
