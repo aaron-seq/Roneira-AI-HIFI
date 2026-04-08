@@ -1,57 +1,60 @@
 {
   "name": "roneira-ai-hifi",
-  "version": "3.0.0",
-  "description": "AI-powered financial intelligence platform with C4 Container architecture",
+  "version": "4.0.0",
   "private": true,
-  "workspaces": [
-    "frontend",
-    "backend"
-  ],
+  "description": "Roneira AI HIFI — AI-powered financial intelligence platform",
   "scripts": {
-    "dev": "docker-compose up -d",
-    "dev:build": "docker-compose up -d --build",
-    "stop": "docker-compose down",
-    "logs": "docker-compose logs -f",
-    "type-check": "npm run type-check --workspace=frontend && npm run type-check --workspace=backend",
-    "lint": "npm run lint --workspace=frontend && npm run lint --workspace=backend",
-    "test": "npm run test --workspace=frontend && npm run test --workspace=backend",
-    "test:ml": "cd ml-service && pytest test_ml_service.py -v",
-    "prepare": "husky || true"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "test": "vitest run",
+    "test:web": "vitest run",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit -p tsconfig.typecheck.json",
+    "seed:admin": "node scripts/seed-admin.mjs",
+    "train:ml": "cd ml && python train_models.py",
+    "test:ml": "cd ml && pytest -v --tb=short",
+    "ml:dev": "cd ml && uvicorn app.main:app --reload --port 8000",
+    "ml:test": "cd ml && pytest tests/ -v --cov=app --cov-report=term-missing"
   },
   "dependencies": {
-    "rimraf": "^6.1.2",
-    "typescript": "^5.9.3"
+    "@hookform/resolvers": "^3.9.0",
+    "@supabase/ssr": "^0.5.0",
+    "@supabase/supabase-js": "^2.46.0",
+    "@tanstack/react-query": "^5.60.0",
+    "@tanstack/react-query-devtools": "^5.60.0",
+    "clsx": "^2.1.1",
+    "date-fns": "^3.6.0",
+    "framer-motion": "^11.12.0",
+    "geist": "^1.7.0",
+    "lightweight-charts": "^4.2.3",
+    "lucide-react": "^0.460.0",
+    "next": "16.2.2",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "react-hook-form": "^7.54.0",
+    "recharts": "^2.15.0",
+    "tailwind-merge": "^2.5.2",
+    "zod": "^3.24.0",
+    "zustand": "^5.0.0"
   },
   "devDependencies": {
-    "husky": "^9.0.11",
-    "lint-staged": "^15.2.0"
-  },
-  "lint-staged": {
-    "backend/src/**/*.ts": [
-      "eslint --fix",
-      "prettier --write"
-    ],
-    "frontend/src/**/*.{ts,tsx}": [
-      "eslint --fix",
-      "prettier --write"
-    ],
-    "ml-service/**/*.py": [
-      "flake8 --select=E9,F63,F7,F82"
-    ]
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.2",
+    "jsdom": "^26.0.0",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vitest": "^3.1.1"
   },
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=9.0.0"
   },
-  "keywords": [
-    "finance",
-    "ai",
-    "machine-learning",
-    "stock-prediction",
-    "fastapi",
-    "react",
-    "typescript"
-  ],
   "author": "Aaron Sequeira <aaronsequeira12@gmail.com>",
   "license": "MIT"
 }
