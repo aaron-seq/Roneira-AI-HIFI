@@ -1,0 +1,34 @@
+# Environment secrets - NEVER COMMIT
+.env
+.env.local
+.env.production
+.env*.local
+!.env.example
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Next.js
+.next/
+out/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+dist/
+
+# ML Models (large files - use Git LFS or Railway storage)
+*.h5
+*.keras
+*.pkl
+*.joblib
+ml/models/trained/
+ml/artifacts/generated/
+
+# Misc
+.DS_Store
+*.log

@@ -1,0 +1,276 @@
+@import "tailwindcss";
+
+/* ==============================================
+   RONEIRA AI HIFI — Design System
+   Dark-first, high-contrast, trustworthy finance theme
+   ============================================== */
+
+@theme {
+  /* ---- Background Layers ---- */
+  --color-bg: #0A0B0D;
+  --color-surface: #0F1117;
+  --color-surface-2: #161B22;
+  --color-surface-offset: #1C2128;
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-divider: rgba(255, 255, 255, 0.05);
+
+  /* ---- Text ---- */
+  --color-text-primary: #E6EDF3;
+  --color-text-muted: #7D8590;
+  --color-text-faint: #484F58;
+
+  /* ---- Accent Colors (financial theme) ---- */
+  --color-profit: #2ECC71;
+  --color-loss: #E74C3C;
+  --color-warning: #F39C12;
+  --color-info: #3498DB;
+  --color-ai-purple: #9B59B6;
+  --color-teal: #1ABC9C;
+  --color-gold: #F1C40F;
+
+  /* ---- Signal Badges ---- */
+  --color-strong-buy: #2ECC71;
+  --color-buy: #27AE60;
+  --color-hold: #F39C12;
+  --color-sell: #E67E22;
+  --color-strong-sell: #E74C3C;
+
+  /* ---- Gradients ---- */
+  --gradient-primary: linear-gradient(135deg, #2ECC71 0%, #3498DB 50%, #9B59B6 100%);
+  --gradient-hero: linear-gradient(135deg, #3498DB 0%, #9B59B6 50%, #1ABC9C 100%);
+  --gradient-card: linear-gradient(135deg, rgba(52,152,219,0.08) 0%, rgba(155,89,182,0.04) 100%);
+
+  /* ---- Shadows ---- */
+  --shadow-card: 0 0 0 1px rgba(255,255,255,0.05), 0 4px 24px rgba(0,0,0,0.4);
+  --shadow-elevated: 0 8px 32px rgba(0,0,0,0.6);
+  --shadow-glass: 0 8px 32px rgba(0,0,0,0.3), inset 0 0 0 1px rgba(255,255,255,0.1);
+
+  /* ---- Spacing (keep Tailwind defaults, add custom) ---- */
+  --spacing-sidebar: 260px;
+  --spacing-sidebar-collapsed: 68px;
+  --spacing-header: 64px;
+
+  /* ---- Radius ---- */
+  --radius-card: 12px;
+  --radius-button: 8px;
+  --radius-badge: 6px;
+  --radius-input: 8px;
+  --radius-full: 9999px;
+
+  /* ---- Transitions ---- */
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+
+  /* ---- Chart Colors (sequential palette) ---- */
+  --chart-1: #2ECC71;
+  --chart-2: #3498DB;
+  --chart-3: #9B59B6;
+  --chart-4: #F39C12;
+  --chart-5: #E74C3C;
+  --chart-6: #1ABC9C;
+  --chart-7: #F1C40F;
+  --chart-8: #E67E22;
+}
+
+/* ---- Base Styles ---- */
+html {
+  color-scheme: dark;
+}
+
+body {
+  font-family: var(--font-geist-sans), "Inter", system-ui, -apple-system, sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ---- Financial Number Typography ---- */
+.font-mono,
+.price,
+.ticker,
+[data-financial] {
+  font-family: var(--font-jetbrains-mono), "Fira Code", monospace;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.ticker {
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* ---- Scrollbar Styling ---- */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* ---- Selection ---- */
+::selection {
+  background-color: rgba(52, 152, 219, 0.3);
+  color: var(--color-text-primary);
+}
+
+/* ---- Focus Styles ---- */
+:focus-visible {
+  outline: 2px solid var(--color-info);
+  outline-offset: 2px;
+}
+
+/* ---- Card Component ---- */
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  transition: background var(--duration-fast) var(--ease-spring),
+              border-color var(--duration-fast) var(--ease-spring);
+}
+
+.card:hover {
+  background: var(--color-surface-offset);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* ---- Glass Effect ---- */
+.glass {
+  background: rgba(15, 17, 23, 0.8);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ---- Financial Color Utilities ---- */
+.text-profit { color: var(--color-profit); }
+.text-loss { color: var(--color-loss); }
+.text-hold { color: var(--color-warning); }
+
+.bg-profit-subtle { background-color: rgba(46, 204, 113, 0.1); }
+.bg-loss-subtle { background-color: rgba(231, 76, 60, 0.1); }
+.bg-hold-subtle { background-color: rgba(243, 156, 18, 0.1); }
+
+/* ---- Signal Badges ---- */
+.badge-strong-buy {
+  background: rgba(46, 204, 113, 0.15);
+  color: #2ECC71;
+  border: 1px solid rgba(46, 204, 113, 0.3);
+}
+
+.badge-buy {
+  background: rgba(39, 174, 96, 0.15);
+  color: #27AE60;
+  border: 1px solid rgba(39, 174, 96, 0.3);
+}
+
+.badge-hold {
+  background: rgba(243, 156, 18, 0.15);
+  color: #F39C12;
+  border: 1px solid rgba(243, 156, 18, 0.3);
+}
+
+.badge-sell {
+  background: rgba(230, 126, 34, 0.15);
+  color: #E67E22;
+  border: 1px solid rgba(230, 126, 34, 0.3);
+}
+
+.badge-strong-sell {
+  background: rgba(231, 76, 60, 0.15);
+  color: #E74C3C;
+  border: 1px solid rgba(231, 76, 60, 0.3);
+}
+
+/* ---- Exchange Badges ---- */
+.badge-nse { background: rgba(52,152,219,0.15); color: #3498DB; border: 1px solid rgba(52,152,219,0.3); }
+.badge-bse { background: rgba(231,76,60,0.15); color: #E74C3C; border: 1px solid rgba(231,76,60,0.3); }
+.badge-nasdaq { background: rgba(155,89,182,0.15); color: #9B59B6; border: 1px solid rgba(155,89,182,0.3); }
+.badge-nyse { background: rgba(26,188,156,0.15); color: #1ABC9C; border: 1px solid rgba(26,188,156,0.3); }
+
+/* ---- Gradient Text ---- */
+.gradient-text {
+  background: var(--gradient-hero);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ---- Pulse Animation (for Analyze button) ---- */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(52, 152, 219, 0.4); }
+  50% { box-shadow: 0 0 20px 4px rgba(52, 152, 219, 0.2); }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* ---- Price Flash Animations ---- */
+@keyframes flash-green {
+  0% { background-color: transparent; }
+  25% { background-color: rgba(46, 204, 113, 0.15); }
+  100% { background-color: transparent; }
+}
+
+@keyframes flash-red {
+  0% { background-color: transparent; }
+  25% { background-color: rgba(231, 76, 60, 0.15); }
+  100% { background-color: transparent; }
+}
+
+.flash-profit { animation: flash-green 1s ease-out; }
+.flash-loss { animation: flash-red 1s ease-out; }
+
+/* ---- News Ticker ---- */
+@keyframes scroll-left {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-scroll-left {
+  animation: scroll-left 60s linear infinite;
+}
+
+/* ---- Reduced Motion ---- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .animate-scroll-left {
+    animation: none;
+  }
+}
+
+/* ---- Light Mode (toggle) ---- */
+[data-theme="light"] {
+  --color-bg: #FAFBFC;
+  --color-surface: #FFFFFF;
+  --color-surface-2: #F6F8FA;
+  --color-surface-offset: #F0F2F5;
+  --color-border: rgba(0, 0, 0, 0.08);
+  --color-divider: rgba(0, 0, 0, 0.05);
+  --color-text-primary: #1F2328;
+  --color-text-muted: #656D76;
+  --color-text-faint: #B0B8C1;
+  color-scheme: light;
+}
