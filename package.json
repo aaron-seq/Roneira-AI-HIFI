@@ -12,7 +12,7 @@
     "test:web": "vitest run",
     "test:watch": "vitest",
     "type-check": "tsc --noEmit -p tsconfig.typecheck.json",
-    "seed:admin": "node scripts/seed-admin.mjs",
+    "seed:admin": "node --env-file=.env.local scripts/seed-admin.mjs",
     "train:ml": "cd ml && python train_models.py",
     "test:ml": "cd ml && pytest -v --tb=short",
     "ml:dev": "cd ml && uvicorn app.main:app --reload --port 8000",
@@ -52,7 +52,7 @@
     "vitest": "^3.1.1"
   },
   "engines": {
-    "node": ">=18.0.0",
+    "node": "22.x",
     "npm": ">=9.0.0"
   },
   "author": "Aaron Sequeira <aaronsequeira12@gmail.com>",
