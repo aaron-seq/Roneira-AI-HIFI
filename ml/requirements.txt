@@ -9,8 +9,8 @@ python-dotenv==1.0.1
 
 # Data
 yfinance==0.2.48
-pandas==2.1.4
-numpy==1.26.4
+pandas>=2.0.0
+numpy>=1.24.0
 
 # ML Models
 scikit-learn==1.5.2
