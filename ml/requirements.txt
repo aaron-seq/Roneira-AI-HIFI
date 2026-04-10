@@ -14,7 +14,7 @@ numpy>=1.24.0
 
 # ML Models
 scikit-learn>=1.3.0
-xgboost>=1.7.0
+xgboost>=1.7.0,<2.0.0
 # tensorflow and keras removed - too large for free tier
 # use scikit-learn based models instead
 
