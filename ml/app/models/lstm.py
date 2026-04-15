@@ -51,6 +51,10 @@ class LSTMPredictor:
         return keras.models.load_model(path, compile=False)
 
     def _load_artifact_bundle(self):
+        """
+        Loads model and metadata from `ml/artifacts/generated` on boot.
+        This enables rapid scaling as inference nodes don't need to retrain.
+        """
         self._metadata = load_metadata(self.metadata_filename)
         path = artifact_path(self.model_filename)
 
@@ -127,6 +131,10 @@ class LSTMPredictor:
         return np.array(features), np.array(labels)
 
     def train(self, datasets: list[pd.DataFrame], horizon_days: int = 30) -> dict:
+        """
+        Offline model training entrypoint. Called via cron or admin trigger.
+        Produces `.keras` and `.json` artifacts that inference instances consume.
+        """
         if not TF_AVAILABLE:
             raise RuntimeError("TensorFlow is required to train the LSTM model.")
 
@@ -208,6 +216,10 @@ class LSTMPredictor:
         return metadata
 
     def predict(self, df: pd.DataFrame, horizon_days: int = 30) -> dict:
+        """
+        Runs model inference using the pre-loaded .keras artifact.
+        If artifact is missing or invalid, routes dynamically to the fallback heuristic.
+        """
         if self._model is None:
             return self._fallback_predict(df, horizon_days)
 
