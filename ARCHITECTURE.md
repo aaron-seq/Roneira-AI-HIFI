@@ -39,7 +39,7 @@ graph TD
 
     subgraph "ML & Analytics Layer"
         MLAPI[ML Interface<br/>FastAPI + Uvicorn]
-        PredEngine[Prediction Engine<br/>Random Forest / LSTM]
+        PredEngine[Prediction Engine<br/>Random Forest / Artifact-Backed LSTM & GAN]
         PDMEngine[PDM Strategy Engine]
         DataProc[Data Preprocessor]
     end
@@ -47,7 +47,7 @@ graph TD
     subgraph "Persistence & Infrastructure"
         Redis[(Redis Cache<br/>Hot Data / Sessions)]
         TimescaleDB[(TimescaleDB<br/>Historical Data / Portfolio)]
-        AsyncQueue[Task Queue<br/>Redis + Celery]
+        ModelArtifacts[(Model Artifacts<br/>LSTM & GAN .keras/.h5)]
     end
 
     User -->|HTTPS| WAF
@@ -72,8 +72,7 @@ graph TD
     PredEngine -->|Train/Inference| DataProc
     DataProc -->|Batch Fetch| TimescaleDB
     
-    APIGateway -.->|Async Job| AsyncQueue
-    AsyncQueue -.->|Process| MLAPI
+    MLAPI -->|Load on Startup| ModelArtifacts
 ```
 
 ---
@@ -126,10 +125,9 @@ graph TD
 | Component | Technology | Purpose |
 |-----------|------------|---------|
 | API Framework | FastAPI + Uvicorn | Async HTTP + auto docs |
-| ML Models | Random Forest, LSTM | Stock price prediction |
+| ML Models | Random Forest, LSTM, GAN | Stock price prediction (LSTM & GAN use artifact-backed startup loading) |
 | PDM Engine | Custom Python | Trading signal generation |
 | Validation | Pydantic | Request/response validation |
-| Task Queue | Celery + Redis | Async training jobs |
 
 **Key Files:**
 - `ml-service/main.py` - FastAPI application
@@ -142,8 +140,7 @@ graph TD
 |-----------|------------|---------|
 | Time-Series DB | TimescaleDB (PG 14) | Historical price data, portfolio |
 | Cache | Redis 7 | API response caching, sessions |
-| Task Queue | Redis 7 | Celery broker for async jobs |
-| Model Storage | Docker Volume | Trained ML model persistence |
+| Model Storage | Local Filesystem / Volume | Pre-trained model persistence (e.g. `ml/artifacts/`) |
 
 ---
 

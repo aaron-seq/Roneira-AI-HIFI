@@ -102,6 +102,8 @@ function PredictPageContent() {
     });
   }
 
+  // The UI is completely data-agnostic, relying entirely on the `predictMutation`
+  // response shape (from the FastAPI ML layer -> Next.js API)
   return (
     <div className="mx-auto max-w-7xl">
       <div className="mb-8">

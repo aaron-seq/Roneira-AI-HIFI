@@ -52,6 +52,10 @@ class GANPredictor:
         return keras.models.load_model(path, compile=False)
 
     def _load_artifact_bundle(self):
+        """
+        Loads the GAN generator and metadata from artifacts on boot.
+        This enables rapid scaling as inference nodes don't need to retrain.
+        """
         self._metadata = load_metadata(self.metadata_filename)
         path = artifact_path(self.model_filename)
 
@@ -122,6 +126,10 @@ class GANPredictor:
         return np.array(features), np.array(labels).reshape(-1, 1)
 
     def train(self, datasets: list[pd.DataFrame], horizon_days: int = 30) -> dict:
+        """
+        Offline GAN training entrypoint. Called via cron or admin trigger.
+        Saves the generator component as a `.keras` artifact for inference.
+        """
         if not TF_AVAILABLE:
             raise RuntimeError("TensorFlow is required to train the GAN model.")
 
@@ -212,6 +220,10 @@ class GANPredictor:
         return metadata
 
     def predict(self, df: pd.DataFrame, horizon_days: int = 30) -> dict:
+        """
+        Runs inference using the pre-loaded GAN generator artifact.
+        Falls back to heuristics if the artifact is missing or fails.
+        """
         if self._generator is None:
             return self._fallback_predict(df, horizon_days)
 

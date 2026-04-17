@@ -98,6 +98,8 @@ export async function POST(request: Request) {
       );
     }
 
+    // Route prediction requests through the Next.js API to the internal FastAPI service
+    // This keeps the ML backend private and validates payloads
     const mlResponse = await fetch(`${ML_BACKEND_URL}/predict`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -111,6 +113,7 @@ export async function POST(request: Request) {
     });
 
     if (!mlResponse.ok) {
+      // Handle integration/fallback issues gracefully if the ML service encounters a problem
       const errorText = await mlResponse.text();
       console.error("ML backend error:", errorText);
       return NextResponse.json(
@@ -120,6 +123,7 @@ export async function POST(request: Request) {
     }
 
     const prediction = (await mlResponse.json()) as PredictionResult;
+    // Persist prediction for historical outcome evaluation and audit logging
     await persistPrediction(prediction);
     return NextResponse.json(prediction);
   } catch (error) {
