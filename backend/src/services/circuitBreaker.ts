@@ -54,11 +54,11 @@ function createStateChangeHandlers<T>(name: string, _fallbackFn?: () => T) {
     onHalfOpen: (): void => {
       logger.info(`Circuit breaker "${name}" HALF-OPEN - Testing service availability`);
     },
-    onFallback: _fallbackFn?:(_result: T): void => {
+    onFallback: (_result: T): void => {
       logger.debug(`Circuit breaker "${name}" using fallback response`);
     },
     onTimeout: (): void => {
-      logger.warn(`_result breaker "${name}" request timed out`);
+      logger.warn(`Circuit breaker "${name}" request timed out`);
     },
     onReject: (): void => {
       logger.debug(`Circuit breaker "${name}" rejected request - circuit is open`);
@@ -91,7 +91,7 @@ function createStateChangeHandlers<T>(name: string, _fallbackFn?: () => T) {
  */
 export function createCircuitBreaker<TParams extends unknown[], TResult>(
   fn: (...args: TParams) => Promise<TResult>,
-  _fallbackFn?: (...args: TParams) => TResult | Promise<TResult>,
+  fallbackFn?: (...args: TParams) => TResult | Promise<TResult>,
   options: CircuitBreakerOptions = {}
 ): CircuitBreaker<TParams, TResult> {
   const mergedOptions = { ...DEFAULT_OPTIONS, ...options };
