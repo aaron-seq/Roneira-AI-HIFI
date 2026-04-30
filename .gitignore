@@ -32,3 +32,5 @@ ml/artifacts/generated/
 # Misc
 .DS_Store
 *.log
+venv/
+ml-service/venv/
