@@ -3,6 +3,7 @@ Roneira AI HIFI — ML Backend
 FastAPI service for stock prediction, market data, and ML model serving.
 """
 import time
+import asyncio
 import logging
 from datetime import datetime
 
@@ -284,21 +285,23 @@ async def predict(request: PredictionRequest):
 async def market_data(symbols: str = "^NSEI,^BSESN,^IXIC,^GSPC"):
     """Fetch live market data for multiple symbols."""
     symbol_list = [s.strip() for s in symbols.split(",")]
-    results = []
 
-    for symbol in symbol_list[:20]:  # Limit to 20
+    async def fetch_symbol_data(symbol: str):
         try:
-            hist = fetch_stock_data(symbol, period="5d")
+            # Parallelize blocking yfinance/I/O calls using to_thread
+            hist = await asyncio.to_thread(fetch_stock_data, symbol, period="5d")
             if hist.empty:
-                continue
+                return None
 
             current = float(hist["Close"].iloc[-1])
             prev = float(hist["Close"].iloc[-2]) if len(hist) > 1 else current
             change = current - prev
             change_pct = (change / prev) * 100 if prev else 0
-            company = get_company_info(symbol)
 
-            results.append({
+            # get_company_info is also a blocking I/O call
+            company = await asyncio.to_thread(get_company_info, symbol)
+
+            return {
                 "symbol": symbol,
                 "name": company.get("name", symbol),
                 "price": round(current, 2),
@@ -307,12 +310,19 @@ async def market_data(symbols: str = "^NSEI,^BSESN,^IXIC,^GSPC"):
                 "volume": int(hist["Volume"].iloc[-1]) if "Volume" in hist.columns else 0,
                 "high": round(float(hist["High"].iloc[-1]), 2),
                 "low": round(float(hist["Low"].iloc[-1]), 2),
-            })
+            }
         except Exception as e:
             logger.warning(f"Failed to fetch {symbol}: {e}")
-            continue
+            return None
 
-    return {"data": results, "timestamp": datetime.utcnow().isoformat()}
+    # Limit to 20 and fetch in parallel
+    tasks = [fetch_symbol_data(s) for s in symbol_list[:20]]
+    results = await asyncio.gather(*tasks)
+
+    # Filter out failed fetches
+    valid_results = [r for r in results if r is not None]
+
+    return {"data": valid_results, "timestamp": datetime.utcnow().isoformat()}
 
 
 @app.get("/stock/{ticker}")
