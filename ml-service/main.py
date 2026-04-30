@@ -271,12 +271,14 @@ def fetch_real_stock_data(ticker: str) -> Dict[str, Any]:
             ),
             "sentiment": SentimentAnalysis(
                 score=momentum * 2,  # Simple sentiment from price action
-                label=SentimentLabel.POSITIVE
-                if momentum > 0.01
-                else (
-                    SentimentLabel.NEGATIVE
-                    if momentum < -0.01
-                    else SentimentLabel.NEUTRAL
+                label=(
+                    SentimentLabel.POSITIVE
+                    if momentum > 0.01
+                    else (
+                        SentimentLabel.NEGATIVE
+                        if momentum < -0.01
+                        else SentimentLabel.NEUTRAL
+                    )
                 ),
                 confidence=0.7,
             ),
@@ -420,9 +422,9 @@ async def predict_stock(
             prediction_date=datetime.utcnow(),
             model_type=model_type.value,
             model_version="1.0.0",
-            technical_indicators=prediction_data["technical_indicators"]
-            if include_pdm
-            else None,
+            technical_indicators=(
+                prediction_data["technical_indicators"] if include_pdm else None
+            ),
             pdm_analysis=prediction_data["pdm_analysis"] if include_pdm else None,
             sentiment=prediction_data["sentiment"],
         )
@@ -460,9 +462,9 @@ async def predict_stock_post(request: StockPredictionRequest):
             prediction_date=datetime.utcnow(),
             model_type=model_type.value,
             model_version="1.0.0",
-            technical_indicators=prediction_data["technical_indicators"]
-            if include_pdm
-            else None,
+            technical_indicators=(
+                prediction_data["technical_indicators"] if include_pdm else None
+            ),
             pdm_analysis=prediction_data["pdm_analysis"] if include_pdm else None,
             sentiment=prediction_data["sentiment"],
         )
@@ -482,34 +484,42 @@ async def predict_batch(request: BatchPredictionRequest):
     """Generate batch stock predictions"""
     logger.info(f"Generating batch predictions for {len(request.tickers)} tickers")
 
-    predictions = []
-    failed = 0
+    import asyncio
 
-    for ticker in request.tickers:
+    async def _process_ticker(ticker: str) -> Optional[StockPredictionResponse]:
         try:
-            prediction_data = generate_mock_prediction(ticker)
-            predictions.append(
-                StockPredictionResponse(
-                    ticker=ticker,
-                    current_price=prediction_data["current_price"],
-                    predicted_price=prediction_data["predicted_price"],
-                    price_change=prediction_data["price_change"],
-                    price_change_percent=prediction_data["price_change_percent"],
-                    confidence=prediction_data["confidence"],
-                    prediction_date=datetime.utcnow(),
-                    model_type=ModelType.RANDOM_FOREST.value,
-                    technical_indicators=prediction_data["technical_indicators"]
+            # We use asyncio.to_thread because the prediction might do blocking IO
+            # (like calling get_stock_prediction which uses yfinance)
+            prediction_data = await asyncio.to_thread(get_stock_prediction, ticker)
+            return StockPredictionResponse(
+                ticker=ticker,
+                current_price=prediction_data["current_price"],
+                predicted_price=prediction_data["predicted_price"],
+                price_change=prediction_data["price_change"],
+                price_change_percent=prediction_data["price_change_percent"],
+                confidence=prediction_data["confidence"],
+                prediction_date=datetime.utcnow(),
+                model_type=ModelType.RANDOM_FOREST.value,
+                technical_indicators=(
+                    prediction_data["technical_indicators"]
                     if request.include_pdm
-                    else None,
-                    pdm_analysis=prediction_data["pdm_analysis"]
-                    if request.include_pdm
-                    else None,
-                    sentiment=prediction_data["sentiment"],
-                )
+                    else None
+                ),
+                pdm_analysis=(
+                    prediction_data["pdm_analysis"] if request.include_pdm else None
+                ),
+                sentiment=prediction_data["sentiment"],
             )
         except Exception as e:
             logger.error(f"Failed to predict {ticker}: {e}")
-            failed += 1
+            return None
+
+    results = await asyncio.gather(
+        *[_process_ticker(ticker) for ticker in request.tickers]
+    )
+
+    predictions = [p for p in results if p is not None]
+    failed = len(request.tickers) - len(predictions)
 
     return BatchPredictionResponse(
         predictions=predictions,
@@ -559,12 +569,12 @@ async def scan_pdm_opportunities():
                     volume_score=random.uniform(0.5, 1.0),
                     recommended_action=f"{signal.value} at ${price:.2f}",
                     entry_price=price,
-                    stop_loss=price * 0.95
-                    if signal == SignalType.BUY
-                    else price * 1.05,
-                    take_profit=price * 1.10
-                    if signal == SignalType.BUY
-                    else price * 0.90,
+                    stop_loss=(
+                        price * 0.95 if signal == SignalType.BUY else price * 1.05
+                    ),
+                    take_profit=(
+                        price * 1.10 if signal == SignalType.BUY else price * 0.90
+                    ),
                 )
             )
 
@@ -572,10 +582,12 @@ async def scan_pdm_opportunities():
         opportunities=sorted(opportunities, key=lambda x: x.strength, reverse=True),
         scanned_tickers=len(sample_tickers),
         scan_time=datetime.utcnow(),
-        market_sentiment="bullish"
-        if len([o for o in opportunities if o.signal == SignalType.BUY])
-        > len([o for o in opportunities if o.signal == SignalType.SELL])
-        else "bearish",
+        market_sentiment=(
+            "bullish"
+            if len([o for o in opportunities if o.signal == SignalType.BUY])
+            > len([o for o in opportunities if o.signal == SignalType.SELL])
+            else "bearish"
+        ),
     )
 
 
