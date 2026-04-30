@@ -12,15 +12,6 @@
 
 :root {
   /* ============================================
-     BRAND CORE COLORS (from Roneira logo)
-     ============================================ */
-  --brand-charcoal: #313131;
-  --brand-offwhite: #FDFDFC;
-  --brand-neutral-light: #EDEDEC;
-  --brand-neutral-mid: #ADADAD;
-  --brand-neutral-dark: #6D6D6C;
-  
-  /* ============================================
      DARK UI SURFACE TOKENS
      ============================================ */
   --bg-0: #0B0B0C;           /* App background (deepest) */
