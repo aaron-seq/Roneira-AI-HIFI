@@ -143,12 +143,12 @@ class GANPredictor:
             features = self._prepare_data(frame)
             close_prices = frame["Close"].values
             target_returns = np.zeros(len(close_prices))
-            for idx in range(len(close_prices) - horizon_days):
-                target_returns[idx] = (
-                    close_prices[idx + horizon_days] - close_prices[idx]
-                ) / close_prices[idx]
-
             valid_end = len(close_prices) - horizon_days
+
+            if valid_end > 0:
+                target_returns[:valid_end] = (
+                    close_prices[horizon_days:] - close_prices[:-horizon_days]
+                ) / close_prices[:-horizon_days]
             X_batch, y_batch = self._create_sequences(
                 features[:valid_end],
                 target_returns[:valid_end],
