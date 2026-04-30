@@ -127,15 +127,6 @@ module.exports = {
           '100%': { transform: 'translateY(0)', opacity: '1' },
         },
       },
-      // Legacy brand colors kept so old components don't break during migration
-      // TODO: Remove in v6.0 after full migration to MD3 tokens
-      brand: {
-        charcoal: '#313131',
-        offwhite: '#FDFDFC',
-        'neutral-light': '#EDEDEC',
-        'neutral-mid': '#ADADAD',
-        'neutral-dark': '#6D6D6C',
-      },
     },
   },
   plugins: [

@@ -8,16 +8,6 @@ import { motion } from 'framer-motion';
 export const ThemePreview: React.FC = () => {
   const colorSections = [
     {
-      title: 'Brand Core',
-      colors: [
-        { name: 'Charcoal', value: '#313131', var: '--brand-charcoal' },
-        { name: 'Off-White', value: '#FDFDFC', var: '--brand-offwhite', dark: true },
-        { name: 'Neutral Light', value: '#EDEDEC', var: '--brand-neutral-light', dark: true },
-        { name: 'Neutral Mid', value: '#ADADAD', var: '--brand-neutral-mid' },
-        { name: 'Neutral Dark', value: '#6D6D6C', var: '--brand-neutral-dark' },
-      ],
-    },
-    {
       title: 'Surfaces',
       colors: [
         { name: 'BG-0 (App)', value: '#0B0B0C', var: '--bg-0' },
