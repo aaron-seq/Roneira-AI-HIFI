@@ -2,6 +2,7 @@ import os
 import requests
 import logging
 from datetime import datetime, timedelta
+from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, Any
 from flask import Flask, request, jsonify
 import yfinance as yf
@@ -187,6 +188,103 @@ def health_check():
     )
 
 
+def _perform_single_prediction(ticker_symbol: str, prediction_days: int = 1):
+    """
+    Core prediction logic separated from Flask request context for performance and thread safety
+    """
+    ticker_symbol = ticker_symbol.upper()
+
+    # Check cache first
+    cache_key = f"{ticker_symbol}_{prediction_days}"
+    if cache_key in prediction_cache:
+        cached_prediction = prediction_cache[cache_key]
+        cache_time = datetime.fromisoformat(cached_prediction["timestamp"])
+        if (datetime.now() - cache_time).seconds < 300:  # 5 minutes cache
+            logger.info(f"Returning cached prediction for {ticker_symbol}")
+            return cached_prediction, 200
+
+    # Get or create model
+    if ticker_symbol in model_cache:
+        model_info = model_cache[ticker_symbol]
+        logger.info(f"Using cached model for {ticker_symbol}")
+    else:
+        model_info = create_advanced_model(ticker_symbol)
+        if model_info is None:
+            return {"error": f"Could not create prediction model for {ticker_symbol}"}, 500
+
+    # Fetch recent data for prediction
+    recent_data = yf.download(ticker_symbol, period="60d")
+    if recent_data.empty:
+        return {"error": f"Could not fetch recent data for {ticker_symbol}"}, 404
+
+    # Add technical indicators
+    recent_data = get_technical_indicators(recent_data)
+    recent_data = recent_data.dropna()
+
+    if len(recent_data) == 0:
+        return {"error": f"Insufficient recent data for {ticker_symbol}"}, 404
+
+    # Prepare prediction features
+    latest_features = (
+        recent_data[model_info["features"]].iloc[-1].values.reshape(1, -1)
+    )
+
+    # Make prediction
+    predicted_price = model_info["model"].predict(latest_features)[0]
+
+    # Get current price and calculate change
+    current_price = recent_data["Close"].iloc[-1]
+    price_change = predicted_price - current_price
+    percentage_change = (price_change / current_price) * 100
+
+    # Get company info for sentiment analysis
+    try:
+        ticker_info = yf.Ticker(ticker_symbol)
+        company_name = ticker_info.info.get("longName", ticker_symbol)
+    except Exception:
+        company_name = ticker_symbol
+
+    # Get sentiment analysis (FREE)
+    sentiment = get_stock_sentiment(ticker_symbol, company_name)
+
+    # Prepare response
+    result = {
+        "ticker": ticker_symbol,
+        "company_name": company_name,
+        "current_price": round(float(current_price), 2),
+        "predicted_price": round(float(predicted_price), 2),
+        "price_change": round(float(price_change), 2),
+        "percentage_change": round(float(percentage_change), 2),
+        "prediction_days": prediction_days,
+        "model_accuracy": round(model_info["test_score"], 4),
+        "sentiment": sentiment,
+        "timestamp": datetime.now().isoformat(),
+        "technical_indicators": {
+            "rsi": (
+                round(float(recent_data["RSI"].iloc[-1]), 2)
+                if "RSI" in recent_data.columns
+                else None
+            ),
+            "sma_5": (
+                round(float(recent_data["SMA_5"].iloc[-1]), 2)
+                if "SMA_5" in recent_data.columns
+                else None
+            ),
+            "sma_20": (
+                round(float(recent_data["SMA_20"].iloc[-1]), 2)
+                if "SMA_20" in recent_data.columns
+                else None
+            ),
+        },
+    }
+
+    # Cache the response
+    prediction_cache[cache_key] = result
+
+    logger.info(f"Prediction completed for {ticker_symbol}: {predicted_price:.2f}")
+    return result, 200
+
+
 @app.route("/predict", methods=["POST"])
 def predict_stock_price():
     """
@@ -200,110 +298,8 @@ def predict_stock_price():
         if not ticker_symbol:
             return jsonify({"error": "Ticker symbol is required."}), 400
 
-        ticker_symbol = ticker_symbol.upper()
-
-        # Check cache first
-        cache_key = f"{ticker_symbol}_{prediction_days}"
-        if cache_key in prediction_cache:
-            cached_prediction = prediction_cache[cache_key]
-            cache_time = datetime.fromisoformat(cached_prediction["timestamp"])
-            if (datetime.now() - cache_time).seconds < 300:  # 5 minutes cache
-                logger.info(f"Returning cached prediction for {ticker_symbol}")
-                return jsonify(cached_prediction), 200
-
-        # Get or create model
-        if ticker_symbol in model_cache:
-            model_info = model_cache[ticker_symbol]
-            logger.info(f"Using cached model for {ticker_symbol}")
-        else:
-            model_info = create_advanced_model(ticker_symbol)
-            if model_info is None:
-                return (
-                    jsonify(
-                        {
-                            "error": f"Could not create prediction model for {ticker_symbol}"
-                        }
-                    ),
-                    500,
-                )
-
-        # Fetch recent data for prediction
-        recent_data = yf.download(ticker_symbol, period="60d")
-        if recent_data.empty:
-            return (
-                jsonify({"error": f"Could not fetch recent data for {ticker_symbol}"}),
-                404,
-            )
-
-        # Add technical indicators
-        recent_data = get_technical_indicators(recent_data)
-        recent_data = recent_data.dropna()
-
-        if len(recent_data) == 0:
-            return (
-                jsonify({"error": f"Insufficient recent data for {ticker_symbol}"}),
-                404,
-            )
-
-        # Prepare prediction features
-        latest_features = (
-            recent_data[model_info["features"]].iloc[-1].values.reshape(1, -1)
-        )
-
-        # Make prediction
-        predicted_price = model_info["model"].predict(latest_features)[0]
-
-        # Get current price and calculate change
-        current_price = recent_data["Close"].iloc[-1]
-        price_change = predicted_price - current_price
-        percentage_change = (price_change / current_price) * 100
-
-        # Get company info for sentiment analysis
-        try:
-            ticker_info = yf.Ticker(ticker_symbol)
-            company_name = ticker_info.info.get("longName", ticker_symbol)
-        except Exception:
-            company_name = ticker_symbol
-
-        # Get sentiment analysis (FREE)
-        sentiment = get_stock_sentiment(ticker_symbol, company_name)
-
-        # Prepare response
-        response = {
-            "ticker": ticker_symbol,
-            "company_name": company_name,
-            "current_price": round(float(current_price), 2),
-            "predicted_price": round(float(predicted_price), 2),
-            "price_change": round(float(price_change), 2),
-            "percentage_change": round(float(percentage_change), 2),
-            "prediction_days": prediction_days,
-            "model_accuracy": round(model_info["test_score"], 4),
-            "sentiment": sentiment,
-            "timestamp": datetime.now().isoformat(),
-            "technical_indicators": {
-                "rsi": (
-                    round(float(recent_data["RSI"].iloc[-1]), 2)
-                    if "RSI" in recent_data.columns
-                    else None
-                ),
-                "sma_5": (
-                    round(float(recent_data["SMA_5"].iloc[-1]), 2)
-                    if "SMA_5" in recent_data.columns
-                    else None
-                ),
-                "sma_20": (
-                    round(float(recent_data["SMA_20"].iloc[-1]), 2)
-                    if "SMA_20" in recent_data.columns
-                    else None
-                ),
-            },
-        }
-
-        # Cache the response
-        prediction_cache[cache_key] = response
-
-        logger.info(f"Prediction completed for {ticker_symbol}: {predicted_price:.2f}")
-        return jsonify(response), 200
+        result, status_code = _perform_single_prediction(ticker_symbol, prediction_days)
+        return jsonify(result), status_code
 
     except Exception as e:
         logger.error(f"Prediction error: {e}")
@@ -316,11 +312,12 @@ def predict_stock_price():
 @app.route("/batch_predict", methods=["POST"])
 def batch_predict():
     """
-    Predict multiple stocks at once
+    Predict multiple stocks at once using parallel execution
     """
     try:
         request_data = request.get_json()
         tickers = request_data.get("tickers", [])
+        prediction_days = request_data.get("days", 1)
 
         if not tickers or len(tickers) == 0:
             return jsonify({"error": "Ticker list is required"}), 400
@@ -328,36 +325,39 @@ def batch_predict():
         if len(tickers) > 10:  # Limit batch size
             return jsonify({"error": "Maximum 10 tickers allowed per batch"}), 400
 
-        predictions = []
+        # Execute predictions in parallel using ThreadPoolExecutor
+        # This is ideal for I/O bound tasks like fetching data from yfinance
+        # and calling the Hugging Face API
+        with ThreadPoolExecutor(max_workers=min(len(tickers), 10)) as executor:
+            # Map tickers to prediction calls
+            future_to_ticker = {
+                executor.submit(_perform_single_prediction, ticker, prediction_days): ticker
+                for ticker in tickers
+            }
 
-        for ticker in tickers:
-            try:
-                # Make individual prediction
-                single_request = {"ticker": ticker}
-
-                # Simulate single prediction call
-                request.json = single_request
-                response = predict_stock_price()
-
-                if response[1] == 200:  # Success status code
-                    predictions.append(response[0].json)
-                else:
-                    predictions.append(
-                        {
+            ticker_results = {}
+            for future in future_to_ticker:
+                ticker = future_to_ticker[future]
+                try:
+                    result, status_code = future.result()
+                    if status_code == 200:
+                        ticker_results[ticker] = result
+                    else:
+                        ticker_results[ticker] = {
                             "ticker": ticker,
-                            "error": "Prediction failed",
+                            "error": result.get("error", "Prediction failed"),
                             "timestamp": datetime.now().isoformat(),
                         }
-                    )
-
-            except Exception as e:
-                predictions.append(
-                    {
+                except Exception as e:
+                    logger.error(f"Error predicting {ticker}: {e}")
+                    ticker_results[ticker] = {
                         "ticker": ticker,
                         "error": str(e),
                         "timestamp": datetime.now().isoformat(),
                     }
-                )
+
+            # Build the ordered predictions list
+            predictions = [ticker_results[ticker] for ticker in tickers]
 
         return (
             jsonify(
