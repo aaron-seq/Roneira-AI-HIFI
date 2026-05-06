@@ -479,10 +479,9 @@ class BackendServer {
     if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
       sendError(response, 'Machine Learning service is currently unavailable', 503);
     } else if (error.response) {
-      const errorData = error.response.data as { error?: string };
       sendError(
         response,
-        errorData?.error || 'ML service returned an error',
+        'The ML service returned an error while processing the request',
         error.response.status || 500
       );
     } else {

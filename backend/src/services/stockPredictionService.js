@@ -239,7 +239,7 @@ export class StockPredictionService {
       appError.statusCode = 504;
       appError.name = 'ServiceTimeoutError';
     } else if (error.response) {
-      appError.message = error.response.data?.error || `ML service returned an error (${error.response.status})`;
+      appError.message = 'The ML service returned an error while processing the request.';
       appError.statusCode = error.response.status;
       appError.name = 'MlServiceError';
     } else {
