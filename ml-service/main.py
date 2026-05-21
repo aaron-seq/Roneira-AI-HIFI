@@ -24,7 +24,6 @@ from fastapi import FastAPI, HTTPException, Query, Path
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import uvicorn
-import requests
 
 # Try to import yfinance for real data
 try:
