@@ -77,15 +77,13 @@ app.post('/api/predict', async (request, response) => {
 
         if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
             return response.status(503).json({
-                error: 'The ML prediction service is currently unavailable. Please try again later.',
-                service_url: ML_SERVICE_URL
+                error: 'The ML prediction service is currently unavailable. Please try again later.'
             });
         }
 
         if (error.response) {
             return response.status(error.response.status).json({
-                error: error.response.data?.error || 'ML service returned an error',
-                details: error.response.data
+                error: 'The ML service returned an error while processing the request.'
             });
         }
 
@@ -142,8 +140,7 @@ app.post('/api/batch_predict', async (request, response) => {
 
         if (error.response) {
             return response.status(error.response.status).json({
-                error: error.response.data?.error || 'ML service returned an error',
-                details: error.response.data
+                error: 'The ML service returned an error during batch processing.'
             });
         }
 
