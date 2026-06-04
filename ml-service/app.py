@@ -35,7 +35,8 @@ logger = logging.getLogger(__name__)
 
 # Initialize Flask application
 finance_intelligence_app = Flask(__name__)
-CORS(finance_intelligence_app, origins="*")
+allowed_origins = os.environ.get("ALLOWED_ORIGINS", "http://localhost:3000,https://roneira.ai").split(",")
+CORS(finance_intelligence_app, origins=allowed_origins)
 
 
 # Configuration

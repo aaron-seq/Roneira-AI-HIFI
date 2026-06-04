@@ -127,9 +127,12 @@ app = FastAPI(
 )
 
 # CORS configuration
+import os
+allowed_origins = os.environ.get("ALLOWED_ORIGINS", "http://localhost:3000,https://roneira.ai").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
