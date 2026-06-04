@@ -106,12 +106,12 @@ export function createCircuitBreaker<TParams extends unknown[], TResult>(
   });
 
   // Set up fallback if provided
-  if (fallbackFn) {
-    breaker.fallback(fallbackFn);
+  if (_fallbackFn) {
+    breaker.fallback(_fallbackFn);
   }
 
   // Set up event handlers
-  const handlers = createStateChangeHandlers<TResult>(name, fallbackFn ? () => fallbackFn(...([] as unknown as TParams)) as TResult : undefined);
+  const handlers = createStateChangeHandlers<TResult>(name, _fallbackFn ? () => _fallbackFn(...([] as unknown as TParams)) as TResult : undefined);
   breaker.on('open', handlers.onOpen);
   breaker.on('close', handlers.onClose);
   breaker.on('halfOpen', handlers.onHalfOpen);
