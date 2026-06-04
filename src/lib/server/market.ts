@@ -261,7 +261,7 @@ export async function getNormalizedQuotes(
   );
 }
 
-function mapSectionQuotes(
+export function mapSectionQuotes(
   section: readonly QuoteConfig[],
   quotesBySymbol: Map<string, MarketQuote>
 ) {
