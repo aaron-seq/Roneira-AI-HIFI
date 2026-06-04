@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import axios from 'axios';
 import { getCachedData, setCachedData } from '../services/cacheService';
+import logger from '../utils/logger';
 
 const router = express.Router();
 
@@ -40,12 +41,12 @@ const fetchStockQuote = async (symbol: string): Promise<StockQuote | null> => {
   // Check cache first (60 second TTL)
   const cached = await getCachedData(cacheKey);
   if (cached) {
-    console.log(`Cache hit for ${symbol}`);
+    logger.info(`Cache hit for ${symbol}`);
     return cached as StockQuote;
   }
 
   try {
-    console.log(`Fetching quote for ${symbol} from Alpha Vantage...`);
+    logger.info(`Fetching quote for ${symbol} from Alpha Vantage...`);
     const response = await axios.get(BASE_URL, {
       params: {
         function: 'GLOBAL_QUOTE',
@@ -58,7 +59,7 @@ const fetchStockQuote = async (symbol: string): Promise<StockQuote | null> => {
     const quote = response.data['Global Quote'];
 
     if (!quote || Object.keys(quote).length === 0) {
-      console.warn(`No data for ${symbol}`);
+      logger.warn(`No data for ${symbol}`);
       return null;
     }
 
@@ -78,11 +79,11 @@ const fetchStockQuote = async (symbol: string): Promise<StockQuote | null> => {
 
     // Cache for 60 seconds
     await setCachedData(cacheKey, stockData, 60);
-    console.log(`Cached quote for ${symbol}`);
+    logger.info(`Cached quote for ${symbol}`);
 
     return stockData;
   } catch (error) {
-    console.error(`Error fetching quote for ${symbol}:`, error);
+    logger.error(`Error fetching quote for ${symbol}:`, error);
     return null;
   }
 };
@@ -97,7 +98,7 @@ router.get('/overview', async (req: Request, res: Response) => {
   // Check cache first (2 minute TTL for overview)
   const cached = await getCachedData(cacheKey);
   if (cached) {
-    console.log('Returning cached market overview');
+    logger.info('Returning cached market overview');
     return res.json({
       success: true,
       data: cached,
@@ -106,7 +107,7 @@ router.get('/overview', async (req: Request, res: Response) => {
   }
 
   try {
-    console.log('Fetching fresh market overview...');
+    logger.info('Fetching fresh market overview...');
 
     // Popular tech stocks to track
     const symbols = ['AAPL', 'MSFT', 'GOOGL', 'NVDA']; // Reduced to 4 for faster response
@@ -122,7 +123,7 @@ router.get('/overview', async (req: Request, res: Response) => {
 
       // Add delay between requests (12 seconds = 5 requests/minute)
       if (i < symbols.length - 1) {
-        console.log(`Waiting 12 seconds before next request... (${i + 1}/${symbols.length})`);
+        logger.info(`Waiting 12 seconds before next request... (${i + 1}/${symbols.length})`);
         await new Promise((resolve) => setTimeout(resolve, 12000));
       }
     }
@@ -149,7 +150,7 @@ router.get('/overview', async (req: Request, res: Response) => {
 
     // Cache for 2 minutes
     await setCachedData(cacheKey, overviewData, 120);
-    console.log('Market overview fetched and cached');
+    logger.info('Market overview fetched and cached');
 
     res.json({
       success: true,
@@ -157,7 +158,7 @@ router.get('/overview', async (req: Request, res: Response) => {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error('Error in market overview:', error);
+    logger.error('Error in market overview:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to fetch market overview',
@@ -173,7 +174,7 @@ router.get('/overview', async (req: Request, res: Response) => {
 router.get('/quote/:symbol', async (req: Request, res: Response) => {
   try {
     const { symbol } = req.params;
-    console.log(`Quote request for: ${symbol}`);
+    logger.info(`Quote request for: ${symbol}`);
 
     const quote = await fetchStockQuote(symbol.toUpperCase());
 
@@ -190,7 +191,7 @@ router.get('/quote/:symbol', async (req: Request, res: Response) => {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error('Error fetching quote:', error);
+    logger.error('Error fetching quote:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to fetch quote',
@@ -217,7 +218,7 @@ router.get('/movers', async (req: Request, res: Response) => {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error('Error fetching market movers:', error);
+    logger.error('Error fetching market movers:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to fetch market movers',
