@@ -68,17 +68,10 @@ const MainApplicationContent: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Sync active tab with URL location
-  useEffect(() => {
-    const path = location.pathname.substring(1); // remove leading slash
-    if (path) {
-      setActiveNavigationTab(path);
-    }
-  }, [location]);
+  // Derive active tab from URL location
+  const path = location.pathname.substring(1); // remove leading slash
+  const activeNavigationTab = path || "overview";
 
-  // Local state for navigation
-  const [activeNavigationTab, setActiveNavigationTab] =
-    useState<string>("overview");
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
 
   const initializeApplication = useCallback(async () => {
@@ -123,28 +116,8 @@ const MainApplicationContent: React.FC = () => {
 
   // Handle navigation tab changes
   const handleNavigationTabChange = useCallback((tabName: string) => {
-    setActiveNavigationTab(tabName);
     navigate(`/${tabName}`);
   }, [navigate]);
-
-  // Wait, I need to use navigate.
-  // I will refactor this in a separate step or just assume the user clicks the tab and it updates state?
-  // Actually, NavigationHeader just calls onTabChange.
-  // The Routes are matched by URL path.
-  // We need to sync `activeNavigationTab` state with URL or vice versa.
-  // For now, let's keep it simple and just rely on the user clicking which updates the internal state 
-  // AND pushes a navigation event?
-  // Ah, the `NavigationHeader` uses simple `button`s.
-  // I should update `handleNavigationTabChange` to actually navigate.
-
-  // Let's fix the logic below this comment block with a proper implementation.
-  // Since I can't use hooks conditionally or easily inside `replace`, 
-  // I will just use `window.history.pushState` or similar if I can't import `useNavigate` easily at top level.
-  // But wait, `MainApplicationContent` IS inside `Router`.
-  // So I can use `useNavigate`.
-
-  // I'll skip this specific Replace and do it properly in the next step.
-
 
   // Show loading spinner during initialization
   if (!isInitialized && isApplicationLoading) {
