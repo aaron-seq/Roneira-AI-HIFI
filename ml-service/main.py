@@ -16,6 +16,7 @@ import os
 import time
 import logging
 import random
+import asyncio
 from datetime import datetime, date, timedelta
 from typing import Dict, Any, List, Optional
 from contextlib import asynccontextmanager
@@ -481,34 +482,35 @@ async def predict_batch(request: BatchPredictionRequest):
     """Generate batch stock predictions"""
     logger.info(f"Generating batch predictions for {len(request.tickers)} tickers")
 
-    predictions = []
-    failed = 0
-
-    for ticker in request.tickers:
+    async def _predict_single(ticker: str):
         try:
-            prediction_data = generate_mock_prediction(ticker)
-            predictions.append(
-                StockPredictionResponse(
-                    ticker=ticker,
-                    current_price=prediction_data["current_price"],
-                    predicted_price=prediction_data["predicted_price"],
-                    price_change=prediction_data["price_change"],
-                    price_change_percent=prediction_data["price_change_percent"],
-                    confidence=prediction_data["confidence"],
-                    prediction_date=datetime.utcnow(),
-                    model_type=ModelType.RANDOM_FOREST.value,
-                    technical_indicators=prediction_data["technical_indicators"]
-                    if request.include_pdm
-                    else None,
-                    pdm_analysis=prediction_data["pdm_analysis"]
-                    if request.include_pdm
-                    else None,
-                    sentiment=prediction_data["sentiment"],
-                )
+            prediction_data = await asyncio.to_thread(generate_mock_prediction, ticker)
+            return StockPredictionResponse(
+                ticker=ticker,
+                current_price=prediction_data["current_price"],
+                predicted_price=prediction_data["predicted_price"],
+                price_change=prediction_data["price_change"],
+                price_change_percent=prediction_data["price_change_percent"],
+                confidence=prediction_data["confidence"],
+                prediction_date=datetime.utcnow(),
+                model_type=ModelType.RANDOM_FOREST.value,
+                technical_indicators=prediction_data["technical_indicators"]
+                if request.include_pdm
+                else None,
+                pdm_analysis=prediction_data["pdm_analysis"]
+                if request.include_pdm
+                else None,
+                sentiment=prediction_data["sentiment"],
             )
         except Exception as e:
             logger.error(f"Failed to predict {ticker}: {e}")
-            failed += 1
+            return None
+
+    tasks = [_predict_single(ticker) for ticker in request.tickers]
+    results = await asyncio.gather(*tasks)
+
+    predictions = [p for p in results if p is not None]
+    failed = len(request.tickers) - len(predictions)
 
     return BatchPredictionResponse(
         predictions=predictions,
