@@ -26,7 +26,6 @@ async function diagnose() {
     }
 
     // 3. Test Prediction Flow (Backend -> ML Service)
-    console.log('\n3. Testing Full Prediction Flow (Backend -> ML)...');
     try {
         // Attempting a prediction for AAPL
         const response = await axios.post('http://127.0.0.1:3001/api/predict', {
