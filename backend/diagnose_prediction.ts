@@ -1,8 +1,6 @@
 import axios from 'axios';
 
 async function diagnose() {
-    console.log('--- Diagnosing Roneira AI HIFI Services ---');
-
     // 1. Check ML Service Direct
     console.log('\n1. Checking ML Service (Port 5000)...');
     try {
