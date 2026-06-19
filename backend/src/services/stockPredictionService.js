@@ -182,27 +182,25 @@ export class StockPredictionService {
    * Fallback method for batch predictions using individual calls
    */
   async getFallbackBatchPredictions(tickerSymbols) {
-    const results = [];
-    
-    for (const ticker of tickerSymbols) {
+    const promises = tickerSymbols.map(async (ticker) => {
       try {
         const prediction = await this.getPrediction(ticker, 1);
-        results.push({
+        return {
           ticker,
           success: true,
           ...prediction
-        });
+        };
       } catch (error) {
-        results.push({
+        return {
           ticker,
           success: false,
           error: error.message,
           timestamp: new Date().toISOString()
-        });
+        };
       }
-    }
+    });
     
-    return results;
+    return Promise.all(promises);
   }
 
   /**
