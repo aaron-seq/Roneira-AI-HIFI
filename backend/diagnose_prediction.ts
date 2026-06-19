@@ -19,8 +19,7 @@ async function diagnose() {
     // 2. Check Backend Proxy
     console.log('\n2. Checking Backend API (Port 3001)...');
     try {
-        const health = await axios.get('http://127.0.0.1:3001/api/market/health');
-        console.log('✅ Backend Service Healthy:', health.data.status);
+        await axios.get('http://127.0.0.1:3001/api/market/health');
     } catch (error) {
         console.error('❌ Backend Service Unreachable:', error.message);
     }
