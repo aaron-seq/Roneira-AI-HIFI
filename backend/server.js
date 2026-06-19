@@ -116,8 +116,6 @@ app.post('/api/batch_predict', async (request, response) => {
             });
         }
 
-        console.log(`Requesting batch prediction for ${tickers.length} tickers`);
-
         // Forward the request to the Python ML service
         const predictionResponse = await axios.post(`${ML_SERVICE_URL}/batch_predict`, {
             tickers: tickers.map(t => t.toUpperCase())
