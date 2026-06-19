@@ -111,12 +111,25 @@ export const speak = (text: string, options?: SpeechSynthesisUtterance): Promise
 
     // Select a good voice if available
     const voices = window.speechSynthesis.getVoices();
-    const preferredVoice = voices.find(v => 
-      v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Neural')
-    ) || voices.find(v => v.lang.startsWith('en'));
+    const PREFERRED_VOICE_REGEX = /Google|Natural|Neural/;
     
-    if (preferredVoice) {
-      utterance.voice = preferredVoice;
+    let preferredVoice: SpeechSynthesisVoice | undefined;
+    let fallbackVoice: SpeechSynthesisVoice | undefined;
+
+    for (let i = 0, len = voices.length; i < len; i++) {
+      const v = voices[i];
+      if (PREFERRED_VOICE_REGEX.test(v.name)) {
+        preferredVoice = v;
+        break;
+      }
+      if (!fallbackVoice && v.lang.startsWith('en')) {
+        fallbackVoice = v;
+      }
+    }
+
+    const selectedVoice = preferredVoice || fallbackVoice;
+    if (selectedVoice) {
+      utterance.voice = selectedVoice;
     }
 
     utterance.onend = () => resolve();
