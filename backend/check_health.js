@@ -1,7 +1,6 @@
 const axios = require('axios');
 
 async function checkHealth() {
-    console.log('Checking Backend Health directly...');
     const start = Date.now();
     try {
         const response = await axios.get('http://localhost:3001/api/market/health');
