@@ -228,10 +228,22 @@ class RateLimiter {
     const windowStart = now - this.config.windowMs;
     
     // Get existing requests for this key
-    let requests = this.requests.get(key) || [];
+    let requests = this.requests.get(key);
+    if (!requests) {
+      requests = [];
+      this.requests.set(key, requests);
+    }
+
+    // Find the number of expired requests
+    let dropIndex = 0;
+    while (dropIndex < requests.length && requests[dropIndex] <= windowStart) {
+      dropIndex++;
+    }
     
-    // Filter to only requests within the window
-    requests = requests.filter(time => time > windowStart);
+    // Remove old requests efficiently in place
+    if (dropIndex > 0) {
+      requests.splice(0, dropIndex);
+    }
     
     // Check if under limit
     if (requests.length >= this.config.maxRequests) {
@@ -240,7 +252,6 @@ class RateLimiter {
     
     // Add current request
     requests.push(now);
-    this.requests.set(key, requests);
     
     return true;
   }
