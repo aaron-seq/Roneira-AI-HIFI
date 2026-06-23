@@ -7,7 +7,6 @@ async function diagnose() {
     console.log('\n1. Checking ML Service (Port 5000)...');
     try {
         const health = await axios.get('http://127.0.0.1:5000/health');
-        console.log('✅ ML Service Healthy:', health.data.service_status);
 
         // Try a direct prediction (mock payload if needed, or simple GET if GET is supported for testing)
         // Assuming POST for prediction based on context, but let's try a simple prediction if possible
