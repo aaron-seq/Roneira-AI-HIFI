@@ -3,7 +3,24 @@ import {
   getPeerConfigs,
   inferAssetType,
   inferCurrency,
+  inferExchange,
 } from "@/lib/market/constants";
+
+describe("inferExchange", () => {
+  it("infers exchange based on symbol suffix or prefix", () => {
+    expect(inferExchange("RELIANCE.NS")).toBe("NSE");
+    expect(inferExchange("TCS.BO")).toBe("BSE");
+    expect(inferExchange("^NSEI")).toBe("INDEX");
+    expect(inferExchange("BTC-USD")).toBe("CRYPTO");
+    expect(inferExchange("EURUSD=X")).toBe("FX");
+    expect(inferExchange("GC=F")).toBe("FUTURES");
+  });
+
+  it("defaults to NASDAQ for unknown formats", () => {
+    expect(inferExchange("AAPL")).toBe("NASDAQ");
+    expect(inferExchange("MSFT")).toBe("NASDAQ");
+  });
+});
 
 describe("market symbol helpers", () => {
   it("normalizes common US equity symbols for provider usage", () => {
