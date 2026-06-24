@@ -407,7 +407,7 @@ export async function searchStocks(query: string): Promise<StockSearchResult[]> 
   });
 }
 
-function getHistoryOutputSize(range: string) {
+export function getHistoryOutputSize(range: string) {
   switch (range) {
     case "1month":
       return 30;
