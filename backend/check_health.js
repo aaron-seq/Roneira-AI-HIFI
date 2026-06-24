@@ -1,14 +1,15 @@
 const axios = require('axios');
+const logger = require('./src/utils/logger');
 
 async function checkHealth() {
-    console.log('Checking Backend Health directly...');
+    logger.info('Checking Backend Health directly...');
     const start = Date.now();
     try {
         const response = await axios.get('http://localhost:3001/api/market/health');
-        console.log(`Response Time: ${Date.now() - start}ms`);
-        console.log('Status:', response.data);
+        logger.info(`Response Time: ${Date.now() - start}ms`);
+        logger.info(`Status: ${JSON.stringify(response.data)}`);
     } catch (e) {
-        console.log('Backend Health Check Failed:', e.message);
+        logger.error(`Backend Health Check Failed: ${e.message}`);
     }
 }
 
