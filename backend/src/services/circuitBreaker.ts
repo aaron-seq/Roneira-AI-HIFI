@@ -91,7 +91,7 @@ function createStateChangeHandlers<T>(name: string, _fallbackFn?: () => T) {
  */
 export function createCircuitBreaker<TParams extends unknown[], TResult>(
   fn: (...args: TParams) => Promise<TResult>,
-  _fallbackFn?: (...args: TParams) => TResult | Promise<TResult>,
+  fallbackFn?: (...args: TParams) => TResult | Promise<TResult>,
   options: CircuitBreakerOptions = {}
 ): CircuitBreaker<TParams, TResult> {
   const mergedOptions = { ...DEFAULT_OPTIONS, ...options };
