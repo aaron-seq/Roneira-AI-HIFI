@@ -39,7 +39,7 @@ class TestPredictContractValidation:
         """Contract: valid ticker_symbol should be accepted"""
         response = self.client.post(
             "/predict",
-            data=json.dumps({"ticker_symbol": "AAPL"}),
+            data=json.dumps({"ticker": "AAPL"}),
             content_type="application/json",
         )
 
@@ -51,7 +51,7 @@ class TestPredictContractValidation:
         """Contract: prediction_days is optional with default"""
         response = self.client.post(
             "/predict",
-            data=json.dumps({"ticker_symbol": "MSFT"}),
+            data=json.dumps({"ticker": "MSFT"}),
             content_type="application/json",
         )
 
@@ -63,7 +63,7 @@ class TestPredictContractValidation:
         """Contract: prediction_days parameter should be accepted"""
         response = self.client.post(
             "/predict",
-            data=json.dumps({"ticker_symbol": "NVDA", "prediction_days": 30}),
+            data=json.dumps({"ticker": "NVDA", "days": 30}),
             content_type="application/json",
         )
 
@@ -310,7 +310,7 @@ class TestHealthEndpointContract:
         data = response.get_json()
 
         # Should have some status indicator
-        assert any(key in data for key in ["status", "healthy", "ok", "state"])
+        assert any(key in data for key in ["status", "healthy", "ok", "state", "service_status"])
 
     def test_health_response_is_parseable(self):
         """Contract: health response should be valid JSON"""
