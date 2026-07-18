@@ -1,3 +1,5 @@
+import logger from '../utils/logger';
+
 /**
  * Redis Cache Service with TypeScript
  * Provides caching functionality with TTL support
@@ -35,7 +37,7 @@ export async function getCachedData(key: string): Promise<unknown | null> {
 
     return cached.value;
   } catch (error) {
-    console.error(`Cache get error for key ${key}:`, error);
+    logger.error(`Cache get error for key ${key}:`, { error: error instanceof Error ? error.message : String(error) });
     return null;
   }
 }
@@ -53,9 +55,9 @@ export async function setCachedData(key: string, value: unknown, ttl: number): P
       expiry: Date.now() + ttl * 1000,
     };
 
-    console.log(`Cached key: ${key} (TTL: ${ttl}s)`);
+    logger.info(`Cached key: ${key} (TTL: ${ttl}s)`);
   } catch (error) {
-    console.error(`Cache set error for key ${key}:`, error);
+    logger.error(`Cache set error for key ${key}:`, { error: error instanceof Error ? error.message : String(error) });
   }
 }
 
@@ -66,9 +68,9 @@ export async function setCachedData(key: string, value: unknown, ttl: number): P
 export async function deleteCachedData(key: string): Promise<void> {
   try {
     delete memoryCache[key];
-    console.log(`Deleted cache key: ${key}`);
+    logger.info(`Deleted cache key: ${key}`);
   } catch (error) {
-    console.error(`Cache delete error for key ${key}:`, error);
+    logger.error(`Cache delete error for key ${key}:`, { error: error instanceof Error ? error.message : String(error) });
   }
 }
 
@@ -80,9 +82,9 @@ export async function clearCache(): Promise<void> {
     Object.keys(memoryCache).forEach((key) => {
       delete memoryCache[key];
     });
-    console.log('Cache cleared');
+    logger.info('Cache cleared');
   } catch (error) {
-    console.error('Cache clear error:', error);
+    logger.error('Cache clear error:', { error: error instanceof Error ? error.message : String(error) });
   }
 }
 
