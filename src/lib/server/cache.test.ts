@@ -41,4 +41,36 @@ describe("server cache", () => {
     expect(refreshed).toBe(2);
     expect(calls).toBe(2);
   });
+
+  describe("clearCachedValue", () => {
+    it("clears all cached values when no key is provided", async () => {
+      let calls1 = 0;
+      let calls2 = 0;
+      await getCachedValue("key1", 1_000, async () => { calls1++; return "val1"; });
+      await getCachedValue("key2", 1_000, async () => { calls2++; return "val2"; });
+
+      clearCachedValue();
+
+      await getCachedValue("key1", 1_000, async () => { calls1++; return "val1"; });
+      await getCachedValue("key2", 1_000, async () => { calls2++; return "val2"; });
+
+      expect(calls1).toBe(2);
+      expect(calls2).toBe(2);
+    });
+
+    it("clears only the specific key when a key is provided", async () => {
+      let calls1 = 0;
+      let calls2 = 0;
+      await getCachedValue("key1", 1_000, async () => { calls1++; return "val1"; });
+      await getCachedValue("key2", 1_000, async () => { calls2++; return "val2"; });
+
+      clearCachedValue("key1");
+
+      await getCachedValue("key1", 1_000, async () => { calls1++; return "val1"; });
+      await getCachedValue("key2", 1_000, async () => { calls2++; return "val2"; });
+
+      expect(calls1).toBe(2);
+      expect(calls2).toBe(1); // Not called again, used cache
+    });
+  });
 });
