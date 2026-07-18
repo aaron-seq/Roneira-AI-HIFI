@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { getCachedData, setCachedData } from './cacheService.js';
+import logger from '../utils/logger.js';
 
 const ALPHA_VANTAGE_API_KEY = process.env.ALPHA_VANTAGE_API_KEY || '';
 const BASE_URL = 'https://www.alphavantage.co/query';
@@ -81,7 +82,7 @@ export async function getGlobalQuote(symbol: string): Promise<GlobalQuote | null
     const quoteData = response.data['Global Quote'];
 
     if (!quoteData || Object.keys(quoteData).length === 0) {
-      console.log(`No data returned for symbol: ${symbol}`);
+      logger.warn(`No data returned for symbol: ${symbol}`);
       return null;
     }
 
@@ -104,9 +105,9 @@ export async function getGlobalQuote(symbol: string): Promise<GlobalQuote | null
     return quote;
   } catch (error: unknown) {
     if (error instanceof Error) {
-      console.error(`Error fetching quote for ${symbol}:`, error.message);
+      logger.error(`Error fetching quote for ${symbol}: ${error.message}`);
     } else {
-      console.error(`Error fetching quote for ${symbol}:`, String(error));
+      logger.error(`Error fetching quote for ${symbol}: ${String(error)}`);
     }
     return null;
   }
@@ -162,7 +163,7 @@ export async function getTimeSeriesDaily(
     const timeSeriesData = response.data['Time Series (Daily)'];
 
     if (!timeSeriesData) {
-      console.log(`No time series data for symbol: ${symbol}`);
+      logger.warn(`No time series data for symbol: ${symbol}`);
       return null;
     }
 
@@ -187,9 +188,9 @@ export async function getTimeSeriesDaily(
     return data;
   } catch (error: unknown) {
     if (error instanceof Error) {
-      console.error(`Error fetching time series for ${symbol}:`, error.message);
+      logger.error(`Error fetching time series for ${symbol}: ${error.message}`);
     } else {
-      console.error(`Error fetching time series for ${symbol}:`, String(error));
+      logger.error(`Error fetching time series for ${symbol}: ${String(error)}`);
     }
     return null;
   }
@@ -256,9 +257,9 @@ export async function getMarketOverview(): Promise<MarketOverview> {
     return overview;
   } catch (error: unknown) {
     if (error instanceof Error) {
-      console.error('Error fetching market overview:', error.message);
+      logger.error(`Error fetching market overview: ${error.message}`);
     } else {
-      console.error('Error fetching market overview:', String(error));
+      logger.error(`Error fetching market overview: ${String(error)}`);
     }
     throw error;
   }
