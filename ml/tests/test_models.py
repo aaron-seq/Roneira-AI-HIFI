@@ -317,6 +317,19 @@ class TestEnsemble:
         names = [ind["name"] for ind in result["indicators"]]
         assert len(names) == len(set(names)), "Duplicate indicators found"
 
+    def test_combine_invalid_inputs(self, ensemble):
+        preds = [
+            {"predicted_price": 100},  # Missing everything else
+            {"confidence": 80, "indicators": []},  # Missing price, signals
+            {},  # Completely empty
+        ]
+        result = ensemble.combine(preds)
+        # Should handle missing data gracefully with defaults
+        assert "predicted_price" in result
+        assert "confidence" in result
+        assert "short_term_signal" in result
+        assert result["short_term_signal"]["signal"] == "HOLD"  # Default signal
+
 
 # ========== Integration / End-to-End Tests ==========
 class TestIntegration:
