@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 
 type ResponseCookie = {
   name: string;
@@ -30,8 +31,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const admin = createAdminClient();
-    const { data, error } = await admin
+    const supabase = await createClient();
+    const { data, error } = await supabase
       .from("users")
       .select("id")
       .eq("username", username)
@@ -64,10 +65,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const anonSupabase = await createClient();
     const admin = createAdminClient();
-    const { data: profile, error: profileError } = await admin
+    const { data: profile, error: profileError } = await anonSupabase
       .from("users")
-      .select("id, email")
+      .select("id")
       .eq("username", username)
       .maybeSingle();
 
@@ -75,7 +77,26 @@ export async function POST(request: NextRequest) {
       throw profileError;
     }
 
-    if (!profile?.email) {
+    if (!profile) {
+      return NextResponse.json(
+        { error: "Invalid username or password" },
+        { status: 401 }
+      );
+    }
+
+    const { data: emailData, error: emailError } = await admin
+      .from("users")
+      .select("email")
+      .eq("id", profile.id)
+      .maybeSingle();
+
+    if (emailError) {
+      throw emailError;
+    }
+
+    const email = emailData?.email;
+
+    if (!email) {
       return NextResponse.json(
         { error: "Invalid username or password" },
         { status: 401 }
@@ -101,7 +122,7 @@ export async function POST(request: NextRequest) {
     );
 
     const { error: authError } = await supabase.auth.signInWithPassword({
-      email: profile.email,
+      email,
       password,
     });
 
