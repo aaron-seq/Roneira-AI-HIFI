@@ -111,21 +111,9 @@ router.get('/overview', async (req: Request, res: Response) => {
     // Popular tech stocks to track
     const symbols = ['AAPL', 'MSFT', 'GOOGL', 'NVDA']; // Reduced to 4 for faster response
 
-    // Fetch quotes sequentially with rate limiting
-    const trendingStocks: StockQuote[] = [];
-
-    for (let i = 0; i < symbols.length; i++) {
-      const quote = await fetchStockQuote(symbols[i]);
-      if (quote) {
-        trendingStocks.push(quote);
-      }
-
-      // Add delay between requests (12 seconds = 5 requests/minute)
-      if (i < symbols.length - 1) {
-        console.log(`Waiting 12 seconds before next request... (${i + 1}/${symbols.length})`);
-        await new Promise((resolve) => setTimeout(resolve, 12000));
-      }
-    }
+    // Fetch quotes concurrently
+    const quotes = await Promise.all(symbols.map(fetchStockQuote));
+    const trendingStocks: StockQuote[] = quotes.filter((quote): quote is StockQuote => quote !== null);
 
     // Calculate market sentiment
     const positiveStocks = trendingStocks.filter((s) => s.change > 0).length;
