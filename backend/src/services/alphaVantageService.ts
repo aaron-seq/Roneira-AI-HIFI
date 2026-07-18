@@ -121,14 +121,18 @@ export async function getBatchQuotes(
   const results: Record<string, GlobalQuote | null> = {};
 
   // Alpha Vantage free tier: 5 requests per minute
-  // Add delay between requests to avoid rate limiting
-  for (const symbol of symbols) {
-    results[symbol] = await getGlobalQuote(symbol);
-    // 12 second delay = 5 requests per minute
-    if (symbols.indexOf(symbol) < symbols.length - 1) {
-      await new Promise((resolve) => setTimeout(resolve, 12000));
+  // We stagger the requests by 12 seconds to avoid rate limiting
+  const quotes = await Promise.all(symbols.map(async (symbol, index) => {
+    if (index > 0) {
+      // 12 second delay = 5 requests per minute
+      await new Promise((resolve) => setTimeout(resolve, index * 12000));
     }
-  }
+    return getGlobalQuote(symbol);
+  }));
+
+  symbols.forEach((symbol, index) => {
+    results[symbol] = quotes[index];
+  });
 
   return results;
 }
