@@ -3,7 +3,9 @@ module.exports = {
   testEnvironment: 'node',
   transform: {
     '^.+\\.tsx?$': 'ts-jest',
+    '^.+\\.jsx?$': 'babel-jest',
   },
+  transformIgnorePatterns: ['/node_modules/'],
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
