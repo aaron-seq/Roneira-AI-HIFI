@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { StatusCodes } from 'http-status-codes';
 import { logger } from '../utils/logger.js';
 import { createErrorResponse } from '../utils/responseFormatter.js';
@@ -93,6 +94,6 @@ export function errorHandler(error, request, response, next) {
  */
 function generateErrorTrackingId() {
   const timestamp = Date.now().toString(36);
-  const randomPart = Math.random().toString(36).substring(2, 8);
+  const randomPart = crypto.randomBytes(4).toString('hex');
   return `err_${timestamp}_${randomPart}`;
 }
