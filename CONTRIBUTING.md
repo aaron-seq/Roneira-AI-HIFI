@@ -138,12 +138,11 @@ cd frontend && npm ci && cd ..
 # Backend dependencies
 cd backend && npm ci && cd ..
 
-# ML service dependencies
+# ML service dependencies (requirements.txt is the single source of truth)
 cd ml-service
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-pip install -r requirements-dev.txt
 cd ..
 ```
 
@@ -167,8 +166,8 @@ cd frontend && npm run dev
 # Terminal 2: Backend (http://localhost:3001)
 cd backend && npm run dev
 
-# Terminal 3: ML Service (http://localhost:5000)
-cd ml-service && source venv/bin/activate && python app.py
+# Terminal 3: ML Service (http://localhost:8000)
+cd ml-service && source venv/bin/activate && uvicorn main:app --reload --port 8000
 ```
 
 </details>
@@ -527,6 +526,84 @@ class TechnicalIndicators:
 ```
 
 </details>
+
+## Repository Map & Canonical Entrypoints
+
+Before changing a service, know which file actually runs. The repo has some
+historical duplicate files; only the canonical entrypoint below is deployed.
+
+| Area | Canonical entrypoint | Run with | Notes |
+|------|----------------------|----------|-------|
+| **Frontend** | `src/` (Next.js app) | `npm run dev` | Root `package.json`. |
+| **Backend API** | `backend/src/server.ts` | `npm run dev` (in `backend/`) | The **only** backend entrypoint. Do not add `.js` siblings — they won't be compiled or run. See `backend/README.md`. |
+| **ML models** | `ml/app/main.py` (FastAPI) | `npm run ml:dev` | Six pluggable models + offline LSTM/GAN artifacts. See `ml/MODELS.md`. |
+| **ML service (legacy)** | `ml-service/main.py` (FastAPI) | `uvicorn main:app` | Separate deployment; `app.py` (Flask) exists only for its test suite. See `ml-service/README.md`. |
+
+**Dependency rule for the ML service**: `requirements.txt` is the single source
+of truth. `pyproject.toml` reads its dependencies from that file, so
+`pip install -r requirements.txt` and `pip install .` never diverge.
+
+## Contributing a Machine Learning Model
+
+Read [`ml/MODELS.md`](ml/MODELS.md) first — it reviews the existing six models
+(Random Forest, LSTM, GAN, Technical Analysis, PVD Momentum, Ensemble) and the
+decision guide for when each is appropriate. A new model should fill a gap that
+table doesn't already cover.
+
+### Checklist
+
+- [ ] **Location**: add the module under `ml/app/models/<your_model>.py`.
+- [ ] **Interface**: implement `predict(df, horizon)` (or `analyze(...)` for
+      rule-based engines) returning the standard prediction dict
+      (`predicted_price`, `confidence`, `indicators`, …) and an `is_ready()`
+      method so the health endpoint can report degraded state.
+- [ ] **Keep training offline**: heavy training belongs in `ml/train_models.py`,
+      producing a versioned artifact loaded at startup — **never** train inside a
+      request handler on the hot path (the LSTM/GAN models are the reference
+      pattern; Random Forest is the accepted exception and is documented as
+      retraining per-request).
+- [ ] **Graceful fallback**: if an optional heavy dependency (e.g. TensorFlow)
+      or artifact is missing, degrade to a documented fallback and log a warning
+      instead of crashing.
+- [ ] **Register it**: wire the model into the `model_type` switch and the
+      `/models` list in `ml/app/main.py`. If it should participate in the
+      Ensemble, add it there with a justified weight.
+- [ ] **Validate honestly**: use `TimeSeriesSplit` (or a walk-forward scheme) —
+      never a random split — to avoid look-ahead leakage on time-series data.
+- [ ] **Numerical safety**: handle NaNs, empty/short histories, and
+      division-by-zero explicitly (see the PDM engine's `np.where` volume-
+      sensitivity handling for the expected standard).
+- [ ] **Document it**: add a row to the comparison table in `ml/MODELS.md` with
+      an honest strengths **and** weaknesses entry, plus a short review section.
+- [ ] **Test it**: add `pytest` cases covering the happy path, an
+      insufficient-data input, and the fallback path.
+
+### Anti-patterns we reject
+
+- Hard-coded results (e.g. a backtest that returns a fixed number instead of
+  computing it — this was a real bug fixed in the PDM engine, issue #7).
+- Arbitrary "demo" limits left in production paths (`for x in items[:10]  # remove in production`).
+- Fetching the same market data more than once per request.
+- Binary/all-or-nothing confidence scores where a continuous, magnitude-aware
+  score is feasible.
+
+## Fixing a Reported Issue
+
+Most contributions here start from a GitHub issue. The expected workflow:
+
+1. **Claim it** — comment on the issue so work isn't duplicated.
+2. **Branch** — `git checkout -b bugfix/<issue-number>-short-description`
+   (or `feature/…`). Reference the issue number in the branch name.
+3. **Reproduce first** — add or identify a failing test that captures the bug
+   before fixing it, where practical.
+4. **Fix the root cause**, not the symptom. If the issue lists a "Recommended
+   Fix", treat it as a starting point, not gospel — implement the approach that
+   best fits the codebase.
+5. **Verify**: run the relevant test suite(s) and type checks (see below). For
+   backend/ML changes, `backend: npm test && npm run type-check`; `ml:
+   pytest`.
+6. **Reference the issue** in your commit and PR body: `Closes #<number>`.
+7. **Keep the PR scoped** to the issue — unrelated cleanup belongs in its own PR.
 
 ## Testing Requirements
 
