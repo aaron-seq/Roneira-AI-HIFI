@@ -77,15 +77,18 @@ const mlPredictBreaker = createCircuitBreaker<[Record<string, unknown>], AxiosRe
   { ...ML_SERVICE_CIRCUIT_OPTIONS, name: 'MLService-Predict' }
 );
 
+// Route paths match the canonical FastAPI service (ml-service/main.py):
+// /predict, /predict/batch, /pdm/scan, /pdm/backtest. The service does not
+// define the legacy underscore variants, so the proxy must use these.
 const mlBatchPredictBreaker = createCircuitBreaker<[Record<string, unknown>], AxiosResponse>(
   (payload) =>
     withRetry(
       () =>
-        axios.post(`${ML_SERVICE_URL}/batch_predict`, payload, {
+        axios.post(`${ML_SERVICE_URL}/predict/batch`, payload, {
           timeout: ML_REQUEST_TIMEOUT_MS * 2,
           headers: mlServiceHeaders(),
         }),
-      { name: 'ml-service:/batch_predict', attempts: 3, baseDelayMs: 100 }
+      { name: 'ml-service:/predict/batch', attempts: 3, baseDelayMs: 100 }
     ),
   undefined,
   { ...ML_SERVICE_CIRCUIT_OPTIONS, name: 'MLService-BatchPredict' }
@@ -93,8 +96,8 @@ const mlBatchPredictBreaker = createCircuitBreaker<[Record<string, unknown>], Ax
 
 const mlPdmScanBreaker = createCircuitBreaker<[], AxiosResponse>(
   () =>
-    withRetry(() => axios.get(`${ML_SERVICE_URL}/pdm_scan`, { timeout: ML_REQUEST_TIMEOUT_MS * 3 }), {
-      name: 'ml-service:/pdm_scan',
+    withRetry(() => axios.get(`${ML_SERVICE_URL}/pdm/scan`, { timeout: ML_REQUEST_TIMEOUT_MS * 3 }), {
+      name: 'ml-service:/pdm/scan',
       attempts: 2,
       baseDelayMs: 200,
     }),
@@ -106,8 +109,8 @@ const mlPdmBacktestBreaker = createCircuitBreaker<[Record<string, unknown>], Axi
   (payload) =>
     withRetry(
       () =>
-        axios.post(`${ML_SERVICE_URL}/pdm_backtest`, payload, { timeout: ML_REQUEST_TIMEOUT_MS * 3 }),
-      { name: 'ml-service:/pdm_backtest', attempts: 2, baseDelayMs: 200 }
+        axios.post(`${ML_SERVICE_URL}/pdm/backtest`, payload, { timeout: ML_REQUEST_TIMEOUT_MS * 3 }),
+      { name: 'ml-service:/pdm/backtest', attempts: 2, baseDelayMs: 200 }
     ),
   undefined,
   { ...ML_SERVICE_CIRCUIT_OPTIONS, name: 'MLService-PdmBacktest' }
@@ -398,7 +401,11 @@ class BackendServer {
     const prediction_days = Math.min(Math.max(prediction_request.days || 1, 1), 30);
     const include_pdm_analysis = prediction_request.include_pdm !== false;
 
-    const cache_key = `prediction:${sanitized_ticker}:${prediction_days}`;
+    // include_pdm changes the response shape (PDM/technical fields present or
+    // not), so it must be part of the cache key - otherwise a cached
+    // include_pdm=false response could be served to an include_pdm=true caller
+    // and vice versa.
+    const cache_key = `prediction:${sanitized_ticker}:${prediction_days}:pdm=${include_pdm_analysis}`;
     const last_known_good_key = `${cache_key}:last-known-good`;
     const ttl_seconds = VOLATILE_TICKERS.has(sanitized_ticker)
       ? PREDICTION_TTL_VOLATILE_SECONDS
