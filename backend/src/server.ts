@@ -34,8 +34,6 @@ import {
   invalidateByPrefix,
 } from './services/cacheService';
 import database from './services/databaseService';
-import * as authService from './services/authService';
-import { AuthError } from './services/authService';
 import { requireAuth, requireSelfOrAdmin, requireAdmin } from './middleware/authMiddleware';
 
 // Load environment variables
@@ -266,25 +264,9 @@ class BackendServer {
 
     this.application.get('/api/news', this.handle_get_news.bind(this));
 
-    // Auth endpoints get their own stricter rate limit (brute-force protection)
-    const auth_rate_limiter = rateLimit({
-      windowMs: 15 * 60 * 1000,
-      max: 10,
-      message: { error: 'Too many authentication attempts. Please try again later.' },
-      standardHeaders: true,
-      legacyHeaders: false,
-    });
-
-    this.application.post(
-      '/api/auth/login',
-      auth_rate_limiter,
-      this.handle_login.bind(this)
-    );
-    this.application.post(
-      '/api/auth/register',
-      auth_rate_limiter,
-      this.handle_register.bind(this)
-    );
+    // Note: user login/registration is handled by the frontend directly
+    // against Supabase Auth. The backend does not issue tokens; it verifies
+    // the Supabase-issued access token on protected routes (see requireAuth).
   }
 
   private initialize_error_handlers(): void {
@@ -358,9 +340,8 @@ class BackendServer {
         batch_prediction: 'POST /api/batch_predict',
         pdm_opportunity_scan: 'GET /api/pdm_scan',
         pdm_backtesting: 'POST /api/pdm_backtest',
-        portfolio_management: 'GET|POST /api/portfolio/:user_id (requires Authorization: Bearer <token>)',
-        auth_login: 'POST /api/auth/login',
-        auth_register: 'POST /api/auth/register',
+        portfolio_management:
+          'GET|POST /api/portfolio/:user_id (requires Authorization: Bearer <Supabase access token>)',
         cache_invalidate: 'POST /api/cache/invalidate/:ticker (admin only)',
       },
       features: [
@@ -689,36 +670,6 @@ class BackendServer {
     logger.info(`Cache invalidated for ${ticker_validation.normalized} (${removed} entries removed)`);
 
     sendSuccess(response, { ticker: ticker_validation.normalized, entriesRemoved: removed });
-  }
-
-  private async handle_login(request: Request, response: Response): Promise<void> {
-    try {
-      const { username, password } = request.body;
-      const result = await authService.login(username, password);
-      sendSuccess(response, result);
-    } catch (error) {
-      if (error instanceof AuthError) {
-        sendError(response, error.message, error.statusCode);
-      } else {
-        logger.error('Login error:', error);
-        sendError(response, 'Authentication failed', 500);
-      }
-    }
-  }
-
-  private async handle_register(request: Request, response: Response): Promise<void> {
-    try {
-      const { username, password } = request.body;
-      const result = await authService.register(username, password);
-      sendSuccess(response, result, 201);
-    } catch (error) {
-      if (error instanceof AuthError) {
-        sendError(response, error.message, error.statusCode);
-      } else {
-        logger.error('Registration error:', error);
-        sendError(response, 'Registration failed', 500);
-      }
-    }
   }
 
   private handle_get_news(request: Request, response: Response): void {

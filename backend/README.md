@@ -24,7 +24,7 @@ full list and defaults; the notable ones:
 | `ML_SERVICE_URL` | yes (has default) | Base URL of the ML service. Defaults to `http://localhost:8000`, matching the ml-service's `uvicorn` default port. In docker-compose this is `http://ml-service:8000`. |
 | `DATABASE_URL` | no | Postgres/TimescaleDB connection string. When unset, portfolio storage falls back to an in-memory store (data is lost on restart — a warning is logged on every write). |
 | `REDIS_URL` | no | When unset, caching falls back to an in-process memory cache. |
-| `JWT_SECRET` | yes for auth | Signs/verifies auth tokens. Generate with `openssl rand -hex 32`. |
+| `SUPABASE_JWT_SECRET` | yes for auth | The backend verifies Supabase-issued access tokens on protected routes (e.g. `/api/portfolio`); it does not issue its own. Set to your Supabase project's JWT secret. Login/signup happen on the frontend via Supabase Auth. |
 | `ALPHA_VANTAGE_API_KEY` | no | Defaults to Alpha Vantage's shared `demo` key (heavily rate-limited; get a free key at alphavantage.co). |
 
 ## Running against the ML service without Docker

@@ -70,21 +70,6 @@ export interface PredictionRecord {
 }
 
 /**
- * Backend API credential record (for the Express backend's own JWT auth,
- * distinct from Supabase Auth used directly by the frontend)
- */
-export interface ApiCredential {
-  id: string;
-  username: string;
-  passwordHash: string;
-  role: string;
-  failedLoginAttempts: number;
-  lockedUntil: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-/**
  * Database connection status
  */
 export interface DatabaseStatus {
@@ -455,74 +440,6 @@ class DatabaseService {
     );
 
     return (result.rowCount ?? 0) > 0;
-  }
-
-  // =====================================================
-  // AUTH CREDENTIALS OPERATIONS
-  // =====================================================
-
-  /**
-   * Look up a backend API credential by username
-   */
-  async getCredentialByUsername(username: string): Promise<ApiCredential | null> {
-    const result = await this.query<ApiCredential>(
-      `SELECT
-        id, username, password_hash as "passwordHash", role,
-        failed_login_attempts as "failedLoginAttempts", locked_until as "lockedUntil",
-        created_at as "createdAt", updated_at as "updatedAt"
-       FROM public.api_credentials
-       WHERE username = $1`,
-      [username.toLowerCase()]
-    );
-
-    return result.rows[0] || null;
-  }
-
-  /**
-   * Create a new backend API credential (registration)
-   */
-  async createCredential(username: string, passwordHash: string, role: string = 'user'): Promise<ApiCredential> {
-    const result = await this.query<ApiCredential>(
-      `INSERT INTO public.api_credentials (username, password_hash, role)
-       VALUES ($1, $2, $3)
-       RETURNING
-        id, username, password_hash as "passwordHash", role,
-        failed_login_attempts as "failedLoginAttempts", locked_until as "lockedUntil",
-        created_at as "createdAt", updated_at as "updatedAt"`,
-      [username.toLowerCase(), passwordHash, role]
-    );
-
-    return result.rows[0];
-  }
-
-  /**
-   * Record a failed login attempt, locking the account for `lockMinutes` once
-   * `maxAttempts` consecutive failures have occurred.
-   */
-  async recordFailedLogin(username: string, maxAttempts = 5, lockMinutes = 15): Promise<void> {
-    await this.query(
-      `UPDATE public.api_credentials
-       SET failed_login_attempts = failed_login_attempts + 1,
-           locked_until = CASE
-             WHEN failed_login_attempts + 1 >= $2
-               THEN now() + ($3 || ' minutes')::interval
-             ELSE locked_until
-           END
-       WHERE username = $1`,
-      [username.toLowerCase(), maxAttempts, lockMinutes]
-    );
-  }
-
-  /**
-   * Reset failed-login tracking after a successful login
-   */
-  async resetFailedLogins(username: string): Promise<void> {
-    await this.query(
-      `UPDATE public.api_credentials
-       SET failed_login_attempts = 0, locked_until = NULL
-       WHERE username = $1`,
-      [username.toLowerCase()]
-    );
   }
 
   // =====================================================
