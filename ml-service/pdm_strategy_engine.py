@@ -609,7 +609,6 @@ class PriceVolumeDerivativesEngine:
             ).strftime("%Y-%m-%d")
 
             trades: List[Dict] = []
-            equity = initial_capital
             per_symbol_allocation = initial_capital / max(len(universe), 1)
 
             for symbol in universe:
