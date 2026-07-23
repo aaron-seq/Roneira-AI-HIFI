@@ -118,7 +118,7 @@ services:
     container_name: roneira-ml-service
     environment:
       - PORT=8000
-      - FLASK_ENV=${FLASK_ENV:-development}
+      - ENVIRONMENT=${NODE_ENV:-development}
       - DATABASE_URL=postgresql://roneira:${POSTGRES_PASSWORD:-password}@db:5432/roneira_hifi
       - REDIS_URL=redis://cache:6379
       - HUGGING_FACE_API_KEY=${HUGGING_FACE_API_KEY}

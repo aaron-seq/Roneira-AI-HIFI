@@ -10,7 +10,7 @@
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "test": "jest --coverage",
     "test:watch": "jest --watch",
-    "test:integration": "jest --testMatch='**/*.integration.test.ts'",
+    "test:integration:docker": "jest --testPathIgnorePatterns='' --testMatch='**/tests/integration/**/*.test.ts'",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "format": "prettier --write src/**/*.ts",

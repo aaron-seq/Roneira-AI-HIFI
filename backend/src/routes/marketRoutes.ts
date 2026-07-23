@@ -1,6 +1,8 @@
 import express, { Request, Response } from 'express';
 import axios from 'axios';
 import { getCachedData, setCachedData } from '../services/cacheService';
+import { mapWithConcurrencyLimit } from '../utils/concurrency';
+import { validateTicker } from '../data/validTickers';
 
 const router = express.Router();
 
@@ -109,23 +111,19 @@ router.get('/overview', async (req: Request, res: Response) => {
     console.log('Fetching fresh market overview...');
 
     // Popular tech stocks to track
-    const symbols = ['AAPL', 'MSFT', 'GOOGL', 'NVDA']; // Reduced to 4 for faster response
+    const symbols = ['AAPL', 'MSFT', 'GOOGL', 'NVDA'];
 
-    // Fetch quotes sequentially with rate limiting
-    const trendingStocks: StockQuote[] = [];
-
-    for (let i = 0; i < symbols.length; i++) {
-      const quote = await fetchStockQuote(symbols[i]);
-      if (quote) {
-        trendingStocks.push(quote);
-      }
-
-      // Add delay between requests (12 seconds = 5 requests/minute)
-      if (i < symbols.length - 1) {
-        console.log(`Waiting 12 seconds before next request... (${i + 1}/${symbols.length})`);
-        await new Promise((resolve) => setTimeout(resolve, 12000));
-      }
-    }
+    // Fetch quotes with bounded concurrency instead of one-at-a-time with a
+    // fixed 12s delay. Individual quotes are cached for 60s (see
+    // fetchStockQuote), so repeated overview requests within that window
+    // never re-hit Alpha Vantage at all; a cold cache only issues up to
+    // `CONCURRENCY_LIMIT` simultaneous upstream requests, comfortably under
+    // Alpha Vantage's 5-requests-per-minute free-tier limit for this batch size.
+    const CONCURRENCY_LIMIT = 2;
+    const quotes = await mapWithConcurrencyLimit(symbols, CONCURRENCY_LIMIT, (symbol) =>
+      fetchStockQuote(symbol)
+    );
+    const trendingStocks: StockQuote[] = quotes.filter((quote): quote is StockQuote => quote !== null);
 
     // Calculate market sentiment
     const positiveStocks = trendingStocks.filter((s) => s.change > 0).length;
@@ -173,9 +171,19 @@ router.get('/overview', async (req: Request, res: Response) => {
 router.get('/quote/:symbol', async (req: Request, res: Response) => {
   try {
     const { symbol } = req.params;
-    console.log(`Quote request for: ${symbol}`);
+    const validation = validateTicker(symbol);
 
-    const quote = await fetchStockQuote(symbol.toUpperCase());
+    if (!validation.valid) {
+      console.warn(`Rejected quote request for invalid/unknown ticker: ${symbol}`);
+      return res.status(400).json({
+        success: false,
+        error: validation.reason,
+      });
+    }
+
+    console.log(`Quote request for: ${validation.normalized}`);
+
+    const quote = await fetchStockQuote(validation.normalized);
 
     if (!quote) {
       return res.status(404).json({

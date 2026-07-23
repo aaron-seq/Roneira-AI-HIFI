@@ -93,10 +93,18 @@ export const fetchMarketOverview = async () => {
   }
 };
 
-export const fetchPortfolio = async (userId: string) => {
+// The backend protects portfolio routes with Supabase JWT verification and
+// enforces that the :userId matches the token subject. Callers must pass the
+// authenticated user's id (the Supabase user UUID) and their access token.
+const authHeaders = (accessToken?: string): Record<string, string> =>
+  accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
+
+export const fetchPortfolio = async (userId: string, accessToken?: string) => {
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
   try {
-    const response = await fetch(`${API_BASE_URL}/api/portfolio/${userId}`);
+    const response = await fetch(`${API_BASE_URL}/api/portfolio/${userId}`, {
+      headers: { ...authHeaders(accessToken) },
+    });
     if (!response.ok) throw new Error('Failed to fetch portfolio');
     const result = await response.json();
     return result.data;
@@ -106,13 +114,20 @@ export const fetchPortfolio = async (userId: string) => {
   }
 };
 
-export const updatePortfolio = async (userId: string, ticker: string, shares: number, price: number, action: 'add' | 'remove') => {
+export const updatePortfolio = async (
+  userId: string,
+  ticker: string,
+  shares: number,
+  price: number,
+  action: 'add' | 'remove',
+  accessToken?: string
+) => {
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
   try {
     const response = await fetch(`${API_BASE_URL}/api/portfolio/${userId}/update`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ticker, shares, price, action })
+      headers: { 'Content-Type': 'application/json', ...authHeaders(accessToken) },
+      body: JSON.stringify({ ticker, shares, price, action }),
     });
     if (!response.ok) throw new Error('Failed to update portfolio');
     const result = await response.json();

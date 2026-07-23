@@ -12,16 +12,20 @@ import { Pool, PoolConfig, QueryResult, QueryResultRow } from 'pg';
 import logger from '../utils/logger';
 
 /**
- * Portfolio holding record
+ * Portfolio holding record - mirrors public.portfolio_holdings (see
+ * supabase/migrations/001_initial_schema.sql), scoped by user_id.
  */
 export interface PortfolioHolding {
   id: string;
-  portfolioId: string;
+  userId: string;
   ticker: string;
-  shares: number;
-  averageCost: number;
-  purchaseDate: Date;
-  notes?: string;
+  companyName: string;
+  exchange: string;
+  quantity: number;
+  avgBuyPrice: number;
+  buyDate: Date | null;
+  sector: string | null;
+  tags: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -42,20 +46,27 @@ export interface StockPrice {
 }
 
 /**
- * ML prediction record
+ * ML prediction record - mirrors public.prediction_history (see
+ * supabase/migrations/002_prediction_history.sql).
+ *
+ * Note: confidence is on a 0-100 scale to match that table's
+ * `confidence_score` CHECK constraint, not the 0-1 fraction used by some
+ * ML-service responses - convert at the call site if needed.
  */
 export interface PredictionRecord {
   id: string;
+  userId?: string;
   ticker: string;
-  predictionTime: Date;
-  targetDate: Date;
+  timeframe: string;
+  modelUsed: string;
+  currentPriceAtPrediction: number;
   predictedPrice: number;
   actualPrice?: number;
   confidence: number;
-  modelType: string;
-  modelVersion?: string;
-  pdmSignal?: string;
-  featuresUsed?: Record<string, unknown>;
+  technicalSignal?: string;
+  targetDate: Date;
+  status: string;
+  predictionPayload?: Record<string, unknown>;
 }
 
 /**
@@ -198,52 +209,63 @@ class DatabaseService {
   // =====================================================
 
   /**
-   * Get all holdings for a portfolio
+   * Get all holdings for a user's portfolio
    *
-   * @param portfolioId - Portfolio ID (defaults to 'default')
+   * @param userId - Owning user's UUID
    */
-  async getPortfolioHoldings(portfolioId: string = 'default'): Promise<PortfolioHolding[]> {
+  async getPortfolioHoldings(userId: string): Promise<PortfolioHolding[]> {
     const result = await this.query<PortfolioHolding>(
-      `SELECT 
-        id, portfolio_id as "portfolioId", ticker, shares,
-        average_cost as "averageCost", purchase_date as "purchaseDate",
-        notes, created_at as "createdAt", updated_at as "updatedAt"
-       FROM portfolio.holdings
-       WHERE portfolio_id = $1
+      `SELECT
+        id, user_id as "userId", ticker, company_name as "companyName",
+        exchange, quantity, avg_buy_price as "avgBuyPrice", buy_date as "buyDate",
+        sector, tags, created_at as "createdAt", updated_at as "updatedAt"
+       FROM public.portfolio_holdings
+       WHERE user_id = $1
        ORDER BY ticker`,
-      [portfolioId]
+      [userId]
     );
 
     return result.rows;
   }
 
   /**
-   * Add or update a holding
-   *
-   * @param holding - Holding data
+   * Buy into a position: adds `additionalShares` at `purchasePrice`,
+   * recomputing the weighted-average cost basis. Atomic and race-free - the
+   * weighted average is computed by Postgres inside a single
+   * INSERT ... ON CONFLICT DO UPDATE statement (which takes a row lock for
+   * the duration of the statement), rather than a read-then-write from the
+   * application, so two concurrent buys for the same (user, ticker) can
+   * never clobber each other. Relies on the
+   * portfolio_holdings_user_ticker_unique constraint (see
+   * supabase/migrations/005_portfolio_holdings_unique_constraint.sql).
    */
-  async upsertHolding(
-    portfolioId: string,
+  async addToHolding(
+    userId: string,
     ticker: string,
-    shares: number,
-    averageCost: number,
-    notes?: string
+    companyName: string,
+    exchange: string,
+    additionalShares: number,
+    purchasePrice: number
   ): Promise<PortfolioHolding> {
     const result = await this.query<PortfolioHolding>(
-      `INSERT INTO portfolio.holdings 
-        (portfolio_id, ticker, shares, average_cost, notes)
-       VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (portfolio_id, ticker)
-       DO UPDATE SET 
-         shares = EXCLUDED.shares,
-         average_cost = EXCLUDED.average_cost,
-         notes = EXCLUDED.notes,
+      `INSERT INTO public.portfolio_holdings
+        (user_id, ticker, company_name, exchange, quantity, avg_buy_price)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (user_id, ticker)
+       DO UPDATE SET
+         quantity = public.portfolio_holdings.quantity + EXCLUDED.quantity,
+         avg_buy_price = (
+           public.portfolio_holdings.quantity * public.portfolio_holdings.avg_buy_price
+           + EXCLUDED.quantity * EXCLUDED.avg_buy_price
+         ) / (public.portfolio_holdings.quantity + EXCLUDED.quantity),
+         company_name = EXCLUDED.company_name,
+         exchange = EXCLUDED.exchange,
          updated_at = NOW()
-       RETURNING 
-        id, portfolio_id as "portfolioId", ticker, shares,
-        average_cost as "averageCost", purchase_date as "purchaseDate",
-        notes, created_at as "createdAt", updated_at as "updatedAt"`,
-      [portfolioId, ticker.toUpperCase(), shares, averageCost, notes]
+       RETURNING
+        id, user_id as "userId", ticker, company_name as "companyName",
+        exchange, quantity, avg_buy_price as "avgBuyPrice", buy_date as "buyDate",
+        sector, tags, created_at as "createdAt", updated_at as "updatedAt"`,
+      [userId, ticker.toUpperCase(), companyName, exchange, additionalShares, purchasePrice]
     );
 
     return result.rows[0];
@@ -252,14 +274,14 @@ class DatabaseService {
   /**
    * Remove a holding
    *
-   * @param portfolioId - Portfolio ID
+   * @param userId - Owning user's UUID
    * @param ticker - Stock ticker
    */
-  async removeHolding(portfolioId: string, ticker: string): Promise<boolean> {
+  async removeHolding(userId: string, ticker: string): Promise<boolean> {
     const result = await this.query(
-      `DELETE FROM portfolio.holdings
-       WHERE portfolio_id = $1 AND ticker = $2`,
-      [portfolioId, ticker.toUpperCase()]
+      `DELETE FROM public.portfolio_holdings
+       WHERE user_id = $1 AND ticker = $2`,
+      [userId, ticker.toUpperCase()]
     );
 
     return (result.rowCount ?? 0) > 0;
@@ -348,28 +370,30 @@ class DatabaseService {
    *
    * @param prediction - Prediction data
    */
-  async insertPrediction(prediction: Omit<PredictionRecord, 'id'>): Promise<PredictionRecord> {
+  async insertPrediction(prediction: Omit<PredictionRecord, 'id' | 'status'>): Promise<PredictionRecord> {
     const result = await this.query<PredictionRecord>(
-      `INSERT INTO ml_predictions.predictions 
-        (ticker, prediction_time, target_date, predicted_price, confidence,
-         model_type, model_version, pdm_signal, features_used)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       RETURNING 
-        id, ticker, prediction_time as "predictionTime",
-        target_date as "targetDate", predicted_price as "predictedPrice",
-        actual_price as "actualPrice", confidence, model_type as "modelType",
-        model_version as "modelVersion", pdm_signal as "pdmSignal",
-        features_used as "featuresUsed"`,
+      `INSERT INTO public.prediction_history
+        (user_id, ticker, timeframe, model_used, current_price_at_prediction,
+         predicted_price, confidence_score, technical_signal, target_date, prediction_payload)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       RETURNING
+        id, user_id as "userId", ticker, timeframe, model_used as "modelUsed",
+        current_price_at_prediction as "currentPriceAtPrediction",
+        predicted_price as "predictedPrice", actual_price as "actualPrice",
+        confidence_score as "confidence", technical_signal as "technicalSignal",
+        target_date as "targetDate", status,
+        prediction_payload as "predictionPayload"`,
       [
+        prediction.userId || null,
         prediction.ticker.toUpperCase(),
-        prediction.predictionTime.toISOString(),
-        prediction.targetDate.toISOString(),
+        prediction.timeframe,
+        prediction.modelUsed,
+        prediction.currentPriceAtPrediction,
         prediction.predictedPrice,
         prediction.confidence,
-        prediction.modelType,
-        prediction.modelVersion,
-        prediction.pdmSignal,
-        JSON.stringify(prediction.featuresUsed || {}),
+        prediction.technicalSignal || null,
+        prediction.targetDate.toISOString(),
+        JSON.stringify(prediction.predictionPayload || {}),
       ]
     );
 
@@ -377,22 +401,23 @@ class DatabaseService {
   }
 
   /**
-   * Get prediction history for backtesting
+   * Get prediction history for backtesting/accuracy tracking
    *
    * @param ticker - Stock ticker
    * @param limit - Maximum records to return
    */
   async getPredictionHistory(ticker: string, limit: number = 100): Promise<PredictionRecord[]> {
     const result = await this.query<PredictionRecord>(
-      `SELECT 
-        id, ticker, prediction_time as "predictionTime",
-        target_date as "targetDate", predicted_price as "predictedPrice",
-        actual_price as "actualPrice", confidence, model_type as "modelType",
-        model_version as "modelVersion", pdm_signal as "pdmSignal",
-        features_used as "featuresUsed"
-       FROM ml_predictions.predictions
+      `SELECT
+        id, user_id as "userId", ticker, timeframe, model_used as "modelUsed",
+        current_price_at_prediction as "currentPriceAtPrediction",
+        predicted_price as "predictedPrice", actual_price as "actualPrice",
+        confidence_score as "confidence", technical_signal as "technicalSignal",
+        target_date as "targetDate", status,
+        prediction_payload as "predictionPayload"
+       FROM public.prediction_history
        WHERE ticker = $1
-       ORDER BY prediction_time DESC
+       ORDER BY created_at DESC
        LIMIT $2`,
       [ticker.toUpperCase(), limit]
     );
@@ -401,15 +426,15 @@ class DatabaseService {
   }
 
   /**
-   * Update prediction with actual price (for accuracy tracking)
+   * Resolve a prediction with its actual observed price (for accuracy tracking)
    *
    * @param predictionId - Prediction ID
    * @param actualPrice - Actual observed price
    */
   async updatePredictionActual(predictionId: string, actualPrice: number): Promise<boolean> {
     const result = await this.query(
-      `UPDATE ml_predictions.predictions
-       SET actual_price = $2
+      `UPDATE public.prediction_history
+       SET actual_price = $2, status = 'resolved', resolved_at = NOW()
        WHERE id = $1`,
       [predictionId, actualPrice]
     );

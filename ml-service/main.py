@@ -669,6 +669,6 @@ if __name__ == "__main__":
         "main:app",
         host="0.0.0.0",
         port=port,
-        reload=os.getenv("FLASK_ENV") == "development",
+        reload=os.getenv("ENVIRONMENT", "production") == "development",
         log_level="info",
     )
