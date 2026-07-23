@@ -4,18 +4,16 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "roneira-ml-service"
-version = "1.0.0"
-description = "ML Service for Roneira AI HIFI Stock Prediction"
+version = "3.0.0"
+description = "ML Service for Roneira AI HIFI Stock Prediction (FastAPI, main:app)"
 requires-python = ">=3.11"
-dependencies = [
-    "Flask>=2.3.3",
-    "Flask-Cors>=4.0.0",
-    "gunicorn>=21.2.0",
-    "numpy>=1.24.3",
-    "pandas>=2.0.3",
-    "scikit-learn>=1.3.0",
-    "yfinance>=0.2.18",
-    "requests>=2.31.0",
-    "joblib>=1.3.2",
-    "python-dotenv>=1.0.0"
-]
+# Dependencies are sourced from requirements.txt so there is a single canonical
+# dependency list, whether you install with `pip install -r requirements.txt`
+# or `pip install .`.
+dynamic = ["dependencies"]
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }
+
+[tool.setuptools.packages.find]
+include = ["src*"]
