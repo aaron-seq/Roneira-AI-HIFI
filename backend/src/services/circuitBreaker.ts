@@ -91,7 +91,7 @@ function createStateChangeHandlers<T>(name: string, _fallbackFn?: () => T) {
  */
 export function createCircuitBreaker<TParams extends unknown[], TResult>(
   fn: (...args: TParams) => Promise<TResult>,
-  _fallbackFn?: (...args: TParams) => TResult | Promise<TResult>,
+  fallbackFn?: (...args: TParams) => TResult | Promise<TResult>,
   options: CircuitBreakerOptions = {}
 ): CircuitBreaker<TParams, TResult> {
   const mergedOptions = { ...DEFAULT_OPTIONS, ...options };
@@ -111,7 +111,7 @@ export function createCircuitBreaker<TParams extends unknown[], TResult>(
   }
 
   // Set up event handlers
-  const handlers = createStateChangeHandlers<TResult>(name, fallbackFn ? () => fallbackFn(...([] as unknown as TParams)) as TResult : undefined);
+  const handlers = createStateChangeHandlers<TResult>(name);
   breaker.on('open', handlers.onOpen);
   breaker.on('close', handlers.onClose);
   breaker.on('halfOpen', handlers.onHalfOpen);
