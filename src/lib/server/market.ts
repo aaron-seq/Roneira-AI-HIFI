@@ -26,7 +26,7 @@ const QUOTE_TTL_MS = 60_000;
 const SEARCH_TTL_MS = 5 * 60_000;
 const HISTORY_TTL_MS = 5 * 60_000;
 
-function toNumber(value: unknown): number | null {
+export function toNumber(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
   }
@@ -40,11 +40,11 @@ function toNumber(value: unknown): number | null {
   return null;
 }
 
-function isUsEquitySymbol(symbol: string) {
+export function isUsEquitySymbol(symbol: string) {
   return !symbol.includes(".") && !symbol.startsWith("^") && !symbol.includes("=") && !symbol.endsWith("-USD");
 }
 
-function getProviderSymbol(config: QuoteConfig): string | undefined {
+export function getProviderSymbol(config: QuoteConfig): string | undefined {
   if (config.providerSymbol) {
     return config.providerSymbol;
   }
@@ -71,7 +71,7 @@ async function fetchJson(url: string): Promise<JsonRecord> {
   return (await response.json()) as JsonRecord;
 }
 
-function unwrapTwelveQuotePayload(payload: JsonRecord): Map<string, JsonRecord> {
+export function unwrapTwelveQuotePayload(payload: JsonRecord): Map<string, JsonRecord> {
   if (typeof payload.symbol === "string") {
     return new Map([[payload.symbol, payload]]);
   }
@@ -89,7 +89,7 @@ function unwrapTwelveQuotePayload(payload: JsonRecord): Map<string, JsonRecord> 
   );
 }
 
-function normalizeQuote(
+export function normalizeQuote(
   config: QuoteConfig,
   raw: JsonRecord,
   provider: MarketQuote["provider"]

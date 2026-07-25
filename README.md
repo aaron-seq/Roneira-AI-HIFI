@@ -302,6 +302,28 @@ src/components/
 - Lazy loading with intersection observers
 - Code splitting for optimal bundle sizes
 
+## Repository Layout
+
+This repository contains both the **active product** and older implementations
+kept for reference. Contribute to the canonical paths only.
+
+| Path | Status | What it is |
+|------|--------|-----------|
+| `src/` | **Canonical** | The Next.js application (UI + API route handlers). This is what deploys to Vercel — see `vercel.json`. |
+| `ml/` | **Canonical** | The FastAPI ML service (LSTM, GAN, Random Forest, PDM momentum, ensemble). |
+| `supabase/` | **Canonical** | Database schema and migrations. |
+| `frontend/` | Legacy | Earlier Vite/React client. Not built, tested, or deployed. |
+| `backend/` | Legacy | Earlier Express API gateway. Not built, tested, or deployed. |
+| `ml-service/` | Legacy | Earlier Flask/FastAPI ML service. Not built, tested, or deployed. |
+
+CI (`.github/workflows/ci.yml`) validates the canonical surfaces only. The
+legacy trees are retained as reference material and intentionally do not gate
+merges. See `task.md` for the authoritative statement of canonical paths.
+
+> **Working on a fix?** If an issue names a file under `frontend/`, `backend/`,
+> or `ml-service/`, check whether the behaviour still exists under `src/` or
+> `ml/` — that is where the change usually belongs.
+
 ## Getting Started
 
 ### Prerequisites Checklist
@@ -323,69 +345,67 @@ src/components/
 git clone https://github.com/aaron-seq/Roneira-AI-HIFI.git
 cd Roneira-AI-HIFI
 
-# Copy environment templates
-cp .env.example .env
-cp frontend/.env.example frontend/.env.local
-cp backend/.env.example backend/.env
-cp ml-service/.env.example ml-service/.env
+# Copy the environment template and fill in your values
+cp .env.example .env.local
 
-# Make setup script executable and run
-chmod +x scripts/setup.sh
-./scripts/setup.sh
+# Install web dependencies
+npm ci
 ```
+
+At minimum you need the Supabase variables in `.env.local` for auth and
+persistence; market-data API keys are optional and the app degrades gracefully
+without them. See [Configuration](#configuration) for the full list.
 
 </details>
 
 <details>
-<summary><strong>2. Docker Development (Recommended)</strong></summary>
+<summary><strong>2. Run the web app</strong></summary>
 
 ```bash
-# Start all services with hot reloading
-docker-compose up --build
-
-# Or run in detached mode
-docker-compose up -d --build
-
-# View logs
-docker-compose logs -f [service-name]
-
-# Stop all services
-docker-compose down
+npm run dev        # http://localhost:3000
 ```
 
-**Service URLs:**
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:3001
-- ML Service: http://localhost:5000
-- Swagger Docs: http://localhost:3001/api/docs
+The Next.js app serves both the UI and its API route handlers
+(`/api/predict`, `/api/market-data`, `/api/news`, `/api/stocks/search`, ...).
+It is fully usable on its own — the ML service is only required for live
+model-backed predictions.
 
 </details>
 
 <details>
-<summary><strong>3. Local Development Setup</strong></summary>
+<summary><strong>3. Run the ML service (optional)</strong></summary>
 
-**Terminal 1 - Frontend:**
 ```bash
-cd frontend
-npm ci
-npm run dev
-```
-
-**Terminal 2 - Backend:**
-```bash
-cd backend
-npm ci
-npm run dev
-```
-
-**Terminal 3 - ML Service:**
-```bash
-cd ml-service
+cd ml
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
-gunicorn --bind 0.0.0.0:5000 enhanced_app:app --reload
+
+uvicorn app.main:app --reload --port 8000   # or: npm run ml:dev
 ```
+
+Point the web app at it with `NEXT_PUBLIC_ML_BACKEND_URL=http://localhost:8000`.
+The FastAPI service stays private behind the Next.js API routes.
+
+**Model artifacts:** LSTM and GAN load bundled artifacts from
+`ml/artifacts/generated` at startup and degrade gracefully when the artifacts
+(or TensorFlow) are unavailable. Generate them with `npm run train:ml`.
+
+</details>
+
+<details>
+<summary><strong>4. Verify your setup</strong></summary>
+
+```bash
+npm run lint
+npm run type-check
+npm run test:web
+npm run build
+
+cd ml && python -m pytest tests -q
+```
+
+These are exactly the checks CI runs.
 
 </details>
 
@@ -732,24 +752,27 @@ Target: Critical user paths covered
 ### Test Execution
 
 ```bash
-# Run all tests with coverage
-npm run test:all
+# Web (Next.js) — unit tests
+npm run test:web
 
-# Frontend tests with UI
-cd frontend && npm run test:ui
+# Web — watch mode while developing
+npm run test:watch
 
-# Backend integration tests
-cd backend && npm run test:integration
+# Static analysis
+npm run lint
+npm run type-check
 
-# ML service performance tests
-cd ml-service && pytest --benchmark
+# Production build (catches build-time-only errors)
+npm run build
 
-# E2E tests across browsers
-npm run test:e2e
-
-# Load testing
-npm run test:load
+# ML service tests
+cd ml && python -m pytest tests -q
+# or, from the repo root:
+npm run test:ml
 ```
+
+Together these are the launch verification suite defined in `task.md`, and they
+are precisely what the `Web CI` and `ML CI` jobs run on every pull request.
 
 ### CI/CD Pipeline
 
