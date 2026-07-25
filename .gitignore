@@ -38,3 +38,4 @@ ml/artifacts/generated/
 # (16 high) into code scanning for a tree that never ships, and remediating
 # them needs breaking major upgrades. Refresh dependencies before reviving.
 frontend/package-lock.json
+venv/
