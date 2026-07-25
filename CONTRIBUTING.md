@@ -119,27 +119,28 @@ chmod +x scripts/setup.sh
 <details>
 <summary><strong>Manual Setup</strong></summary>
 
+> **Where does my change go?** `src/` (Next.js app) and `ml/` (FastAPI service)
+> are the canonical, deployed surfaces. `frontend/`, `backend/`, and
+> `ml-service/` are legacy reference trees — they are not built, tested, or
+> deployed, and CI does not run them. See the Repository Layout table in the
+> README and the canonical paths in `task.md`.
+
 **1. Environment Configuration**
 ```bash
-# Copy environment templates
-cp .env.example .env
-cp frontend/.env.example frontend/.env.local
-cp backend/.env.example backend/.env
-cp ml-service/.env.example ml-service/.env
-
-# Edit each .env file with your configuration
+# Copy the environment template and fill in your values
+cp .env.example .env.local
 ```
+
+Supabase variables are required for auth and persistence. Market-data API keys
+are optional — the app degrades gracefully without them.
 
 **2. Install Dependencies**
 ```bash
-# Frontend dependencies
-cd frontend && npm ci && cd ..
+# Web app (repo root)
+npm ci
 
-# Backend dependencies
-cd backend && npm ci && cd ..
-
-# ML service dependencies (requirements.txt is the single source of truth)
-cd ml-service
+# ML service (requirements.txt is the single source of truth)
+cd ml
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
@@ -147,27 +148,18 @@ cd ..
 ```
 
 **3. Database Setup**
-```bash
-# Start PostgreSQL and Redis (using Docker)
-docker-compose up -d postgres redis
 
-# Run database migrations
-cd backend && npm run db:migrate && cd ..
-
-# Seed development data
-cd backend && npm run db:seed && cd ..
-```
+Schema lives in `supabase/migrations/`. Apply it to your Supabase project with
+the Supabase CLI (`supabase db push`) or by running the migration SQL in the
+dashboard's SQL editor.
 
 **4. Start Development Servers**
 ```bash
-# Terminal 1: Frontend (http://localhost:3000)
-cd frontend && npm run dev
+# Terminal 1: Next.js app — UI + API routes (http://localhost:3000)
+npm run dev
 
-# Terminal 2: Backend (http://localhost:3001)
-cd backend && npm run dev
-
-# Terminal 3: ML Service (http://localhost:8000)
-cd ml-service && source venv/bin/activate && uvicorn main:app --reload --port 8000
+# Terminal 2: ML service, optional (http://localhost:8000)
+cd ml && source venv/bin/activate && uvicorn app.main:app --reload --port 8000
 ```
 
 </details>
@@ -529,19 +521,28 @@ class TechnicalIndicators:
 
 ## Repository Map & Canonical Entrypoints
 
-Before changing a service, know which file actually runs. The repo has some
-historical duplicate files; only the canonical entrypoint below is deployed.
+Before changing a service, know which file actually runs. The repo retains
+several historical implementations; only the canonical surfaces below are
+built, tested, and deployed.
 
-| Area | Canonical entrypoint | Run with | Notes |
-|------|----------------------|----------|-------|
-| **Frontend** | `src/` (Next.js app) | `npm run dev` | Root `package.json`. |
-| **Backend API** | `backend/src/server.ts` | `npm run dev` (in `backend/`) | The **only** backend entrypoint. Do not add `.js` siblings — they won't be compiled or run. See `backend/README.md`. |
-| **ML models** | `ml/app/main.py` (FastAPI) | `npm run ml:dev` | Six pluggable models + offline LSTM/GAN artifacts. See `ml/MODELS.md`. |
-| **ML service (legacy)** | `ml-service/main.py` (FastAPI) | `uvicorn main:app` | Separate deployment; `app.py` (Flask) exists only for its test suite. See `ml-service/README.md`. |
+### Canonical — contribute here
 
-**Dependency rule for the ML service**: `requirements.txt` is the single source
-of truth. `pyproject.toml` reads its dependencies from that file, so
-`pip install -r requirements.txt` and `pip install .` never diverge.
+| Area | Entrypoint | Run with | Notes |
+|------|-----------|----------|-------|
+| **Web app + API** | `src/` (Next.js) | `npm run dev` | UI *and* the API route handlers under `src/app/api/`. Deploys to Vercel via `vercel.json`. |
+| **ML service** | `ml/app/main.py` (FastAPI) | `npm run ml:dev` | Six pluggable models + offline LSTM/GAN artifacts. See `ml/MODELS.md`. |
+| **Database** | `supabase/migrations/` | Supabase CLI | Schema, RLS policies, audit triggers. |
+
+### Legacy — reference only, do not extend
+
+`frontend/` (Vite client), `backend/` (Express gateway), and `ml-service/`
+(Flask/FastAPI service) are earlier implementations retained for reference.
+They are excluded from CI and from every deployment target. If an issue points
+at a file in one of these trees, check whether the behaviour still exists under
+`src/` or `ml/` — that is almost always where the fix belongs.
+
+**Dependency rule for the ML service**: `ml/requirements.txt` is the single
+source of truth for the canonical service.
 
 ## Contributing a Machine Learning Model
 
@@ -599,9 +600,9 @@ Most contributions here start from a GitHub issue. The expected workflow:
 4. **Fix the root cause**, not the symptom. If the issue lists a "Recommended
    Fix", treat it as a starting point, not gospel — implement the approach that
    best fits the codebase.
-5. **Verify**: run the relevant test suite(s) and type checks (see below). For
-   backend/ML changes, `backend: npm test && npm run type-check`; `ml:
-   pytest`.
+5. **Verify**: run the relevant checks (see below). For web changes,
+   `npm run lint && npm run type-check && npm run test:web && npm run build`;
+   for ML changes, `npm run test:ml`.
 6. **Reference the issue** in your commit and PR body: `Closes #<number>`.
 7. **Keep the PR scoped** to the issue — unrelated cleanup belongs in its own PR.
 
@@ -611,37 +612,29 @@ Most contributions here start from a GitHub issue. The expected workflow:
 
 | Component | Unit Tests | Integration Tests | E2E Tests |
 |-----------|------------|-------------------|----------|
-| Frontend | >85% | >70% | Critical paths |
-| Backend | >90% | >80% | API endpoints |
-| ML Service | >85% | >75% | Model accuracy |
+| Web (`src/`) | >85% | >70% | Critical paths |
+| ML service (`ml/`) | >85% | >75% | Model accuracy |
 
 ### Testing Commands
 
+Run these from the repository root. They are exactly what CI runs, so a clean
+local run means a clean pipeline.
+
 ```bash
-# Run all tests
-npm run test
+# Web (Next.js) — src/
+npm run test:web          # Unit tests with Vitest
+npm run test:watch        # Watch mode while developing
+npm run lint              # ESLint
+npm run type-check        # tsc --noEmit
+npm run build             # Production build
 
-# Frontend tests
-cd frontend
-npm run test              # Unit tests with Vitest
-npm run test:ui           # Interactive test runner
-npm run test:coverage     # Coverage report
-npm run test:e2e          # End-to-end tests with Playwright
-
-# Backend tests
-cd backend
-npm run test              # Unit and integration tests
-npm run test:watch        # Watch mode
-npm run test:integration  # Integration tests only
-npm run test:load         # Load testing
-
-# ML Service tests
-cd ml-service
-source venv/bin/activate
-pytest                    # All tests
-pytest --cov=.           # With coverage
-pytest --benchmark       # Performance benchmarks
-pytest -k "test_rsi"     # Specific test pattern
+# ML service — ml/
+npm run test:ml           # pytest, from the repo root
+# ...or directly:
+cd ml && source venv/bin/activate
+python -m pytest tests -q          # All tests
+python -m pytest tests --cov=app   # With coverage
+python -m pytest -k "rsi"          # Specific test pattern
 ```
 
 ### Test Structure
