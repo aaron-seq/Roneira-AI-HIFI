@@ -314,7 +314,7 @@ export function withGuardrails<T, Args extends unknown[]>(
       }
       
       return result;
-    } catch (_error) {
+    } catch (error) {
       // If fallback provided, return it on error
       if (options.fallback !== undefined) {
         console.warn('Guardrails: Using fallback due to error:', error);
@@ -353,7 +353,7 @@ class ViolationLogger {
     }
 
     // Log to console in development
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV) {
       console.warn('[Guardrails Violation]', violation);
     }
   }

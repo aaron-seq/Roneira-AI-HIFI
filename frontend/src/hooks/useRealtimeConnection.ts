@@ -57,7 +57,7 @@ export const useRealtimeConnection = (
   const [error, setError] = useState<string | null>(null);
 
   const socketRef = useRef<Socket | null>(null);
-  const staleTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const staleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectAttemptsRef = useRef(0);
 
   // Clear stale timer

@@ -198,14 +198,24 @@ class TestStockDataProcessor:
 
     @patch("yfinance.download")
     def test_fetch_historical_data_empty(self, mock_download):
-        """Test handling of empty data response"""
+        """An empty upstream response degrades to generated mock data.
+
+        fetch_historical_stock_data is documented as having a mock fallback:
+        rather than propagating None (which callers would have to guard on
+        every access), it returns a synthetic frame so downstream indicator
+        maths stays well-defined. This asserts that contract.
+        """
         mock_download.return_value = pd.DataFrame()
 
         result = self.processor.fetch_historical_stock_data(
             "INVALID", "2023-01-01", "2023-12-31"
         )
 
-        assert result is None
+        assert result is not None
+        assert not result.empty
+        # Must expose the same OHLCV columns as a real yfinance frame.
+        for column in ["Open", "High", "Low", "Close", "Volume"]:
+            assert column in result.columns
 
 
 class TestSentimentAnalysisService:
