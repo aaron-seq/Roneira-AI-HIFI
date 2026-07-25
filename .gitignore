@@ -32,3 +32,9 @@ ml/artifacts/generated/
 # Misc
 .DS_Store
 *.log
+
+# Legacy reference tree (see task.md): not built, tested, or deployed.
+# Its lockfile is intentionally untracked — committing it published 18 CVEs
+# (16 high) into code scanning for a tree that never ships, and remediating
+# them needs breaking major upgrades. Refresh dependencies before reviving.
+frontend/package-lock.json
