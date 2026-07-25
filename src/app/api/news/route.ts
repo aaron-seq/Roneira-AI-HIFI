@@ -1,70 +1,14 @@
 import { NextResponse } from "next/server";
 import { getCachedValue } from "@/lib/server/cache";
 import type { NewsArticle } from "@/lib/market/types";
+import {
+  classifySentiment,
+  extractTickers,
+  buildQuery,
+} from "@/lib/news/classify";
 
 const NEWS_API_KEY = process.env.NEWS_API_KEY || "";
 const NEWS_TTL_MS = 5 * 60_000;
-
-const POSITIVE_KEYWORDS = [
-  "surge",
-  "gain",
-  "beat",
-  "growth",
-  "rally",
-  "upgrade",
-  "bullish",
-  "profit",
-  "record",
-];
-
-const NEGATIVE_KEYWORDS = [
-  "drop",
-  "fall",
-  "miss",
-  "cut",
-  "bearish",
-  "downgrade",
-  "risk",
-  "loss",
-  "slump",
-];
-
-function classifySentiment(text: string): NewsArticle["sentiment"] {
-  const normalized = text.toLowerCase();
-  const positive = POSITIVE_KEYWORDS.some((keyword) =>
-    normalized.includes(keyword)
-  );
-  const negative = NEGATIVE_KEYWORDS.some((keyword) =>
-    normalized.includes(keyword)
-  );
-
-  if (positive && !negative) {
-    return "positive";
-  }
-
-  if (negative && !positive) {
-    return "negative";
-  }
-
-  return "neutral";
-}
-
-function extractTickers(text: string) {
-  const matches = text.match(/\b[A-Z]{2,8}(?:\.NS|\.BO)?\b/g) || [];
-  return Array.from(new Set(matches)).slice(0, 5);
-}
-
-function buildQuery(market: string, query: string) {
-  if (query.trim()) {
-    return query;
-  }
-
-  if (market === "india") {
-    return "India stock market OR NSE OR BSE OR Sensex OR Nifty";
-  }
-
-  return "stock market OR equities OR investing";
-}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);

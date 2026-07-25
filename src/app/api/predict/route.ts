@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import type { PredictionResult } from "@/lib/market/types";
+import { getTargetDate } from "@/lib/market/timeframe";
 
 const ML_BACKEND_URL =
   process.env.NEXT_PUBLIC_ML_BACKEND_URL || "http://localhost:8000";
@@ -11,21 +12,6 @@ interface PredictRequestBody {
   model_type?: string;
 }
 
-const TIMEFRAME_DAYS: Record<string, number> = {
-  tomorrow: 1,
-  "1week": 7,
-  "1month": 30,
-  "3month": 90,
-  "6month": 180,
-  "1year": 365,
-  "1year_plus": 400,
-};
-
-function getTargetDate(timeframe: string) {
-  const target = new Date();
-  target.setUTCDate(target.getUTCDate() + (TIMEFRAME_DAYS[timeframe] ?? 30));
-  return target.toISOString();
-}
 
 async function persistPrediction(prediction: PredictionResult) {
   try {
