@@ -4,6 +4,7 @@
   "private": true,
   "description": "Roneira AI HIFI — AI-powered financial intelligence platform",
   "scripts": {
+    "prepare": "git config core.hooksPath .husky",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

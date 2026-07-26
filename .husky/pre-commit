@@ -1,6 +1,9 @@
 #!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
-
+# Run via git's native core.hooksPath (set by the "prepare" script in
+# package.json), not husky -- husky was never actually installed here: it wasn't
+# a dependency, .husky/_/ didn't exist, and core.hooksPath was unset, so this
+# hook silently never executed.
+#
 # Checks the canonical surfaces only: src/ (Next.js) and ml/ (FastAPI).
 # The previous version ran against backend/, frontend/, and ml-service/ -- all
 # legacy trees that are not built, tested, or deployed -- so every commit passed
