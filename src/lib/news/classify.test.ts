@@ -1,6 +1,7 @@
 import {
   classifySentiment,
   extractTickers,
+  matchKnownStock,
   buildQuery,
 } from "@/lib/news/classify";
 
@@ -81,5 +82,58 @@ describe("buildQuery", () => {
     expect(buildQuery("us", "")).toBe(
       "stock market OR equities OR investing"
     );
+  });
+});
+
+describe("matchKnownStock", () => {
+  it("matches a company name to its symbol", () => {
+    expect(matchKnownStock("Reliance shares rose 2% on strong earnings")).toBe(
+      "RELIANCE.NS"
+    );
+    expect(matchKnownStock("Infosys wins a major cloud contract")).toBe(
+      "INFY.NS"
+    );
+  });
+
+  it("matches a bare ticker symbol used as the company name", () => {
+    expect(matchKnownStock("TCS reports record Q2 profit")).toBe("TCS.NS");
+  });
+
+  it("matches multi-word phrases for names that would be dangerously generic split down to one word", () => {
+    // "State Bank of India" -> naive first-word split gives "State", which
+    // would match almost any economic-news headline. The full phrase is the
+    // point of this test.
+    expect(matchKnownStock("State Bank raises lending rates")).toBe(
+      "SBIN.NS"
+    );
+    expect(matchKnownStock("Tech Mahindra announces layoffs")).toBe(
+      "TECHM.NS"
+    );
+    expect(
+      matchKnownStock("Bajaj Finance stock jumps on strong loan growth")
+    ).toBe("BAJFINANCE.NS");
+  });
+
+  it("does not match on the generic first word alone", () => {
+    // Regression guard for the exact bug the multi-word phrases fix: a
+    // headline that only contains "State" or "Tech" must not be attributed
+    // to SBIN or TECHM.
+    expect(matchKnownStock("The state of the economy remains uncertain")).toBeNull();
+    expect(matchKnownStock("Tech layoffs continue across the industry")).toBeNull();
+  });
+
+  it("matches Google as an alias for Alphabet (GOOGL)", () => {
+    expect(matchKnownStock("Google unveils new AI search features")).toBe(
+      "GOOGL"
+    );
+    expect(matchKnownStock("Alphabet posts strong ad revenue")).toBe("GOOGL");
+  });
+
+  it("returns null when no known equity is mentioned", () => {
+    expect(matchKnownStock("Oil prices climb amid supply concerns")).toBeNull();
+  });
+
+  it("is case-insensitive", () => {
+    expect(matchKnownStock("apple unveils new iphone")).toBe("AAPL");
   });
 });

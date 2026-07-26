@@ -72,7 +72,7 @@ const MOVER_SYMBOLS: QuoteConfig[] = [
 
 const US_PEERS = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA"];
 const INDIA_PEERS = ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "SBIN.NS"];
-const KNOWN_EQUITIES: QuoteConfig[] = [
+export const KNOWN_EQUITIES: QuoteConfig[] = [
   ...MOVER_SYMBOLS,
   { symbol: "MSFT", name: "Microsoft", exchange: "NASDAQ", assetType: "equity", currency: "USD", providerSymbol: "MSFT" },
   { symbol: "GOOGL", name: "Alphabet", exchange: "NASDAQ", assetType: "equity", currency: "USD", providerSymbol: "GOOGL" },

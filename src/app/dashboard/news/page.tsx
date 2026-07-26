@@ -16,7 +16,9 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { NewsSkeleton } from "@/components/ui/Skeletons";
+import { NewsStockChart } from "@/components/news/NewsStockChart";
 import { useNewsFeed } from "@/lib/hooks/use-news-feed";
+import { matchKnownStock } from "@/lib/news/classify";
 
 function getSentimentStyle(sentiment: "positive" | "negative" | "neutral") {
   switch (sentiment) {
@@ -130,6 +132,13 @@ export default function NewsPage() {
                 new Date(article.publishedAt),
                 { addSuffix: true }
               );
+              // Deliberately not article.relatedTickers here -- that's a
+              // loose regex match (matches "FCC", a regulator, as if it were
+              // a ticker) fine for a small text hint but not sturdy enough to
+              // hang a "here's the affected stock's chart" claim on.
+              const matchedSymbol = matchKnownStock(
+                `${article.title} ${article.description}`
+              );
 
               return (
                 <motion.article
@@ -138,9 +147,11 @@ export default function NewsPage() {
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0, transition: { delay: index * 0.05 } }}
                   exit={{ opacity: 0, y: -12 }}
-                  className="card group p-5 transition-all"
+                  whileHover={{ y: -2 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  className="card group p-5"
                 >
-                  <div className="flex gap-4">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
                       <div className="mb-2 flex items-center gap-3">
                         <span className="text-xs font-semibold" style={{ color: "var(--color-info)" }}>
@@ -170,30 +181,25 @@ export default function NewsPage() {
                         {article.description}
                       </p>
 
-                      <div className="flex items-center gap-2">
-                        {article.relatedTickers.map((ticker) => (
-                          <span
-                            key={ticker}
-                            className="ticker rounded px-2 py-0.5 text-[9px]"
-                            style={{
-                              background: "var(--color-surface-offset)",
-                              color: "var(--color-text-muted)",
-                            }}
-                          >
-                            {ticker.replace(".NS", "")}
-                          </span>
-                        ))}
-                        <a
-                          href={article.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="ml-auto flex items-center gap-1 text-xs opacity-0 transition-opacity group-hover:opacity-100"
-                          style={{ color: "var(--color-info)" }}
-                        >
-                          Read more <ExternalLink className="h-3 w-3" />
-                        </a>
-                      </div>
+                      <a
+                        href={article.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex w-fit items-center gap-1 text-xs opacity-0 transition-opacity group-hover:opacity-100"
+                        style={{ color: "var(--color-info)" }}
+                      >
+                        Read more <ExternalLink className="h-3 w-3" />
+                      </a>
                     </div>
+
+                    {matchedSymbol && (
+                      <div className="shrink-0">
+                        <p className="mb-1 text-[9px] font-semibold uppercase tracking-wide" style={{ color: "var(--color-text-faint)" }}>
+                          Affects
+                        </p>
+                        <NewsStockChart symbol={matchedSymbol} />
+                      </div>
+                    )}
                   </div>
                 </motion.article>
               );
