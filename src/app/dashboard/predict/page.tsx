@@ -13,6 +13,7 @@ import {
 import { PredictionChart } from "@/components/charts/PredictionChart";
 import { CompetitorTable } from "@/components/prediction/CompetitorTable";
 import { ConfidenceRing } from "@/components/prediction/ConfidenceRing";
+import { ModelSpread } from "@/components/prediction/ModelSpread";
 import { SignalMeter } from "@/components/prediction/SignalMeter";
 import { PredictionSkeleton } from "@/components/ui/Skeletons";
 import { usePredictionMutation, useStockSearch } from "@/lib/hooks/use-prediction";
@@ -360,6 +361,18 @@ function PredictPageContent() {
                   </div>
                 </div>
               </motion.div>
+
+              {result.components && result.components.length > 0 && (
+                <motion.div variants={cardVariant}>
+                  <ModelSpread
+                    components={result.components}
+                    currentPrice={result.current_price}
+                    blendedPrice={result.predicted_price}
+                    agreementScore={result.agreement_score}
+                    priceSpread={result.price_spread}
+                  />
+                </motion.div>
+              )}
 
               <motion.div variants={cardVariant} className="card p-6">
                 <h3 className="mb-6 text-sm font-semibold" style={{ color: "var(--color-text-primary)" }}>

@@ -76,6 +76,21 @@ export interface PredictionResult {
   model_used: string;
   timeframe: string;
   computation_time_ms: number;
+  /** Ensemble only: what each constituent model predicted before blending. */
+  components?: PredictionComponent[] | null;
+  /** Ensemble only: 1 = models agree, lower = they diverge. */
+  agreement_score?: number | null;
+  /** Ensemble only: standard deviation of the constituent price targets. */
+  price_spread?: number | null;
+}
+
+export interface PredictionComponent {
+  name: string;
+  predicted_price: number;
+  confidence: number;
+  weight: number;
+  signal: string;
+  fallback: boolean;
 }
 
 export interface NewsArticle {

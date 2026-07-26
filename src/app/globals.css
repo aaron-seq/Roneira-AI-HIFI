@@ -35,9 +35,30 @@
   --color-sell: #E67E22;
   --color-strong-sell: #E74C3C;
 
+  /* ---- Model / research accent ----
+     Brass, taken from the ₹ monogram in the wordmark. This replaces the former
+     --color-ai-purple as the "model output" accent: a blue→purple gradient is
+     the single most recognisable tell of AI-generated UI, and it also collided
+     with nothing in the subject. Brass reads as instrument metal and is
+     distinct from the profit/loss hues, so model confidence never gets mistaken
+     for a directional call. */
+  --color-brass: #C8922F;
+  --color-brass-bright: #E0AE52;
+  --color-brass-dim: rgba(200, 146, 47, 0.16);
+
+  /* Tinted neutrals for the research surfaces. The base palette is GitHub's
+     dark theme, whose greys are untinted; these carry a slight indigo cast so
+     large dark areas read as a considered ground rather than "off". */
+  --color-ink: #0A0C13;
+  --color-ink-raised: #12151F;
+  --color-ink-line: rgba(180, 190, 220, 0.10);
+  --color-ink-text: #D7DBE7;
+  --color-ink-muted: #838BA0;
+  --color-ink-faint: #565D73;
+
   /* ---- Gradients ---- */
   --gradient-primary: linear-gradient(135deg, #2ECC71 0%, #3498DB 50%, #9B59B6 100%);
-  --gradient-hero: linear-gradient(135deg, #3498DB 0%, #9B59B6 50%, #1ABC9C 100%);
+  --gradient-hero: linear-gradient(100deg, #E0AE52 0%, #C8922F 55%, #8A7A46 100%);
   --gradient-card: linear-gradient(135deg, rgba(52,152,219,0.08) 0%, rgba(155,89,182,0.04) 100%);
 
   /* ---- Shadows ---- */

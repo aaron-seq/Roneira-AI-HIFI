@@ -76,6 +76,11 @@ class PredictionResponse(BaseModel):
     model_used: str
     timeframe: str
     computation_time_ms: float
+    # Ensemble-only. Present so the UI can show how much the constituent models
+    # disagreed instead of only the blended point estimate.
+    components: list[dict] | None = None
+    agreement_score: float | None = None
+    price_spread: float | None = None
 
 
 class MarketDataRequest(BaseModel):
@@ -251,6 +256,7 @@ def predict(request: PredictionRequest):
         prediction = ensemble.combine(
             [rf_result, ta_result, pdm_result, lstm_result],
             weights=[0.35, 0.25, 0.25, 0.15],
+            names=["RANDOM_FOREST", "TECHNICAL", "PVD_MOMENTUM", "LSTM"],
         )
     else:
         # Default to Ensemble
@@ -291,6 +297,9 @@ def predict(request: PredictionRequest):
         model_used=model_type,
         timeframe=timeframe,
         computation_time_ms=round(computation_time, 1),
+        components=prediction.get("components"),
+        agreement_score=prediction.get("agreement_score"),
+        price_spread=prediction.get("price_spread"),
     )
 
 
