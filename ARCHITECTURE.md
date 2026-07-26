@@ -89,6 +89,27 @@ src/components/  auth/ charts/ prediction/ shared/ ui/
 src/lib/         client/ server/ market/ news/ stores/ supabase/ hooks/
 ```
 
+### Design direction
+
+The Predict surface (`src/app/dashboard/predict/`) is the first to move off the original
+tokens, which were GitHub's dark palette + the 2013 Flat UI accent colors + a blue→purple
+hero gradient — three stacked defaults rather than choices made for this product. New
+tokens (`--color-brass*`, `--color-ink*` in `globals.css`) replace the purple gradient with
+brass drawn from the ₹ monogram, and tint the neutrals so large dark areas don't read as
+"off." `Instrument Serif` (`src/app/layout.tsx`) is a second, editorial display face used
+only for verdicts and section titles, never data — Geist alone reads as Vercel's default.
+
+Design-quality checks for anything touching these surfaces run via
+[Impeccable](https://github.com/pbakaus/impeccable)'s detector: `node
+<path-to-impeccable-checkout>/cli/bin/cli.js detect <files>`. It's a real static analyzer
+(60 deterministic rules — gradient text, bounce easing, untinted grays, card-in-card
+nesting, etc.), not a subjective pass; it's what caught `.gradient-text`
+(`background-clip: text` on the old Predict heading) as a common AI-generated-UI tell.
+
+The other six dashboard surfaces (Market Overview, Watchlist, Commodities & Forex,
+Portfolio, News, Audit Log) still carry the original tokens and are visually inconsistent
+with Predict until they're brought forward.
+
 ## API route handlers (`src/app/api/`)
 
 | Route | Purpose | Auth | Rate limit |
@@ -159,7 +180,14 @@ out first.
 | `PVD_MOMENTUM` | price/volume/divergence momentum engine | n/a — deterministic |
 | `LSTM` slot | gradient-boosted (xgboost), 60-step feature windows | yes, offline artifact |
 | `GAN` slot | gradient-boosted (xgboost), 30-step feature windows | yes, offline artifact |
-| `ENSEMBLE` | weighted combination | n/a |
+| `ENSEMBLE` | weighted combination (0.35 RF / 0.25 Technical / 0.25 PVD / 0.15 LSTM) | n/a |
+
+`ENSEMBLE` returns a `components` array alongside the blended `predicted_price` — each
+constituent's own price target, confidence, weight, and signal — plus `agreement_score`
+and `price_spread`. The blend alone hides disagreement between models; the Predict UI's
+`ModelSpread` component (`src/components/prediction/ModelSpread.tsx`) plots the
+constituents against spot so a case like "Technical says buy while targeting a price below
+spot" is visible rather than averaged away.
 
 **TensorFlow is not a dependency.** The LSTM and GAN slots were written against Keras;
 without TF they served an untrained heuristic. They are now backed by
@@ -171,6 +199,20 @@ each slot keeps its own feature engineering and signal thresholds. If TF is inst
 Artifacts live in `ml/artifacts/generated/` (override with `ML_MODEL_DIR`) and come from
 `python train_models.py`. Loading uses joblib/pickle, so it must only ever read artifacts
 this project produced — never a user upload.
+
+**The four generated files (`lstm_gbm.joblib`, `lstm_metadata.json`, `gan_gbm.joblib`,
+`gan_metadata.json`) are committed to git**, not gitignored — deliberately, and only these
+four (`.gitignore` excludes everything else under `ml/artifacts/generated/` plus any
+`.h5`/`.keras`/`.pkl`). At ~500KB each this is trivial for git; no LFS needed. This matters
+for deployment: Render's free web-service tier has no persistent disk and spins down after
+15 minutes idle, so training at boot would mean retraining on every cold start against a
+yfinance/Yahoo connection that's already proven to rate-limit by IP (see above). Committing
+the artifacts means the service boots with real trained models and zero live network calls
+for inference — free-tier hosting and genuinely trained models are not in tension here.
+Railway, for reference, has no ongoing free tier as of this writing (one-time $5 trial
+credit, then usage-based billing) — Render is the free-tier-compatible target of the two
+named in this doc. Regenerate with `npm run train:ml` and commit the refreshed files when
+the data goes stale enough to matter.
 
 > **Measured skill — read before trusting these numbers.** Both gradient-boosted slots
 > currently report `skill_vs_no_change: 0.0`: validation MAE ≈ 0.069 against a 0.068 "no

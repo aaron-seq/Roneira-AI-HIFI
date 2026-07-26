@@ -88,49 +88,65 @@ Roneira AI HIFI represents the convergence of advanced machine learning, real-ti
 
 ### Machine Learning & Analytics
 
-<details>
-<summary><strong>Advanced ML Predictions</strong></summary>
+The lists below describe what's actually implemented and verified working — not a
+roadmap. See [IDEAS.md](./IDEAS.md) for near-term and speculative extensions
+(backtesting, alerting, options-flow data, etc. are not built yet).
 
-- **Multi-Model Ensemble**: RandomForest, XGBoost, and LSTM models for different prediction horizons
-- **Feature Engineering**: 50+ technical indicators with vectorized computation
-- **Model Versioning**: MLOps pipeline with A/B testing capabilities
-- **Backtesting Framework**: Historical performance validation with walk-forward analysis
-- **Confidence Intervals**: Probabilistic predictions with uncertainty quantification
+<details>
+<summary><strong>Six-model ensemble, with disagreement surfaced, not hidden</strong></summary>
+
+- **RandomForest** — refit per prediction request with `TimeSeriesSplit`, on engineered
+  price/volume/volatility features (~2.6s per call, real, not cached).
+- **Technical** and **PVD Momentum** — deterministic rule-based signal engines (see below).
+- **LSTM and GAN slots** — gradient-boosted (`xgboost`), trained offline on 5 years of real
+  market data (9 tickers, ~10,400 windows each), artifacts committed to the repo. TensorFlow
+  is not a dependency; see [ARCHITECTURE.md](./ARCHITECTURE.md#ml-service-ml) for why and
+  the measured skill of these two models (honestly: no edge over a naive "no change"
+  baseline at a 30-day horizon — the confidence score reflects that).
+- **Ensemble** — a weighted blend (0.35 / 0.25 / 0.25 / 0.15) that also returns each
+  constituent model's own price target, confidence, and signal, plus an agreement score.
+  The Predict page's model-spread view plots these against spot so you can see when models
+  disagree instead of only the averaged number.
 
 </details>
 
 <details>
-<summary><strong>PDM Strategy Analytics</strong></summary>
+<summary><strong>PDM (price/volume/derivative) momentum engine</strong></summary>
 
-- **Price Derivatives**: Velocity (df/dt) and acceleration (d²f/dt²) calculations
-- **Volume Analysis**: Volume-weighted price movements and momentum detection
-- **Signal Generation**: Multi-timeframe confluence analysis
-- **Risk Management**: ATR-based position sizing and stop-loss automation
-- **Performance Metrics**: Sharpe ratio, maximum drawdown, and win-rate analytics
+`ml/app/models/pdm_momentum.py` — deterministic, no training step:
+
+- Price momentum and volume-signal computation
+- A derivative-style velocity signal over the price series
+- Support/resistance levels from recent highs/lows
+- Trend strength and momentum-divergence detection
 
 </details>
 
 <details>
-<summary><strong>Technical Analysis Suite</strong></summary>
+<summary><strong>Technical analysis suite</strong></summary>
 
-- **Core Indicators**: SMA, EMA, RSI, MACD, Bollinger Bands, Stochastic
-- **Advanced Patterns**: Candlestick recognition, support/resistance levels
-- **Custom Indicators**: Proprietary momentum and volatility measures
-- **Multi-Timeframe**: Synchronized analysis across different time horizons
-- **Alert System**: Real-time notifications for signal triggers
+Six indicators, each with its own buy/sell/neutral signal:
+RSI (14), MACD, Bollinger Bands, EMA 20/50, Stochastic RSI, ADX.
 
 </details>
 
 ### Portfolio Management
 
 <details>
-<summary><strong>Intelligent Portfolio Analytics</strong></summary>
+<summary><strong>Holdings, P&amp;L, and audit trail</strong></summary>
 
-- **Real-time Valuation**: Live portfolio tracking with P&L calculations
-- **Risk Assessment**: VaR calculations, correlation matrices, beta analysis
-- **Performance Attribution**: Sector, geographic, and style factor analysis
-- **Rebalancing Algorithms**: Automated portfolio optimization
-- **Tax Optimization**: Harvest loss tracking and wash sale rule compliance
+- **Live valuation**: holdings priced against the same quote pipeline as Market Overview,
+  with total value, invested capital, today's change, and per-holding P&L
+- **Sector allocation** breakdown and a concentration-based risk score
+- **Buy/sell as an atomic upsert**: `portfolio_holdings` has a unique `(user, ticker)`
+  constraint, so a transaction can't race a read-then-write on the same position
+- **Every change is audited**: DB triggers write `audit_log` rows for portfolio and
+  watchlist changes, so the trail doesn't depend on the client remembering to log it —
+  see the Audit Log page and [ARCHITECTURE.md](./ARCHITECTURE.md#auth)
+
+VaR, correlation matrices, beta analysis, automated rebalancing, and tax-loss harvesting
+are not implemented. If you need one of these, check [IDEAS.md](./IDEAS.md) — portfolio
+risk allocation is scoped there as a mid-term item.
 
 </details>
 
@@ -447,280 +463,65 @@ gitGraph
 
 ## API Documentation
 
-### RESTful API Endpoints
+These are the actual Next.js route handlers under `src/app/api/` — there is
+no `/api/v1/*` prefix and no GraphQL API; portfolio and watchlist reads/writes
+go directly through the Supabase client (RLS-scoped to the signed-in user)
+rather than a dedicated REST endpoint.
 
-<details>
-<summary><strong>Prediction Endpoints</strong></summary>
+| Route | Method | Purpose | Auth | Rate limit |
+|---|---|---|---|---|
+| `/api/predict` | POST | Forward to the `ml/` service, persist result to `predictions_cache`/`prediction_history`/`audit_log` | optional | 20/min |
+| `/api/market-data` | GET | Quotes by `group` (`market-overview`\|`commodities-forex`\|`peer-comparison`) or `symbols` | none | 60/min |
+| `/api/market-data/history` | GET | OHLCV candles for a symbol | none | 60/min |
+| `/api/stocks/search` | GET | Symbol search (Finnhub, falls back to Alpha Vantage) | none | 30/min |
+| `/api/news` | GET | Headlines + sentiment classification | none | 30/min |
+| `/api/auth/username` | GET | Username availability check | none | 20/min |
+| `/api/auth/username` | POST | Username + password login | none | 10/min |
+| `/api/audit-log` | POST | Write an audit row | required | — |
+| `/api/admin/overview` | GET | Admin dashboard summary (users, audit log, ML health) | admin role | — |
 
-#### POST `/api/v1/predict`
-Single ticker price prediction with ML models.
-
-**Request Body:**
-```json
-{
-  "ticker": "AAPL",
-  "days": 5,
-  "models": ["randomforest", "xgboost"],
-  "include_pdm": true,
-  "confidence_level": 0.95
-}
-```
-
-**Response:**
-```json
-{
-  "predictions": [
-    {
-      "date": "2024-01-15",
-      "price": 185.42,
-      "confidence_interval": [180.15, 190.69],
-      "probability": 0.78
-    }
-  ],
-  "model_metrics": {
-    "accuracy": 0.82,
-    "mae": 2.34,
-    "rmse": 3.67
-  },
-  "pdm_signals": {
-    "momentum": "bullish",
-    "strength": 0.65
-  }
-}
-```
-
-#### POST `/api/v1/batch-predict`
-Batch prediction for multiple tickers (max 10).
-
-**Rate Limits:** 30 requests/minute per API key
-
-</details>
-
-<details>
-<summary><strong>Portfolio Endpoints</strong></summary>
-
-#### GET `/api/v1/portfolio/:userId`
-Retrieve user portfolio with real-time valuations.
-
-#### POST `/api/v1/portfolio/:userId/positions`
-Add or update portfolio positions.
-
-#### GET `/api/v1/portfolio/:userId/analytics`
-Portfolio performance analytics and risk metrics.
-
-</details>
-
-<details>
-<summary><strong>PDM Strategy Endpoints</strong></summary>
-
-#### GET `/api/v1/pdm/scan`
-Scan markets for PDM opportunities.
-
-#### POST `/api/v1/pdm/backtest`
-Run historical PDM strategy backtests.
-
-</details>
-
-### GraphQL Schema (Beta)
-
-```graphql
-type Query {
-  predictions(
-    tickers: [String!]!
-    days: Int = 1
-    models: [ModelType!]
-  ): [Prediction!]!
-  
-  portfolio(userId: ID!): Portfolio
-  
-  marketData(
-    ticker: String!
-    range: TimeRange!
-  ): [OHLCV!]!
-}
-
-type Prediction {
-  ticker: String!
-  predictions: [PricePoint!]!
-  confidence: Float!
-  modelMetrics: ModelMetrics!
-}
-```
+The `ml/` service's own auto-generated docs (`GET /docs` on the FastAPI app,
+e.g. `http://localhost:8000/docs` locally) cover its `/predict`,
+`/market-data`, `/stock/{ticker}`, and `/history` endpoints in detail — it's
+never called directly from the browser, only server-to-server from the
+routes above.
 
 ## Performance & Optimizations
 
-### Frontend Optimizations
+- **TanStack Query** owns client-side caching, retries, and refetch for every data hook in `src/lib/hooks/*` (stale-while-revalidate).
+- **Server-side response caching**: quotes/search/history/news responses are cached for tens of seconds to minutes (`src/lib/server/cache.ts`) so repeat requests don't re-hit tightly-quota'd providers (Alpha Vantage: 25/day free tier).
+- **Outbound fetch timeouts**: every server-side `fetch` to a provider or the ML service carries an `AbortSignal.timeout`, so a wedged upstream can't hang a route indefinitely.
+- **ML service concurrency**: FastAPI route handlers are plain `def` (not `async def`) because they do blocking CPU/network work; FastAPI runs them in a threadpool. `/market-data` additionally fans out across symbols with a `ThreadPoolExecutor`.
+- **Next.js code splitting**: the App Router code-splits per route by default; chart libraries (`lightweight-charts`, `recharts`) are only loaded on the pages that render them.
 
-<table>
-<tr>
-<td>
-
-**Bundle Optimization**
-- Tree shaking with Vite
-- Dynamic imports for routes
-- Code splitting by features
-- Asset compression (Brotli/Gzip)
-
-**Runtime Performance**
-- React.memo for expensive components
-- useMemo/useCallback for computations
-- Virtual scrolling for large lists
-- Intersection observer for lazy loading
-
-</td>
-<td>
-
-**Caching Strategy**
-- TanStack Query with stale-while-revalidate
-- Service worker for offline assets
-- CDN edge caching for static resources
-- Browser cache optimization
-
-**Network Optimization**
-- Request deduplication
-- Batch API calls where possible
-- WebSocket for real-time data
-- HTTP/2 server push
-
-</td>
-</tr>
-</table>
-
-### Backend Optimizations
-
-```typescript
-// Connection Pooling Example
-const pool = new Pool({
-  host: process.env.DB_HOST,
-  port: 5432,
-  database: process.env.DB_NAME,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  max: 20,                    // Maximum pool size
-  min: 5,                     // Minimum pool size
-  idleTimeoutMillis: 30000,   // Close idle connections after 30s
-  connectionTimeoutMillis: 2000, // Timeout connection attempts after 2s
-});
-
-// Redis Caching Strategy
-const cacheStrategy = {
-  market_data: { ttl: 60 },     // 1 minute for market data
-  predictions: { ttl: 3600 },   // 1 hour for ML predictions
-  portfolio: { ttl: 300 },      // 5 minutes for portfolio data
-};
-```
-
-### ML Service Optimizations
-
-- **Vectorized Operations**: NumPy/Pandas for batch processing
-- **Model Caching**: LRU cache with intelligent eviction
-- **Feature Pipelines**: Efficient data transformation chains
-- **GPU Acceleration**: CUDA support for training workloads
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for the full data-provider fallback chain and caching details.
 
 ## Security Implementation
 
-### Multi-Layer Security Architecture
+- **Auth**: Supabase Auth (email/password), cookie-based sessions via `@supabase/ssr`, refreshed in `src/middleware.ts`.
+- **Row Level Security**: enabled on every `public` table; admin-only reads route through a `SECURITY DEFINER` `is_admin()` function rather than querying `users` from within a policy on `users` (which previously caused infinite recursion — see `supabase/migrations/007_fix_admin_policy_recursion.sql`).
+- **Input validation**: zod schemas for `/api/predict` and `/api/audit-log`; their enums intentionally mirror the Postgres `CHECK` constraints so invalid input fails as a 400 at the edge instead of a 500 from the database.
+- **Rate limiting**: `src/lib/server/rate-limit.ts` — a fixed window over the Upstash Redis REST API (falls back to an in-process window without Upstash credentials) — applied to `/api/predict`, `/api/market-data`, `/api/market-data/history`, `/api/stocks/search`, `/api/news`, and `/api/auth/username`.
+- **Audit logging**: `audit_log` has no `DELETE` policy for `anon`/`authenticated`, making it append-only through the normal client path (note: the `service_role` connection bypasses RLS entirely, as it does in any Postgres/Supabase project).
+- **Security scanning**: `.github/workflows/ci.yml` runs a Trivy filesystem scan on every push/PR.
 
-```mermaid
-graph LR
-    subgraph "Edge Layer"
-        CDN[CDN/WAF]
-        TLS[TLS 1.3]
-    end
-    
-    subgraph "Application Layer"
-        CORS[CORS Policy]
-        CSP[Content Security Policy]
-        JWT[JWT Authentication]
-        RBAC[Role-Based Access]
-    end
-    
-    subgraph "Data Layer"
-        Encrypt[Data Encryption]
-        Audit[Audit Logging]
-        Backup[Encrypted Backups]
-    end
-    
-    CDN --> CORS
-    CORS --> JWT
-    JWT --> Encrypt
-```
-
-### Security Features
-
-<details>
-<summary><strong>Authentication & Authorization</strong></summary>
-
-- **JWT Tokens**: Stateless authentication with refresh token rotation
-- **OAuth 2.0**: Social login integration (Google, GitHub)
-- **Multi-Factor Authentication**: TOTP and SMS-based 2FA
-- **Role-Based Access Control**: Granular permissions system
-- **Session Management**: Secure session handling with Redis
-
-</details>
-
-<details>
-<summary><strong>Data Protection</strong></summary>
-
-- **Encryption at Rest**: AES-256 database encryption
-- **Encryption in Transit**: TLS 1.3 for all communications
-- **API Security**: Rate limiting, request validation, CORS policies
-- **Input Sanitization**: XSS prevention and SQL injection protection
-- **Audit Logging**: Comprehensive security event logging
-
-</details>
-
-<details>
-<summary><strong>Infrastructure Security</strong></summary>
-
-- **Container Security**: Non-root users, minimal base images
-- **Network Segmentation**: Private subnets and security groups
-- **Secrets Management**: HashiCorp Vault integration
-- **Vulnerability Scanning**: Automated dependency and container scanning
-- **Security Headers**: HSTS, CSP, X-Frame-Options, etc.
-
-</details>
+This section intentionally doesn't claim infrastructure this project doesn't have (no Vault, no WAF, no MFA at launch) — see [ARCHITECTURE.md § Guardrails](./ARCHITECTURE.md#guardrails) for what's actually enforced today and what's app-layer-only.
 
 ## Testing Strategy
 
-### Comprehensive Test Coverage
+What's actually configured, no coverage-percentage targets asserted since no coverage
+tool is wired up to check them:
 
-<table>
-<tr>
-<td width="33%">
+| Layer | Tool | What's covered |
+|---|---|---|
+| `src/` unit tests | Vitest | Pure logic: market data normalization, provider dedup, timeframe math, rate limiting, zod validation, news sentiment classification, cache. No `@testing-library/react` — no component-render tests currently. |
+| `ml/` tests | pytest | Each of the 6 models (`test_models.py`) plus a real-FastAPI-entrypoint smoke test (`test_app_entrypoint.py`) that imports `app.main:app` and hits `/`, `/health` — this exists specifically because model-only tests don't catch a broken app import (e.g. a `requirements.txt` dependency that's missing at runtime). |
+| Static analysis | ESLint, `tsc --noEmit` | Runs in CI and the pre-commit hook. |
+| Security scan | Trivy (GitHub Action) | Filesystem vulnerability scan on every push/PR. |
 
-**Unit Tests**
-- **Frontend**: Vitest + React Testing Library
-- **Backend**: Jest + Supertest
-- **ML Service**: pytest + unittest
-
-Target: >90% code coverage
-
-</td>
-<td width="33%">
-
-**Integration Tests**
-- API endpoint testing
-- Database integration tests
-- ML model validation
-- WebSocket connection tests
-
-Target: >80% integration coverage
-
-</td>
-<td width="34%">
-
-**E2E Tests**
-- **Playwright** for cross-browser testing
-- User workflow automation
-- Performance regression testing
-- Visual regression testing
-
-Target: Critical user paths covered
-
-</td>
-</tr>
-</table>
+No Jest/Supertest, no WebSocket tests (nothing in `src/` calls the orphaned `realtime/`
+service — see `task.md`), no checked-in Playwright E2E suite, no visual-regression tooling.
+If you want any of these, they'd be new work, not an existing-but-undocumented feature.
 
 ### Test Execution
 
@@ -763,216 +564,46 @@ There is no coverage upload and no E2E job; don't infer either from this README.
 
 ## Deployment
 
-### Deployment Strategies
+Three targets, matching [ARCHITECTURE.md](./ARCHITECTURE.md):
 
-<details>
-<summary><strong>Development Deployment</strong></summary>
+| Surface | Platform | Notes |
+|---|---|---|
+| `src/` (Next.js app) | Vercel | `vercel.json` describes this deployment. Set the Supabase and provider-key env vars from `.env.example` in the Vercel project settings. |
+| `ml/` (FastAPI service) | Railway or Render | Boots `uvicorn app.main:app`. Keep it private — only the Next.js server (not the browser) should reach it, via `NEXT_PUBLIC_ML_BACKEND_URL`. |
+| Auth + database | Supabase (hosted) | Apply `supabase/migrations/*.sql` in filename order (there is no `004`). |
 
-**Docker Compose (Local)**
-```bash
-# Start all services
-docker-compose up --build
+**On free-tier hosting for `ml/`, verified rather than assumed:** Railway has no ongoing
+free tier as of this writing — a one-time $5 trial credit, then usage-based billing.
+Render's free web-service tier gives 750 instance-hours/month, has **no persistent disk**,
+and spins down after 15 minutes idle. That matters here specifically because
+`ml/artifacts/generated/{lstm,gan}_gbm.joblib` (the trained model files) are **committed to
+the repo** rather than produced at deploy time — training against a live yfinance
+connection on every cold start would be slow and would repeatedly hit the Yahoo
+bot-detection rate limit documented in [ARCHITECTURE.md](./ARCHITECTURE.md#data-providers-and-fallback-chain).
+Because the artifacts ship with the code, Render's free tier is enough: the service boots
+with real trained models and makes zero live network calls to produce them.
 
-# Scale specific services
-docker-compose up --scale ml-service=3
+Optional: Upstash Redis for shared rate limiting across serverless instances
+(`UPSTASH_REDIS_URL`/`UPSTASH_REDIS_TOKEN`) — without it, rate limiting still
+works but is per-instance rather than global.
 
-# View service logs
-docker-compose logs -f backend
-```
+`DEPLOYMENT.md` in this repo predates the canonical `src/`/`ml/` split and
+describes the legacy Docker Compose / Railway-multi-service setup; treat it as
+historical until it's rewritten, and use the table above instead.
 
-**Environment-specific configs**
-- Development: Hot reloading, debug logs, test databases
-- Staging: Production-like with synthetic data
-- Production: Optimized builds, monitoring, real data
+### Pre-deploy checklist
 
-</details>
-
-</details>
-
-<details>
-<summary><strong>Cloud Deployment</strong></summary>
-
-**Vercel Deployment (Frontend)**
-1. **Root Directory**: Set "Root Directory" to `frontend` in Vercel project settings.
-2. **Build Command**: `npm run build` (or `vite build`)
-3. **Output Directory**: `dist`
-4. **Environment Variables**: Add `legacy-peer-deps=true` (handled automatically by `.npmrc`).
-
-**Free Tier Platforms**
-- **Frontend**: Vercel, Netlify, GitHub Pages
-- **Backend**: Railway, Render, Fly.io
-- **Database**: Supabase, PlanetScale, Neon
-- **Cache**: Upstash Redis, Redis Cloud
-
-**Production Platforms**
-- **Kubernetes**: AWS EKS, Google GKE, Azure AKS
-- **Serverless**: AWS Lambda, Google Cloud Functions
-- **Platform-as-a-Service**: Heroku, Railway (paid tiers)
-
-</details>
-
-<details>
-<summary><strong>Infrastructure as Code</strong></summary>
-
-**Terraform Configuration**
-```hcl
-# AWS EKS Cluster Example
-resource "aws_eks_cluster" "roneira_cluster" {
-  name     = "roneira-ai-hifi"
-  role_arn = aws_iam_role.cluster_role.arn
-  version  = "1.28"
-
-  vpc_config {
-    subnet_ids = [
-      aws_subnet.private_1.id,
-      aws_subnet.private_2.id
-    ]
-    endpoint_private_access = true
-    endpoint_public_access  = true
-  }
-}
-```
-
-**Kubernetes Manifests**
-```yaml
-# ML Service Deployment
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: ml-service
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: ml-service
-  template:
-    metadata:
-      labels:
-        app: ml-service
-    spec:
-      containers:
-      - name: ml-service
-        image: roneira/ml-service:latest
-        resources:
-          requests:
-            memory: "512Mi"
-            cpu: "250m"
-          limits:
-            memory: "1Gi"
-            cpu: "500m"
-```
-
-</details>
-
-### Production Infrastructure Status
-
-#### Current Live Deployment
-
-All services are deployed and operational on their respective platforms:
-
-| Service | Platform | Status | URL | Cost |
-|---------|----------|--------|-----|------|
-| **Frontend** | Vercel | 🟢 Live | [roneira-ai-hifi.vercel.app](https://roneira-ai-hifi.vercel.app) | Free |
-| **Backend** | Render | 🟢 Live | [roneira-ai-hifi.onrender.com](https://roneira-ai-hifi.onrender.com) | Free |
-| **ML Service** | Render | 🟢 Live | [roneira-ai-hifi-ml-service.onrender.com](https://roneira-ai-hifi-ml-service.onrender.com) | Free |
-
-#### Service Health Endpoints
-
-```bash
-# Backend Health Check
-curl https://roneira-ai-hifi.onrender.com/health
-# Response: {"success":true,"ml_service_status":"healthy","service_status":"healthy"...}
-
-# ML Service Health Check  
-curl https://roneira-ai-hifi-ml-service.onrender.com/health
-# Response: {"status":"healthy","models_cached":0,"timestamp":"2025-12-07T07:53:08.956957"}
-```
-
-#### ML Service Migration (December 2025)
-
-**Migration: Railway → Render**
-
-The ML service was successfully migrated from Railway to Render on December 7, 2025, due to Railway trial expiration.
-
-**Migration Details:**
-- **Previous Platform**: Railway (Trial expired)
-- **New Platform**: Render (Free tier, Docker-based)
-- **Migration Date**: December 7, 2025
-- **Downtime**: < 5 minutes during environment variable update
-- **Service URL Change**: 
-  - Old: `https://roneira-ai-hifi-production.up.railway.app`
-  - New: `https://roneira-ai-hifi-ml-service.onrender.com`
-
-**Configuration:**
-```yaml
-# ML Service Render Configuration
-Service Name: Roneira-AI-HIFI-ML-Service
-Runtime: Docker
-Root Directory: ml-service
-Branch: main
-Environment Variables:
-  PORT: 5000
-  FLASK_ENV: production
-Instance Type: Free (512 MB RAM, 0.1 CPU)
-```
-
-**Post-Migration Updates:**
-1. ✅ Backend `ML_SERVICE_URL` environment variable updated
-2. ✅ Backend service auto-redeployed with new configuration
-3. ✅ Health checks verified on both services
-4. ✅ Frontend continues to communicate via backend proxy
-
-#### Service Architecture Flow
-
-```
-┌─────────────────┐
-│   Frontend      │
-│   (Vercel)      │
-│                 │
-│ React + Vite    │
-└────────┬────────┘
-         │ HTTPS
-         │ VITE_API_URL
-         ▼
-┌─────────────────┐
-│   Backend       │
-│   (Render)      │
-│                 │
-│ Node.js/Express │
-└────────┬────────┘
-         │ HTTPS
-         │ ML_SERVICE_URL
-         ▼
-┌─────────────────┐
-│  ML Service     │
-│   (Render)      │
-│                 │
-│ Python/Flask    │
-└─────────────────┘
-```
-
-#### Free Tier Limitations
-
-⚠️ **Important**: Both Render services (Backend & ML) use free tier with the following characteristics:
-
-- **Cold Start Delay**: Services spin down after 15 minutes of inactivity
-- **Wake-up Time**: First request after spin-down may take 50+ seconds
-- **Recommended**: Consider upgrading to paid tier for production workloads requiring consistent response times
-
-**Workaround**: Implement a cron job to ping health endpoints every 10 minutes to keep services warm.
-
-
-
-### Deployment Checklist
-
-- [ ] **Environment Variables**: All secrets configured
-- [ ] **Database Migrations**: Schema updates applied
-- [ ] **SSL Certificates**: TLS configured and validated
-- [ ] **Monitoring**: Observability stack deployed
-- [ ] **Backup Strategy**: Data backup procedures in place
-- [ ] **Load Testing**: Performance validated under load
-- [ ] **Security Scan**: Vulnerability assessment completed
-- [ ] **Rollback Plan**: Deployment rollback procedure tested
+- [ ] Supabase migrations applied **009 through the latest**, in filename order (there is no
+      `004`). Migrations 007–009 specifically fix bugs found by hand after `001` was
+      already live: 007 fixes RLS admin-policy recursion, 008 restores anon username
+      lookup (needed for login), 009 makes `audit_log` append-only against a
+      `service_role`/superuser connection too, not just the roles RLS restricts.
+- [ ] Vercel env vars set: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+      `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_ML_BACKEND_URL`
+- [ ] `ml/` deployed and reachable from Vercel at the URL above — no training step needed at
+      deploy, the trained artifacts are committed (see the free-tier note above)
+- [ ] `npm run build` and `python -m pytest ml/tests -q` both pass locally (same checks CI
+      runs)
 
 ## Contributing
 
@@ -994,129 +625,39 @@ We welcome contributions from the community! Please see our [Contributing Guide]
 
 ### Development Tools
 
+These are the actual scripts in `package.json` — see [Quick Start](#quick-start-5-minutes)
+above for the full setup sequence:
+
 ```bash
-# Setup development environment
-npm run dev:setup
+npm run lint          # eslint
+npm run type-check    # tsc --noEmit
+npm run test:web      # vitest
 
-# Run linting and formatting
-npm run lint:fix
-npm run format
-
-# Pre-commit hooks
-npm run pre-commit
-
-# Generate documentation
-npm run docs:generate
+npm run seed:admin    # scripts/seed-admin.mjs
 ```
+
+There is no `lint:fix`, `format`, `dev:setup`, `pre-commit`, or `docs:generate` script.
+The pre-commit hook itself lives at `.husky/pre-commit` and runs automatically on `git
+commit` once `npm install` has run the `prepare` script (`git config core.hooksPath
+.husky`) — there's no separate command to invoke it by hand.
 
 ## Monitoring & Observability
 
-### Monitoring Stack
+There is no metrics/tracing stack wired up today (no Prometheus, Grafana,
+Sentry, etc.) — don't infer one from this README. What exists:
 
-<table>
-<tr>
-<td width="50%">
+- **CI**: `.github/workflows/ci.yml` (lint, type-check, tests, build, Trivy scan) on every push/PR.
+- **ML health check**: `GET /health` on the `ml/` service reports which models are loaded (`RandomForest`, `LSTM`, `GAN`, `Technical`, `PVD Momentum`, `Ensemble`) — surfaced in the admin dashboard (`/api/admin/overview`).
+- **Audit trail**: `audit_log` records logins, signups, and portfolio/watchlist/prediction actions — see `src/app/dashboard/audit-log`.
 
-**Application Monitoring**
-- **Prometheus**: Metrics collection and alerting
-- **Grafana**: Visualization and dashboards
-- **Jaeger**: Distributed tracing
-- **Sentry**: Error tracking and performance monitoring
-
-**Infrastructure Monitoring**
-- **Node Exporter**: System metrics
-- **cAdvisor**: Container metrics
-- **Alertmanager**: Alert routing and notification
-- **Uptime monitoring**: Service availability checks
-
-</td>
-<td width="50%">
-
-**Key Metrics Dashboard**
-
-```typescript
-const keyMetrics = {
-  api: {
-    response_time: 'p99 < 500ms',
-    error_rate: '< 0.1%',
-    throughput: '1000 rps',
-    availability: '99.9%'
-  },
-  ml: {
-    prediction_latency: 'p95 < 2s',
-    model_accuracy: '> 80%',
-    cache_hit_rate: '> 90%',
-    training_time: '< 10min'
-  },
-  database: {
-    connection_pool: '< 80% utilized',
-    query_time: 'p95 < 100ms',
-    replication_lag: '< 1s'
-  }
-};
-```
-
-</td>
-</tr>
-</table>
-
-### Alert Configuration
-
-```yaml
-# Prometheus Alert Rules
-groups:
-- name: roneira-alerts
-  rules:
-  - alert: HighAPILatency
-    expr: histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m])) > 0.5
-    for: 2m
-    labels:
-      severity: warning
-    annotations:
-      summary: "High API latency detected"
-      
-  - alert: MLServiceDown
-    expr: up{job="ml-service"} == 0
-    for: 1m
-    labels:
-      severity: critical
-    annotations:
-      summary: "ML service is down"
-```
+If you add real monitoring, update this section to describe what's actually running rather than a wishlist.
 
 ## Roadmap
 
-### Short-term Goals (Q1 2024)
-
-- [ ] **Enhanced Authentication**: OAuth2 provider integration
-- [ ] **Real-time Notifications**: WebSocket-based alert system
-- [ ] **Mobile Optimization**: Progressive Web App improvements
-- [ ] **API v2**: GraphQL endpoint with subscriptions
-- [ ] **Advanced Charting**: Technical analysis drawing tools
-
-### Medium-term Goals (Q2-Q3 2024)
-
-- [ ] **Multi-asset Support**: Cryptocurrency and forex integration
-- [ ] **Social Trading**: Copy trading and signal sharing
-- [ ] **Advanced ML Models**: Transformer-based price prediction
-- [ ] **Risk Management**: Advanced portfolio optimization
-- [ ] **White-label Solution**: Customizable branding options
-
-### Long-term Vision (Q4 2024+)
-
-- [ ] **Institutional Features**: Prime brokerage integration
-- [ ] **Regulatory Compliance**: MiFID II and SEC reporting
-- [ ] **AI Assistant**: Natural language query interface
-- [ ] **Blockchain Integration**: DeFi protocol connectivity
-- [ ] **Global Expansion**: Multi-currency and localization
-
-### Community Requests
-
-Based on community feedback, we're prioritizing:
-1. **Dark mode improvements** (In Progress)
-2. **Mobile app development** (Planning)
-3. **Integration with TradingView** (Research)
-4. **Options trading support** (Research)
+See [IDEAS.md](./IDEAS.md) for the full, triaged backlog of proposed
+enhancements (PDM strategy improvements, technical-analysis additions,
+alternative data, backtesting, portfolio optimization). This README doesn't
+duplicate a roadmap here to avoid the two drifting out of sync.
 
 ## Support & Community
 
@@ -1150,71 +691,36 @@ Based on community feedback, we're prioritizing:
 <details>
 <summary><strong>How accurate are the ML predictions?</strong></summary>
 
-Our models achieve 80-85% directional accuracy on 1-day predictions and 70-75% on 5-day predictions. Accuracy varies by market conditions and asset volatility. Always combine predictions with fundamental analysis and risk management.
+See `ml/artifacts/generated/lstm_metadata.json` (regenerated by `npm run
+train:ml`) for measured validation error against a naive "no change"
+baseline, rather than a fixed number here — accuracy depends on the model,
+timeframe, and current market regime, and this README won't assert a
+directional-accuracy percentage it can't back with a live number.
 
 </details>
 
 <details>
 <summary><strong>What data sources are used?</strong></summary>
 
-We integrate with multiple data providers including Alpha Vantage, Yahoo Finance, and Quandl for market data. News sentiment is sourced from various financial news APIs. All data is validated and normalized before processing.
+Twelve Data (primary quotes/history), yfinance (fallback, via `ml/`), Finnhub
+and Alpha Vantage (symbol search / secondary quotes), and NewsAPI (headlines).
+See [ARCHITECTURE.md § Data providers](./ARCHITECTURE.md) for the fallback
+order.
 
 </details>
 
 <details>
 <summary><strong>Is the platform suitable for institutional use?</strong></summary>
 
-Yes, the platform is designed with institutional-grade features including API rate limiting, audit logging, compliance reporting, and enterprise authentication options. Contact us for custom institutional solutions.
+Not at this stage — it's a personal/portfolio project with launch-scope auth
+(Supabase email/password only) and no compliance certifications. Treat any
+claim to the contrary in older docs as aspirational, not current.
 
 </details>
-
-<details>
-<summary><strong>How do I contribute new ML models?</strong></summary>
-
-Follow our [ML Model Contribution Guide](docs/ml-models.md). We welcome contributions of new algorithms, especially in the areas of sentiment analysis, alternative data integration, and risk modeling.
-
-</details>
-
-### Performance Benchmarks
-
-```
-Environment: AWS c5.4xlarge, PostgreSQL RDS, Redis ElastiCache
-
-API Response Times:
-├── Single prediction: 150ms (p99)
-├── Batch prediction: 800ms (p99)
-├── Portfolio analysis: 300ms (p99)
-└── Market data: 50ms (p99)
-
-ML Model Performance:
-├── Feature engineering: 2.1s (10 tickers)
-├── Prediction generation: 450ms (single ticker)
-├── Model training: 8.5min (RandomForest)
-└── Cache hit rate: 94.2%
-
-Database Performance:
-├── Connection pool utilization: 68%
-├── Query response time: 45ms (p95)
-├── Concurrent connections: 150
-└── Replication lag: 0.3s
-```
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-### Third-party Licenses
-
-This project uses several open-source libraries. Key dependencies include:
-
-- **React**: MIT License
-- **Node.js**: MIT License  
-- **Python/Flask**: BSD License
-- **PostgreSQL**: PostgreSQL License
-- **Redis**: BSD License
-- **TensorFlow**: Apache 2.0 License
-
-For a complete list of dependencies and their licenses, see [LICENSES.md](LICENSES.md).
 
 ---
 

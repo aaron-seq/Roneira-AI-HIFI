@@ -108,7 +108,13 @@ function PredictPageContent() {
   return (
     <div className="mx-auto max-w-7xl">
       <div className="mb-8">
-        <h1 className="gradient-text text-3xl font-bold leading-tight">
+        <h1
+          className="text-3xl leading-tight"
+          style={{
+            fontFamily: "var(--font-instrument-serif), Georgia, serif",
+            color: "var(--color-text-primary)",
+          }}
+        >
           Intelligent Financial Advisor
         </h1>
         <p className="mt-2 text-sm" style={{ color: "var(--color-text-muted)" }}>

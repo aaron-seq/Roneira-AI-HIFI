@@ -2,6 +2,31 @@
 
 This document outlines proposed enhancements for the Roneira AI HIFI platform. Contributions from day trading experts and quantitative analysts are welcome.
 
+## Triage
+
+The sections below are a flat brainstorm list — this triage sorts the same
+items by how close they are to being buildable against the *current*
+canonical stack (`src/` + `ml/` + Supabase), so "someday" ideas don't compete
+for attention with things that could ship next.
+
+**Near-term — buildable now, moderate effort, clear user value**
+- Additional technical indicators (Supertrend, Ichimoku, Anchored VWAP) — pure functions, slot into the existing `TECHNICAL` model in `ml/app/models/technical_analysis.py`.
+- Multi-timeframe confluence dashboard — reuses existing prediction/technical endpoints across a few `timeframe` values.
+- Trade journal / performance attribution on the Portfolio dashboard — data already lives in `portfolio_transactions`.
+- Alert system for signal triggers — a natural extension of `predictions_cache` + a scheduled check.
+
+**Mid-term — real value, needs new infrastructure or a provider decision**
+- Backtesting framework (walk-forward, Monte Carlo) — needs a historical-data store beyond the 6-month cache `market_data.stock_prices` currently holds.
+- Options flow integration, dark-pool/algo detection — needs a paid data provider; evaluate cost against the free-tier-first posture of the current providers (Twelve Data, Finnhub, Alpha Vantage).
+- Portfolio risk allocation (risk parity, mean-variance, Black-Litterman) — meaningful math, but well-scoped as a pure computation over existing `portfolio_holdings` data.
+- Sector rotation signals, correlation matrices — needs cross-ticker historical data at a scale beyond what's cached today.
+
+**Speculative — real architectural changes, evaluate before committing**
+- WebSocket / real-time price feeds — `realtime/` exists but is orphaned relative to `src/` (see `task.md`); reviving real-time ticks means deciding whether that service or something new fits the Vercel+Supabase+Railway/Render model.
+- Multi-asset PDM extension (crypto, forex) — current provider fallback chain (Twelve Data → yfinance) is equity-oriented; needs its own data-source evaluation.
+- Mobile PWA — no mobile-specific work has started; would need its own scoping pass.
+- Institutional/regulatory features (MiFID II, SEC reporting), white-label — out of scope for a personal/portfolio-stage project; revisit only if the product's audience actually changes.
+
 ---
 
 ## PDM Strategy Enhancements

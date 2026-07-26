@@ -21,13 +21,32 @@ __pycache__/
 .venv/
 dist/
 
-# ML Models (large files - use Git LFS or Railway storage)
+# ML Models
+# TensorFlow-format artifacts stay untracked: they're large (10s-100s MB) and
+# TF isn't even a declared dependency of ml/ (see ARCHITECTURE.md).
 *.h5
 *.keras
-*.pkl
-*.joblib
 ml/models/trained/
-ml/artifacts/generated/
+
+# The gradient-boosted (xgboost) artifacts that actually back the LSTM/GAN
+# slots ARE committed, on purpose. They're ~500KB each -- trivial for git, no
+# LFS needed -- and committing them means Railway/Render's free tier boots
+# with real trained models with zero training step at deploy time. That
+# matters because free tiers there have no persistent disk and spin down
+# after 15 min idle (Render), so training at boot would mean retraining on
+# every cold start against a yfinance/Yahoo connection that's already proven
+# to rate-limit (see ARCHITECTURE.md). Regenerate with `npm run train:ml` and
+# commit the refreshed files when the data goes stale enough to matter.
+ml/artifacts/generated/*
+!ml/artifacts/generated/lstm_gbm.joblib
+!ml/artifacts/generated/lstm_metadata.json
+!ml/artifacts/generated/gan_gbm.joblib
+!ml/artifacts/generated/gan_metadata.json
+
+# Any other *.pkl in the tree (not the two files above) stays untracked --
+# arbitrary pickles are a code-execution risk if ever sourced from outside
+# this project (see ml/app/models/gradient_boost.py::load_artifact).
+*.pkl
 
 # Build caches
 *.tsbuildinfo

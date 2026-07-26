@@ -1,0 +1,14 @@
+{
+  "validation_mae": 0.06898071965239688,
+  "validation_rmse": 0.08532122228035864,
+  "baseline_mae": 0.06777138666151943,
+  "skill_vs_no_change": 0.0,
+  "confidence": 40.0,
+  "training_windows": 10411,
+  "n_features": 660,
+  "backend": "xgboost",
+  "sequence_length": 60,
+  "horizon_days": 30,
+  "backend_slot": "lstm",
+  "trained_on_frames": 9
+}
