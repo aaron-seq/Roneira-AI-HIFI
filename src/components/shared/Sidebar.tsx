@@ -15,6 +15,7 @@ import {
   Shield,
   ChevronLeft,
   ChevronRight,
+  ListFilter,
 } from "lucide-react";
 import { useAppStore } from "@/lib/stores/app-store";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,11 @@ const navItems = [
     label: "Watchlist",
     href: "/dashboard/watchlist",
     icon: Star,
+  },
+  {
+    label: "Screener",
+    href: "/dashboard/screener",
+    icon: ListFilter,
   },
   {
     label: "Commodities & Forex",

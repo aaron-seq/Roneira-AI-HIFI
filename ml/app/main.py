@@ -2,6 +2,7 @@
 Roneira AI HIFI — ML Backend
 FastAPI service for stock prediction, market data, and ML model serving.
 """
+import json
 import time
 import logging
 from concurrent.futures import ThreadPoolExecutor
@@ -20,6 +21,7 @@ from app.models.pdm_momentum import PVDMomentumEngine
 from app.models.ensemble import EnsembleCombiner
 from app.models.lstm import LSTMPredictor
 from app.models.gan import GANPredictor
+import export_stock_screener as screener
 
 # ========== Configuration ==========
 logging.basicConfig(level=logging.INFO)
@@ -110,6 +112,10 @@ class TTLCache:
 
 historical_cache = TTLCache(ttl_seconds=15 * 60)
 company_cache = TTLCache(ttl_seconds=60 * 60)
+# Fundamentals (P/E, ROE, dividend yield, ...) don't meaningfully change
+# intraday; building the dataset is 42 tickers x 2 live fetches each, so this
+# is cached far longer than a price quote would be.
+screener_cache = TTLCache(ttl_seconds=30 * 60)
 
 
 # ========== Data Fetching ==========
@@ -403,6 +409,43 @@ def history(symbol: str, interval: str = "1day", range: str = "6month"):
         "range": range,
         "candles": candles,
     }
+
+
+def _records(df: pd.DataFrame) -> list[dict]:
+    """DataFrame -> JSON-safe records. Plain `.to_dict()` chokes on NaN (not
+    valid JSON); `.to_json()` already converts NaN -> null correctly."""
+    if df.empty:
+        return []
+    return json.loads(df.to_json(orient="records"))
+
+
+@app.get("/screener")
+def stock_screener():
+    """
+    Live fundamentals screener -- same logic and same 42-ticker starter
+    universe as `export_stock_screener.py` (the XLSX export script), served
+    as JSON for the dashboard instead of a downloaded file. See that file's
+    module docstring for what the screens do and don't claim.
+    """
+    cached = screener_cache.get("dataset")
+    if cached is not None:
+        return cached
+
+    df = screener.build_dataset()
+    if df.empty:
+        raise HTTPException(status_code=502, detail="No screener data available (yfinance fetch failed for every ticker)")
+
+    payload = {
+        "generated_at": datetime.utcnow().isoformat(),
+        "all": _records(df),
+        "large_cap_strong": _records(screener.screen_fundamentally_strong(df[df["tier"] == "Large"])),
+        "mid_cap_strong": _records(screener.screen_fundamentally_strong(df[df["tier"] == "Mid"])),
+        "small_cap_strong": _records(screener.screen_fundamentally_strong(df[df["tier"] == "Small"])),
+        "dividend_payers": _records(screener.screen_dividend_payers(df)),
+        "undervalued_growth": _records(screener.screen_undervalued_growth(df)),
+    }
+    screener_cache.set("dataset", payload)
+    return payload
 
 
 if __name__ == "__main__":
