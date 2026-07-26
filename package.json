@@ -15,6 +15,7 @@
     "type-check": "tsc --noEmit -p tsconfig.typecheck.json",
     "seed:admin": "node scripts/seed-admin.mjs",
     "train:ml": "cd ml && python train_models.py",
+    "export:stocks": "cd ml && python export_stock_screener.py",
     "test:ml": "cd ml && pytest -v --tb=short",
     "ml:dev": "cd ml && uvicorn app.main:app --reload --port 8000",
     "ml:test": "cd ml && pytest tests/ -v --cov=app --cov-report=term-missing"

@@ -54,6 +54,11 @@ ml/artifacts/generated/*
 # Playwright MCP browser artifacts (screenshots, snapshots, console logs)
 .playwright-mcp/
 
+# Stock screener output: a live-data snapshot at the moment it was generated,
+# stale the instant markets move -- regenerate with `npm run export:stocks`,
+# don't commit one run's numbers as if durable.
+ml/exports/
+
 # Misc
 .DS_Store
 *.log
