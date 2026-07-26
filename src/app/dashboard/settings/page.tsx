@@ -429,7 +429,7 @@ export default function SettingsPage() {
 
         <div className="card p-6">
           <div className="mb-4 flex items-center gap-2">
-            <Bell className="h-4 w-4" style={{ color: "var(--color-ai-purple)" }} />
+            <Bell className="h-4 w-4" style={{ color: "var(--color-info)" }} />
             <h3
               className="text-sm font-semibold"
               style={{ color: "var(--color-text-primary)" }}

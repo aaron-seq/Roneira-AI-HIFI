@@ -6,25 +6,27 @@
    ============================================== */
 
 @theme {
-  /* ---- Background Layers ---- */
-  --color-bg: #0A0B0D;
-  --color-surface: #0F1117;
-  --color-surface-2: #161B22;
-  --color-surface-offset: #1C2128;
-  --color-border: rgba(255, 255, 255, 0.08);
-  --color-divider: rgba(255, 255, 255, 0.05);
+  /* ---- Background Layers ----
+     Indigo-tinted near-blacks, not the flat #0A0B0D/GitHub-dark neutrals this
+     started from. Untinted greys read as an unstyled default at this scale;
+     a slight cool cast makes a large dark canvas read as a considered choice. */
+  --color-bg: #0A0C13;
+  --color-surface: #0E111A;
+  --color-surface-2: #141826;
+  --color-surface-offset: #1A1F30;
+  --color-border: rgba(180, 190, 220, 0.10);
+  --color-divider: rgba(180, 190, 220, 0.06);
 
   /* ---- Text ---- */
-  --color-text-primary: #E6EDF3;
-  --color-text-muted: #7D8590;
-  --color-text-faint: #484F58;
+  --color-text-primary: #D7DBE7;
+  --color-text-muted: #838BA0;
+  --color-text-faint: #565D73;
 
   /* ---- Accent Colors (financial theme) ---- */
   --color-profit: #2ECC71;
   --color-loss: #E74C3C;
   --color-warning: #F39C12;
   --color-info: #3498DB;
-  --color-ai-purple: #9B59B6;
   --color-teal: #1ABC9C;
   --color-gold: #F1C40F;
 
@@ -36,35 +38,23 @@
   --color-strong-sell: #E74C3C;
 
   /* ---- Model / research accent ----
-     Brass, taken from the ₹ monogram in the wordmark. This replaces the former
-     --color-ai-purple as the "model output" accent: a blue→purple gradient is
-     the single most recognisable tell of AI-generated UI, and it also collided
-     with nothing in the subject. Brass reads as instrument metal and is
-     distinct from the profit/loss hues, so model confidence never gets mistaken
-     for a directional call. */
+     Brass, taken from the ₹ monogram in the wordmark. Used for anything that
+     is model or system output -- a prediction, a projection line, a computed
+     signal -- so it's never visually confused with a directional profit/loss
+     call or a plain navigation accent. Replaces a blue-to-purple gradient
+     that was this app's single most recognisable "AI-generated UI" tell. */
   --color-brass: #C8922F;
   --color-brass-bright: #E0AE52;
   --color-brass-dim: rgba(200, 146, 47, 0.16);
 
-  /* Tinted neutrals for the research surfaces. The base palette is GitHub's
-     dark theme, whose greys are untinted; these carry a slight indigo cast so
-     large dark areas read as a considered ground rather than "off". */
-  --color-ink: #0A0C13;
-  --color-ink-raised: #12151F;
-  --color-ink-line: rgba(180, 190, 220, 0.10);
-  --color-ink-text: #D7DBE7;
-  --color-ink-muted: #838BA0;
-  --color-ink-faint: #565D73;
-
   /* ---- Gradients ---- */
-  --gradient-primary: linear-gradient(135deg, #2ECC71 0%, #3498DB 50%, #9B59B6 100%);
   --gradient-hero: linear-gradient(100deg, #E0AE52 0%, #C8922F 55%, #8A7A46 100%);
-  --gradient-card: linear-gradient(135deg, rgba(52,152,219,0.08) 0%, rgba(155,89,182,0.04) 100%);
+  --gradient-card: linear-gradient(135deg, rgba(200,146,47,0.08) 0%, rgba(52,152,219,0.04) 100%);
 
   /* ---- Shadows ---- */
-  --shadow-card: 0 0 0 1px rgba(255,255,255,0.05), 0 4px 24px rgba(0,0,0,0.4);
+  --shadow-card: 0 0 0 1px rgba(180,190,220,0.06), 0 4px 24px rgba(0,0,0,0.4);
   --shadow-elevated: 0 8px 32px rgba(0,0,0,0.6);
-  --shadow-glass: 0 8px 32px rgba(0,0,0,0.3), inset 0 0 0 1px rgba(255,255,255,0.1);
+  --shadow-glass: 0 8px 32px rgba(0,0,0,0.3), inset 0 0 0 1px rgba(180,190,220,0.08);
 
   /* ---- Spacing (keep Tailwind defaults, add custom) ---- */
   --spacing-sidebar: 260px;
@@ -87,7 +77,7 @@
   /* ---- Chart Colors (sequential palette) ---- */
   --chart-1: #2ECC71;
   --chart-2: #3498DB;
-  --chart-3: #9B59B6;
+  --chart-3: #C8922F;
   --chart-4: #F39C12;
   --chart-5: #E74C3C;
   --chart-6: #1ABC9C;
@@ -217,16 +207,23 @@ body {
   border: 1px solid rgba(231, 76, 60, 0.3);
 }
 
-/* ---- Exchange Badges ---- */
-.badge-nse { background: rgba(52,152,219,0.15); color: #3498DB; border: 1px solid rgba(52,152,219,0.3); }
-.badge-bse { background: rgba(231,76,60,0.15); color: #E74C3C; border: 1px solid rgba(231,76,60,0.3); }
-.badge-nasdaq { background: rgba(155,89,182,0.15); color: #9B59B6; border: 1px solid rgba(155,89,182,0.3); }
-.badge-nyse { background: rgba(26,188,156,0.15); color: #1ABC9C; border: 1px solid rgba(26,188,156,0.3); }
+/* ---- Exchange Badges ----
+   Quiet, uniform metadata tags rather than a rainbow pill per exchange --
+   exchange is a secondary fact about a row, not the signal a reader should
+   scan for first (price direction already owns green/red for that). */
+.badge-nse,
+.badge-bse,
+.badge-nasdaq,
+.badge-nyse {
+  background: var(--color-surface-offset);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+}
 
 /* ---- Pulse Animation (for Analyze button) ---- */
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(52, 152, 219, 0.4); }
-  50% { box-shadow: 0 0 20px 4px rgba(52, 152, 219, 0.2); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(200, 146, 47, 0.4); }
+  50% { box-shadow: 0 0 20px 4px rgba(200, 146, 47, 0.2); }
 }
 
 .animate-pulse-glow {

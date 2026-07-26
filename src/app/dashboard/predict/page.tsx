@@ -234,7 +234,7 @@ function PredictPageContent() {
               style={{
                 background: !selectedStock
                   ? "var(--color-surface-offset)"
-                  : "linear-gradient(135deg, #3498DB 0%, #9B59B6 100%)",
+                  : "var(--gradient-hero)",
                 opacity: !selectedStock ? 0.5 : 1,
                 cursor: !selectedStock ? "not-allowed" : "pointer",
               }}
@@ -284,7 +284,7 @@ function PredictPageContent() {
                           <span className="rounded px-1.5 py-0.5 text-[9px] font-bold" style={{ background: "var(--color-surface-offset)", color: "var(--color-text-faint)" }}>
                             {result.exchange}
                           </span>
-                          <span className="rounded px-1.5 py-0.5 text-[9px] font-bold" style={{ background: "rgba(155,89,182,0.15)", color: "#9B59B6", border: "1px solid rgba(155,89,182,0.3)" }}>
+                          <span className="rounded px-1.5 py-0.5 text-[9px] font-bold" style={{ background: "var(--color-brass-dim)", color: "var(--color-brass-bright)", border: "1px solid rgba(200,146,47,0.3)" }}>
                             {result.model_used}
                           </span>
                         </div>
@@ -479,9 +479,9 @@ function PredictPageContent() {
                       {formatPercent(((result.price_target_low - result.current_price) / result.current_price) * 100)}
                     </p>
                   </div>
-                  <div className="rounded-xl p-5 text-center" style={{ background: "rgba(52,152,219,0.06)", border: "1px solid rgba(52,152,219,0.15)" }}>
-                    <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#3498DB" }}>Base Case</p>
-                    <p className="mt-2 font-mono text-2xl font-bold" data-financial style={{ color: "#3498DB" }}>
+                  <div className="rounded-xl p-5 text-center" style={{ background: "var(--color-brass-dim)", border: "1px solid rgba(200,146,47,0.25)" }}>
+                    <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--color-brass-bright)" }}>Base Case</p>
+                    <p className="mt-2 font-mono text-2xl font-bold" data-financial style={{ color: "var(--color-brass-bright)" }}>
                       {formatPrice(result.predicted_price)}
                     </p>
                     <p className={cn("mt-1 font-mono text-xs font-semibold", getPriceColor(result.price_change_percent))} data-financial>
@@ -506,7 +506,7 @@ function PredictPageContent() {
 
       {!result && !predictionMutation.isPending && (
         <div className="card flex flex-col items-center justify-center py-20">
-          <Brain className="mb-4 h-16 w-16" style={{ color: "var(--color-ai-purple)", opacity: 0.3 }} />
+          <Brain className="mb-4 h-16 w-16" style={{ color: "var(--color-brass)", opacity: 0.3 }} />
           <h3 className="text-lg font-semibold" style={{ color: "var(--color-text-muted)" }}>
             Select a stock and click Analyze
           </h3>

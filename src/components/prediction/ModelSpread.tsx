@@ -28,7 +28,7 @@ import type { PredictionComponent } from "@/lib/market/types";
 function directionTone(delta: number) {
   if (delta > 0.25) return "var(--color-profit)";
   if (delta < -0.25) return "var(--color-loss)";
-  return "var(--color-ink-muted)";
+  return "var(--color-text-muted)";
 }
 
 const SIGNAL_LABEL: Record<string, string> = {
@@ -95,8 +95,8 @@ export function ModelSpread({
       aria-label="Model agreement"
       className="rounded-xl border p-6"
       style={{
-        background: "var(--color-ink)",
-        borderColor: "var(--color-ink-line)",
+        background: "var(--color-bg)",
+        borderColor: "var(--color-border)",
       }}
     >
       <header className="mb-6 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
@@ -105,14 +105,14 @@ export function ModelSpread({
             className="text-[1.35rem] leading-tight"
             style={{
               fontFamily: "var(--font-instrument-serif), Georgia, serif",
-              color: "var(--color-ink-text)",
+              color: "var(--color-text-primary)",
             }}
           >
             {disagree ? "The models disagree" : "The models agree"}
           </h2>
           <p
             className="mt-1 text-xs"
-            style={{ color: "var(--color-ink-muted)" }}
+            style={{ color: "var(--color-text-muted)" }}
           >
             {disagree
               ? "Each ran on the same history and reached a different call. Treat the blend as one view, not a consensus."
@@ -124,13 +124,13 @@ export function ModelSpread({
           <div className="text-right">
             <dt
               className="text-[10px] uppercase tracking-[0.14em]"
-              style={{ color: "var(--color-ink-faint)" }}
+              style={{ color: "var(--color-text-faint)" }}
             >
               Spread
             </dt>
             <dd
               className="font-mono text-sm"
-              style={{ color: "var(--color-ink-text)" }}
+              style={{ color: "var(--color-text-primary)" }}
             >
               {priceSpread == null ? "—" : `${currency}${priceSpread.toFixed(2)}`}
             </dd>
@@ -138,7 +138,7 @@ export function ModelSpread({
           <div className="text-right">
             <dt
               className="text-[10px] uppercase tracking-[0.14em]"
-              style={{ color: "var(--color-ink-faint)" }}
+              style={{ color: "var(--color-text-faint)" }}
             >
               Agreement
             </dt>
@@ -156,12 +156,12 @@ export function ModelSpread({
 
       {/* Axis. The "today" datum is the reference every mark is read against, so
           it gets the only full-height rule. */}
-      <div className="relative mb-2 h-px" style={{ background: "var(--color-ink-line)" }}>
+      <div className="relative mb-2 h-px" style={{ background: "var(--color-border)" }}>
         <div
           className="absolute -top-2 h-4 w-px"
           style={{
             left: `${pct(currentPrice)}%`,
-            background: "var(--color-ink-muted)",
+            background: "var(--color-text-muted)",
           }}
         />
       </div>
@@ -170,7 +170,7 @@ export function ModelSpread({
           className="absolute -translate-x-1/2 whitespace-nowrap font-mono text-[10px]"
           style={{
             left: `${pct(currentPrice)}%`,
-            color: "var(--color-ink-muted)",
+            color: "var(--color-text-muted)",
           }}
         >
           today {currency}
@@ -194,13 +194,13 @@ export function ModelSpread({
               <div className="min-w-0">
                 <p
                   className="truncate text-[13px]"
-                  style={{ color: "var(--color-ink-text)" }}
+                  style={{ color: "var(--color-text-primary)" }}
                 >
                   {LABELS[component.name] ?? component.name}
                 </p>
                 <p
                   className="font-mono text-[10px]"
-                  style={{ color: "var(--color-ink-faint)" }}
+                  style={{ color: "var(--color-text-faint)" }}
                 >
                   w {component.weight.toFixed(2)} · conf{" "}
                   {component.confidence.toFixed(0)}% ·{" "}
@@ -255,7 +255,7 @@ export function ModelSpread({
                         : { right: 12 }
                     }
                   >
-                    <span style={{ color: "var(--color-ink-text)" }}>
+                    <span style={{ color: "var(--color-text-primary)" }}>
                       {currency}
                       {component.predicted_price.toFixed(2)}
                     </span>{" "}
@@ -273,9 +273,9 @@ export function ModelSpread({
 
       <footer
         className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 border-t pt-4 text-[11px]"
-        style={{ borderColor: "var(--color-ink-line)" }}
+        style={{ borderColor: "var(--color-border)" }}
       >
-        <span style={{ color: "var(--color-ink-faint)" }}>Blended</span>
+        <span style={{ color: "var(--color-text-faint)" }}>Blended</span>
         <span
           className="font-mono"
           style={{ color: "var(--color-brass-bright)" }}
@@ -283,7 +283,7 @@ export function ModelSpread({
           {currency}
           {blendedPrice.toFixed(2)}
         </span>
-        <span style={{ color: "var(--color-ink-faint)" }}>
+        <span style={{ color: "var(--color-text-faint)" }}>
           — weighted average of the above, not a separate forecast.
         </span>
       </footer>

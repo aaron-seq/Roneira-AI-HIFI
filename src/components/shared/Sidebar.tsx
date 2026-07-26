@@ -87,10 +87,10 @@ export function Sidebar() {
       <div className="flex h-16 items-center gap-3 border-b px-4" style={{ borderColor: "var(--color-border)" }}>
         <div
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-          style={{ background: "linear-gradient(135deg, #3498DB 0%, #9B59B6 100%)" }}
+          style={{ background: "#000000" }}
         >
-          {/* Roneira ₹E monogram. Kept on the gradient tile so the white mark
-              keeps contrast in both light and dark themes. */}
+          {/* Roneira ₹E monogram on a solid black tile -- reads cleanly
+              against both the dark and light theme surface colors. */}
           <Image
             src="/roneira-mark.png"
             alt="Roneira"

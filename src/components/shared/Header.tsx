@@ -183,8 +183,12 @@ export function Header() {
             className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-white/5"
           >
             <div
-              className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white"
-              style={{ background: "linear-gradient(135deg, #3498DB, #9B59B6)" }}
+              className="flex h-7 w-7 items-center justify-center rounded-full border text-xs font-semibold"
+              style={{
+                background: "var(--color-surface-offset)",
+                borderColor: "var(--color-border)",
+                color: "var(--color-text-primary)",
+              }}
             >
               {(user?.full_name || user?.username || "U")[0]?.toUpperCase()}
             </div>
