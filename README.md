@@ -2,23 +2,21 @@
 
 <div align="center">
 
+![Next.js](https://img.shields.io/badge/Next.js%2016-000000?style=for-the-badge&logo=next.js&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
-![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
-![Node.js](https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white)
+![React](https://img.shields.io/badge/React%2019-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
 ![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![Flask](https://img.shields.io/badge/Flask-000000?style=for-the-badge&logo=flask&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
-![Redis](https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
+![Vercel](https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)
+![Railway](https://img.shields.io/badge/Railway-0B0D0E?style=for-the-badge&logo=railway&logoColor=white)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/aaron-seq/Roneira-AI-HIFI/ci.yml?branch=main)](https://github.com/aaron-seq/Roneira-AI-HIFI/actions)
-[![Code Coverage](https://img.shields.io/codecov/c/github/aaron-seq/Roneira-AI-HIFI)](https://codecov.io/gh/aaron-seq/Roneira-AI-HIFI)
-[![Dependencies](https://img.shields.io/david/aaron-seq/Roneira-AI-HIFI)](https://david-dm.org/aaron-seq/Roneira-AI-HIFI)
 
 *A production-grade financial analytics framework engineered for robust machine learning forecasting, advanced price-volume momentum analytics, and comprehensive portfolio intelligence in institutional or retail trading environments.*
 
-[**Live Demo**](https://roneira-ai-hifi.vercel.app) • [**Documentation**](https://docs.roneira.com) • [**API Reference**](https://api.roneira.com/docs) • [**Contributing**](CONTRIBUTING.md)
+[**Live Demo**](https://roneira-ai-hifi.vercel.app) • [**Architecture**](ARCHITECTURE.md) • [**Deployment**](DEPLOYMENT.md) • [**Contributing**](CONTRIBUTING.md)
 
 </div>
 
@@ -138,61 +136,56 @@ Roneira AI HIFI represents the convergence of advanced machine learning, real-ti
 
 ## Architecture & Technology Stack
 
+> For the full C4-style component breakdown, data flow diagrams, and guardrails, see [ARCHITECTURE.md](./ARCHITECTURE.md). This section is a summary.
+
 ```mermaid
 graph TB
-    subgraph "Frontend Layer"
-        UI[React 18 + TypeScript]
-        PWA[Progressive Web App]
-        Cache[TanStack Query Cache]
+    subgraph "Next.js App (src/) — Vercel"
+        UI[React 19 UI<br/>App Router]
+        API[Route Handlers<br/>/api/predict, /api/market-data,<br/>/api/news, /api/stocks/search]
+        RQ[TanStack Query Cache]
     end
-    
-    subgraph "API Gateway"
-        API[Express.js + TypeScript]
-        Auth[JWT Authentication]
-        Rate[Rate Limiting]
-        Validate[Zod Validation]
+
+    subgraph "ML Service (ml/) — Railway/Render"
+        MLAPI[FastAPI + Uvicorn]
+        Models[RandomForest / Technical /<br/>PVD Momentum / Ensemble<br/>+ artifact-backed LSTM & GAN]
     end
-    
-    subgraph "ML Services"
-        ML[Flask ML Service]
-        Models[ML Models]
-        Features[Feature Engineering]
-        Cache2[Model Cache]
+
+    subgraph "Supabase"
+        Auth[Auth<br/>email/password]
+        Postgres[(Postgres<br/>users, portfolio, watchlist,<br/>audit_log, predictions)]
+        RLS[Row Level Security]
     end
-    
-    subgraph "Data Layer"
-        DB[(PostgreSQL)]
-        Redis[(Redis Cache)]
-        Market[Market Data APIs]
+
+    subgraph "External Data"
+        TwelveData[Twelve Data<br/>primary quotes/history]
+        YFinance[yfinance<br/>fallback, via ml/]
+        NewsAPI[NewsAPI / Finnhub]
     end
-    
-    subgraph "Infrastructure"
-        Docker[Docker Containers]
-        K8s[Kubernetes]
-        Monitor[Monitoring Stack]
-    end
-    
+
     UI --> API
-    API --> ML
-    API --> DB
-    API --> Redis
-    ML --> Cache2
-    ML --> Market
-    
-    Docker --> K8s
-    K8s --> Monitor
+    API --> RQ
+    API -->|private, server-to-server| MLAPI
+    MLAPI --> Models
+    API --> Auth
+    API --> Postgres
+    Postgres --- RLS
+    API --> TwelveData
+    MLAPI --> YFinance
+    API --> NewsAPI
 ```
 
 ### Core Services Matrix
 
-| Service | Technology | Purpose | Scalability |
+| Service | Technology | Purpose | Deploys to |
 |---------|------------|---------|-------------|
-| **Frontend** | React 18 + Vite + TypeScript | Modern UI with SSR capabilities | CDN + Edge caching |
-| **API Gateway** | Node.js + Express + TypeScript | RESTful API with GraphQL support | Horizontal pod autoscaling |
-| **ML Service** | Python + Flask + scikit-learn | ML inference and model training | GPU-accelerated containers |
-| **Database** | PostgreSQL 15 + pgvector | OLTP with vector similarity search | Read replicas + sharding |
-| **Cache** | Redis 7 + Redis Streams | Real-time caching and pub/sub | Redis Cluster mode |
-| **Message Queue** | RabbitMQ + Celery | Async task processing | Queue federation |
+| **Web app** | Next.js 16 (App Router) + React 19 + TypeScript | UI, SSR/streaming, and API route handlers (BFF) | Vercel |
+| **ML service** | Python + FastAPI + Uvicorn | Prediction inference (RandomForest, Technical, PVD Momentum, Ensemble, artifact-backed LSTM/GAN) | Railway / Render |
+| **Auth & DB** | Supabase (Postgres + Auth + RLS) | Users, portfolio, watchlist, audit log, prediction history | Supabase-hosted |
+| **State/cache (client)** | TanStack Query + Zustand | Client-side data fetching cache and UI state | Bundled with web app |
+| **Rate limiting** | Upstash Redis (configured dependency) | API route abuse prevention | Upstash-hosted |
+
+`frontend/`, `backend/`, and `ml-service/` are earlier implementations (Vite/React, Express, Flask) kept only as reference material — they are not built, tested, or deployed. See [Repository Layout](#repository-layout) below.
 
 ## UI Components & Features
 
@@ -251,34 +244,13 @@ graph TB
 
 ### Component Architecture
 
-```typescript
-// Component Hierarchy Example
+```
 src/components/
-├── ui/                     # Reusable UI primitives
-│   ├── Button/
-│   ├── Input/
-│   ├── Modal/
-│   └── Chart/
-├── navigation/             # Navigation components
-│   ├── Sidebar/
-│   ├── Header/
-│   └── Breadcrumb/
-├── prediction/             # ML prediction features
-│   ├── PredictionPanel/
-│   ├── ModelMetrics/
-│   └── ConfidenceChart/
-├── portfolio/              # Portfolio management
-│   ├── PositionTable/
-│   ├── AllocationChart/
-│   └── RiskMetrics/
-├── analysis/               # Technical analysis
-│   ├── TechnicalChart/
-│   ├── IndicatorPanel/
-│   └── PatternScanner/
-└── pdm/                   # PDM strategy tools
-    ├── PDMScanner/
-    ├── SignalChart/
-    └── BacktestResults/
+├── ui/            # Reusable primitives (buttons, inputs, skeletons, command palette)
+├── auth/           # Login/signup forms
+├── charts/          # lightweight-charts / recharts wrappers (PredictionChart, etc.)
+├── prediction/       # ML prediction surface (SignalMeter, ConfidenceRing, ...)
+└── shared/          # Cross-page layout and shared widgets
 ```
 
 ### Advanced UI Features
@@ -315,6 +287,7 @@ kept for reference. Contribute to the canonical paths only.
 | `frontend/` | Legacy | Earlier Vite/React client. Not built, tested, or deployed. |
 | `backend/` | Legacy | Earlier Express API gateway. Not built, tested, or deployed. |
 | `ml-service/` | Legacy | Earlier Flask/FastAPI ML service. Not built, tested, or deployed. |
+| `realtime/` | Legacy | Socket.IO tick service built against the legacy Vite frontend (CORS defaults to `localhost:5173`). Nothing in `src/` calls it and it isn't wired into CI. |
 
 CI (`.github/workflows/ci.yml`) validates the canonical surfaces only. The
 legacy trees are retained as reference material and intentionally do not gate
@@ -776,38 +749,17 @@ are precisely what the `Web CI` and `ML CI` jobs run on every pull request.
 
 ### CI/CD Pipeline
 
-```yaml
-# GitHub Actions Workflow Example
-name: CI/CD Pipeline
-on: [push, pull_request]
+`.github/workflows/ci.yml` is the only workflow. It runs four jobs:
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with: { node-version: '18' }
-      
-      - name: Install dependencies
-        run: npm ci
-      
-      - name: Run linting
-        run: npm run lint
-      
-      - name: Run type checking
-        run: npm run type-check
-      
-      - name: Run unit tests
-        run: npm run test:coverage
-      
-      - name: Run E2E tests
-        run: npm run test:e2e
-        
-      - name: Upload coverage
-        uses: codecov/codecov-action@v3
-```
+| Job | Steps |
+|---|---|
+| **Web CI** | `npm ci` → `npm run lint` → `npm run type-check` → `npm run test:web` → `npm run build` |
+| **ML CI** | install `ml/requirements.txt` → `python -m pytest tests -q` (working dir `ml/`) |
+| **Security Scan** | Trivy vulnerability scan → upload SARIF to the GitHub Security tab |
+| **Deployment Readiness** | verify deployment files and that `.env.example` exists |
+
+There is no coverage upload and no E2E job; don't infer either from this README.
+`npm run test:coverage` and `npm run test:e2e` do not exist as scripts.
 
 ## Deployment
 
@@ -1175,10 +1127,10 @@ Based on community feedback, we're prioritizing:
 <td width="50%">
 
 **Documentation & Resources**
-- [📚 Full Documentation](https://docs.roneira.com)
-- [🔗 API Reference](https://api.roneira.com/docs)
-- [📺 Video Tutorials](https://youtube.com/@roneira-ai)
-- [📰 Technical Blog](https://blog.roneira.com)
+- [📚 Architecture](ARCHITECTURE.md)
+- [🚀 Deployment](DEPLOYMENT.md)
+- [🤝 Contributing](CONTRIBUTING.md)
+- [🔗 ML API reference](http://localhost:8000/docs) — FastAPI auto-docs, served by the running `ml/` service
 
 </td>
 <td width="50%">
@@ -1270,8 +1222,8 @@ For a complete list of dependencies and their licenses, see [LICENSES.md](LICENS
 
 **Built with precision engineering for institutional-grade financial intelligence**
 
-[🚀 **Get Started**](https://docs.roneira.com/quickstart) • [🌟 **Star on GitHub**](https://github.com/aaron-seq/Roneira-AI-HIFI) • [🐦 **Follow Updates**](https://twitter.com/roneira_ai)
+[🚀 **Get Started**](#quick-start) • [🌟 **Star on GitHub**](https://github.com/aaron-seq/Roneira-AI-HIFI)
 
-*© 2024 Roneira AI. All rights reserved.*
+*© 2026 Roneira Enterprises AI. All rights reserved.*
 
 </div>

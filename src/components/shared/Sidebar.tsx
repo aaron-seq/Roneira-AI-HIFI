@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
@@ -14,7 +15,6 @@ import {
   Shield,
   ChevronLeft,
   ChevronRight,
-  Activity,
 } from "lucide-react";
 import { useAppStore } from "@/lib/stores/app-store";
 import { cn } from "@/lib/utils";
@@ -89,7 +89,16 @@ export function Sidebar() {
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
           style={{ background: "linear-gradient(135deg, #3498DB 0%, #9B59B6 100%)" }}
         >
-          <Activity className="h-5 w-5 text-white" />
+          {/* Roneira ₹E monogram. Kept on the gradient tile so the white mark
+              keeps contrast in both light and dark themes. */}
+          <Image
+            src="/roneira-mark.png"
+            alt="Roneira"
+            width={20}
+            height={20}
+            className="h-5 w-5"
+            priority
+          />
         </div>
         {!sidebarCollapsed && (
           <motion.div

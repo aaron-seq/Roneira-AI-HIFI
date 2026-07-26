@@ -8,7 +8,17 @@
 - Frontend / fullstack: `src/`
 - ML backend: `ml/`
 - Database migrations: `supabase/`
-- Legacy reference only: `frontend/`, `backend/`, `ml-service/`
+- Legacy reference only: `frontend/`, `backend/`, `ml-service/`, `realtime/`
+
+`realtime/` (the Socket.IO tick service) is not called out elsewhere as
+legacy, but audit confirms it's orphaned relative to the canonical stack: its
+CORS default targets `localhost:5173` (the legacy Vite frontend's port, not
+`src/`'s 3000), nothing under `src/` imports `socket.io-client` or calls it,
+and it isn't wired into `ci.yml`. Treat it as reference-only alongside the
+other three legacy trees unless/until something in `src/` actually consumes
+it. If real-time price ticks become a requirement, evaluate whether this
+service still fits the canonical (Vercel + Supabase + Railway/Render)
+deployment model before reviving it as-is.
 
 ## Current Priorities
 1. Align deployment and environment config with the root Next.js + `ml/` architecture.

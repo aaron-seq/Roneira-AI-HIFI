@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCachedValue } from "@/lib/server/cache";
+import { rateLimit, tooManyRequests } from "@/lib/server/rate-limit";
 import type { NewsArticle } from "@/lib/market/types";
 import {
   classifySentiment,
@@ -20,6 +21,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ articles: [], totalResults: 0 });
   }
 
+  // NewsAPI free tier is 100 requests/day; the 5-minute cache absorbs most
+  // traffic, this caps what reaches the provider on a cache miss.
+  const limit = await rateLimit("news", request, 30, 60);
+  if (!limit.ok) {
+    return tooManyRequests(60);
+  }
+
   try {
     const payload = await getCachedValue(
       `news:${market}:${query}:${page}`,
@@ -36,6 +44,7 @@ export async function GET(request: Request) {
             Accept: "application/json",
           },
           cache: "no-store",
+          signal: AbortSignal.timeout(10_000),
         });
 
         if (!response.ok) {

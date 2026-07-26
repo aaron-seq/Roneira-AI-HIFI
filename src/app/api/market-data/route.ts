@@ -8,12 +8,20 @@ import {
   getNormalizedQuotes,
   getPeerComparisonPayload,
 } from "@/lib/server/market";
+import { rateLimit, tooManyRequests } from "@/lib/server/rate-limit";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const group = searchParams.get("group");
   const symbols = searchParams.get("symbols");
   const symbol = searchParams.get("symbol");
+
+  // Backs onto Alpha Vantage / Twelve Data free tiers (tens of requests/day),
+  // same rationale as /api/stocks/search and /api/news.
+  const limit = await rateLimit("market-data", request, 60, 60);
+  if (!limit.ok) {
+    return tooManyRequests(60);
+  }
 
   try {
     if (group === "market-overview") {

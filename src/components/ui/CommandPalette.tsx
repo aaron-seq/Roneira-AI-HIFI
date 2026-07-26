@@ -17,6 +17,7 @@ import {
   Command,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAppStore } from "@/lib/stores/app-store";
 
 interface SearchItem {
   id: string;
@@ -28,7 +29,11 @@ interface SearchItem {
 }
 
 export function CommandPalette() {
-  const [open, setOpen] = useState(false);
+  // Open state lives in the store, not locally: the header's Search button
+  // calls setCommandPaletteOpen, so local state left that button wired to
+  // nothing while only the Cmd+K listener below worked.
+  const open = useAppStore((state) => state.commandPaletteOpen);
+  const setOpen = useAppStore((state) => state.setCommandPaletteOpen);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -64,12 +69,13 @@ export function CommandPalette() {
     {} as Record<string, SearchItem[]>
   );
 
-  // Keyboard shortcuts
+  // Keyboard shortcuts. This component owns Cmd/Ctrl+K; the header must not
+  // also bind it, or the two handlers fight over the same store value.
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
-        setOpen((prev) => !prev);
+        setOpen(!useAppStore.getState().commandPaletteOpen);
       }
       if (e.key === "Escape") {
         setOpen(false);
@@ -77,7 +83,7 @@ export function CommandPalette() {
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [setOpen]);
 
   // Focus input when opened
   useEffect(() => {

@@ -8,7 +8,11 @@ pydantic==2.11.3
 python-dotenv==1.0.1
 
 # Data
-yfinance==0.2.48
+# Do not pin below 0.2.51: older releases fetch via plain `requests`, which
+# Yahoo now blocks on UA/TLS fingerprint (returns HTML -> "Expecting value:
+# line 1 column 1"). 0.2.51+ routes through curl_cffi and impersonates a
+# browser, which is what actually gets price data back.
+yfinance>=0.2.66,<0.3.0
 pandas>=2.0.0,<3.0.0
 numpy>=1.24.0,<2.1.0
 

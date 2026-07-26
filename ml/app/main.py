@@ -4,6 +4,7 @@ FastAPI service for stock prediction, market data, and ML model serving.
 """
 import time
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
 import numpy as np
@@ -117,6 +118,12 @@ def fetch_stock_data(ticker: str, period: str = "1y", interval: str = "1d") -> p
     try:
         stock = yf.Ticker(ticker)
         df = stock.history(period=period, interval=interval)
+        if not df.empty:
+            # Yahoo appends a placeholder row (NaN OHLC, stub volume) for the
+            # most recent/in-progress session. A NaN Close poisons everything
+            # downstream: iloc[-1] price reads, model features, and JSON
+            # encoding (NaN is not valid JSON).
+            df = df.dropna(subset=["Close"])
         if df.empty:
             raise ValueError(f"No data found for {ticker}")
         historical_cache.set(cache_key, df)
@@ -200,7 +207,7 @@ async def health_check():
 
 
 @app.post("/predict", response_model=PredictionResponse)
-async def predict(request: PredictionRequest):
+def predict(request: PredictionRequest):
     """Run ML prediction on a stock ticker."""
     start_time = time.time()
     ticker = request.ticker.upper()
@@ -234,9 +241,16 @@ async def predict(request: PredictionRequest):
         ta_result = ta_analyzer.analyze(df, horizon)
         pdm_result = pdm_engine.analyze(df, ticker, horizon)
         lstm_result = lstm_predictor.predict(df, horizon)
+        # The LSTM slot was weighted 0.3 while it served an untrained heuristic.
+        # It now serves a real gradient-boosted model, but that model measures
+        # skill_vs_no_change = 0.0 (validation MAE ~0.069 against a 0.068
+        # "no change" baseline) -- i.e. no demonstrated edge at a 30-day
+        # horizon. Weight it accordingly rather than on the strength of its
+        # label. Raise this if a retrain reports positive skill in
+        # artifacts/generated/lstm_metadata.json.
         prediction = ensemble.combine(
             [rf_result, ta_result, pdm_result, lstm_result],
-            weights=[0.3, 0.2, 0.2, 0.3],
+            weights=[0.35, 0.25, 0.25, 0.15],
         )
     else:
         # Default to Ensemble
@@ -281,24 +295,20 @@ async def predict(request: PredictionRequest):
 
 
 @app.get("/market-data")
-async def market_data(symbols: str = "^NSEI,^BSESN,^IXIC,^GSPC"):
+def market_data(symbols: str = "^NSEI,^BSESN,^IXIC,^GSPC"):
     """Fetch live market data for multiple symbols."""
-    symbol_list = [s.strip() for s in symbols.split(",")]
-    results = []
+    symbol_list = [s.strip() for s in symbols.split(",")][:20]  # Limit to 20
 
-    for symbol in symbol_list[:20]:  # Limit to 20
+    def quote(symbol: str) -> dict | None:
         try:
             hist = fetch_stock_data(symbol, period="5d")
-            if hist.empty:
-                continue
-
             current = float(hist["Close"].iloc[-1])
             prev = float(hist["Close"].iloc[-2]) if len(hist) > 1 else current
             change = current - prev
             change_pct = (change / prev) * 100 if prev else 0
             company = get_company_info(symbol)
 
-            results.append({
+            return {
                 "symbol": symbol,
                 "name": company.get("name", symbol),
                 "price": round(current, 2),
@@ -307,16 +317,23 @@ async def market_data(symbols: str = "^NSEI,^BSESN,^IXIC,^GSPC"):
                 "volume": int(hist["Volume"].iloc[-1]) if "Volume" in hist.columns else 0,
                 "high": round(float(hist["High"].iloc[-1]), 2),
                 "low": round(float(hist["Low"].iloc[-1]), 2),
-            })
+            }
         except Exception as e:
             logger.warning(f"Failed to fetch {symbol}: {e}")
-            continue
+            return None
+
+    # Fetching 16+ symbols one at a time took long enough that callers timed out
+    # before the payload landed. Fan out instead; fetch_stock_data is cached, so
+    # repeat hits stay cheap.
+    # ponytail: fixed 8-wide pool, revisit if Yahoo starts rate-limiting the burst
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        results = [row for row in pool.map(quote, symbol_list) if row is not None]
 
     return {"data": results, "timestamp": datetime.utcnow().isoformat()}
 
 
 @app.get("/stock/{ticker}")
-async def stock_details(ticker: str):
+def stock_details(ticker: str):
     """Get detailed information for a single stock."""
     df = fetch_stock_data(ticker)
     company = get_company_info(ticker)
@@ -336,7 +353,7 @@ async def stock_details(ticker: str):
 
 
 @app.get("/history")
-async def history(symbol: str, interval: str = "1day", range: str = "6month"):
+def history(symbol: str, interval: str = "1day", range: str = "6month"):
     interval_map = {
         "1min": "1m",
         "5min": "5m",

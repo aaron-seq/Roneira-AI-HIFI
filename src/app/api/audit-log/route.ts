@@ -1,25 +1,19 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-
-interface AuditRequestBody {
-  action_type?: string;
-  entity_type?: string;
-  entity_id?: string | null;
-  old_values?: Record<string, unknown> | null;
-  new_values?: Record<string, unknown> | null;
-}
+import { auditEventSchema, formatIssues } from "@/lib/server/validation";
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as AuditRequestBody;
+    const parsed = auditEventSchema.safeParse(await request.json());
 
-    if (!body.action_type || !body.entity_type) {
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "action_type and entity_type are required" },
+        { error: formatIssues(parsed.error) },
         { status: 400 }
       );
     }
 
+    const body = parsed.data;
     const supabase = await createClient();
     const {
       data: { user },

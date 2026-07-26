@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Eye, EyeOff, Lock, User, AlertCircle, Activity } from "lucide-react";
+import { Eye, EyeOff, Lock, User, AlertCircle } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
 const pageVariants = {
@@ -116,7 +117,14 @@ export default function LoginPage() {
               background: "linear-gradient(135deg, #3498DB 0%, #9B59B6 100%)",
             }}
           >
-            <Activity className="h-8 w-8 text-white" />
+            <Image
+              src="/roneira-mark.png"
+              alt="Roneira"
+              width={34}
+              height={34}
+              className="h-[34px] w-[34px]"
+              priority
+            />
           </div>
           <h1
             className="text-2xl font-bold"

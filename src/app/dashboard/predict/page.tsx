@@ -108,7 +108,7 @@ function PredictPageContent() {
     <div className="mx-auto max-w-7xl">
       <div className="mb-8">
         <h1 className="gradient-text text-3xl font-bold leading-tight">
-          Stock Price Prediction Tool
+          Intelligent Financial Advisor
         </h1>
         <p className="mt-2 text-sm" style={{ color: "var(--color-text-muted)" }}>
           Live search, artifact-backed model inference, and chart projection from

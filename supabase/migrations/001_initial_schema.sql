@@ -167,6 +167,18 @@ ALTER TABLE public.audit_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.predictions_cache ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.news_preferences ENABLE ROW LEVEL SECURITY;
 
+-- Admin check routed through SECURITY DEFINER to avoid RLS self-recursion:
+-- a policy on public.users that queries public.users re-triggers itself.
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+  SELECT EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'admin');
+$$;
+
 -- ---- users table ----
 CREATE POLICY "Users can read own profile"
   ON public.users FOR SELECT
@@ -179,9 +191,7 @@ CREATE POLICY "Users can update own profile"
 
 CREATE POLICY "Admins can read all profiles"
   ON public.users FOR SELECT
-  USING (
-    EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'admin')
-  );
+  USING (public.is_admin());
 
 -- ---- watchlist table ----
 CREATE POLICY "Users can manage own watchlist"
@@ -197,9 +207,7 @@ CREATE POLICY "Users can manage own holdings"
 
 CREATE POLICY "Admins can read all holdings"
   ON public.portfolio_holdings FOR SELECT
-  USING (
-    EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'admin')
-  );
+  USING (public.is_admin());
 
 -- ---- portfolio_transactions table ----
 CREATE POLICY "Users can manage own transactions"
@@ -209,9 +217,7 @@ CREATE POLICY "Users can manage own transactions"
 
 CREATE POLICY "Admins can read all transactions"
   ON public.portfolio_transactions FOR SELECT
-  USING (
-    EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'admin')
-  );
+  USING (public.is_admin());
 
 -- ---- audit_log table ----
 CREATE POLICY "Users can read own audit logs"
@@ -220,9 +226,7 @@ CREATE POLICY "Users can read own audit logs"
 
 CREATE POLICY "Admins can read all audit logs"
   ON public.audit_log FOR SELECT
-  USING (
-    EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'admin')
-  );
+  USING (public.is_admin());
 
 CREATE POLICY "System can insert audit logs"
   ON public.audit_log FOR INSERT

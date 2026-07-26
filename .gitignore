@@ -29,6 +29,12 @@ dist/
 ml/models/trained/
 ml/artifacts/generated/
 
+# Build caches
+*.tsbuildinfo
+
+# Playwright MCP browser artifacts (screenshots, snapshots, console logs)
+.playwright-mcp/
+
 # Misc
 .DS_Store
 *.log
