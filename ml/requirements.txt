@@ -2,10 +2,13 @@
 # FastAPI-based ML prediction service
 
 # Core
-fastapi==0.115.6
+# fastapi pinned >=0.141 to pull a patched starlette (>=0.46) - 0.115.x was
+# capped to starlette<0.42, which carried multiple known CVEs (PYSEC-2026-161,
+# -248, -249, -1941, -1942, -2280, -2281).
+fastapi==0.141.1
 uvicorn[standard]==0.34.0
 pydantic==2.11.3
-python-dotenv==1.0.1
+python-dotenv==1.2.2
 
 # Data
 yfinance==0.2.48
