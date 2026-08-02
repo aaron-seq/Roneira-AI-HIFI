@@ -89,7 +89,7 @@ export function PredictionChart({
     const currentTime = toChartTime(latest.time);
 
     const projectionSeries = chart.addLineSeries({
-      color: "#3498DB",
+      color: "#C8922F",
       lineWidth: 3,
     });
     projectionSeries.setData([

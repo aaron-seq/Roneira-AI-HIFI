@@ -12,20 +12,12 @@ import {
   AlertCircle,
   Check,
   X,
-  Activity,
   UserPlus,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import Image from "next/image";
 import Link from "next/link";
-
-const pageVariants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] },
-  },
-};
+import { MarketPulse } from "@/components/auth/MarketPulse";
 
 const cardVariants = {
   hidden: { opacity: 0, y: 20, scale: 0.98 },
@@ -178,25 +170,74 @@ export default function SignupPage() {
     "w-full rounded-lg py-2.5 text-sm outline-none transition-all duration-200 focus:border-[#3498DB] focus:shadow-[0_0_0_3px_rgba(52,152,219,0.15)]";
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-8" style={{ background: "var(--color-bg)" }}>
-      {/* Background orbs */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute -top-40 -left-40 h-[500px] w-[500px] rounded-full opacity-[0.04]" style={{ background: "radial-gradient(circle, #2ECC71 0%, transparent 70%)" }} />
-        <div className="absolute -bottom-40 -right-40 h-[500px] w-[500px] rounded-full opacity-[0.03]" style={{ background: "radial-gradient(circle, #3498DB 0%, transparent 70%)" }} />
+    <div className="flex min-h-screen" style={{ background: "var(--color-bg)" }}>
+      {/* Same brand panel as /login, mirrored to the right so the pair of
+          screens reads as one design rather than two unrelated templates. */}
+      <div
+        className="relative hidden w-[42%] flex-col justify-between overflow-hidden border-l p-12 lg:flex lg:order-2"
+        style={{ borderColor: "var(--color-border)" }}
+      >
+        <div
+          className="pointer-events-none absolute -right-40 -top-40 h-[520px] w-[520px] rounded-full opacity-[0.07]"
+          style={{ background: "radial-gradient(circle, #C8922F 0%, transparent 70%)" }}
+        />
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            backgroundImage:
+              "linear-gradient(var(--color-divider) 1px, transparent 1px), linear-gradient(90deg, var(--color-divider) 1px, transparent 1px)",
+            backgroundSize: "56px 56px",
+            maskImage: "radial-gradient(ellipse 90% 70% at 100% 0%, black 0%, transparent 75%)",
+            WebkitMaskImage: "radial-gradient(ellipse 90% 70% at 100% 0%, black 0%, transparent 75%)",
+          }}
+        />
+
+        <div className="relative flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ background: "#000000" }}>
+            <Image src="/roneira-mark.png" alt="Roneira" width={20} height={20} className="h-5 w-5" priority />
+          </div>
+          <span className="text-sm font-semibold" style={{ color: "var(--color-text-primary)" }}>
+            Roneira AI HIFI
+          </span>
+        </div>
+
+        <div className="relative max-w-md">
+          <h1
+            className="text-[2.75rem] leading-[1.05]"
+            style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", color: "var(--color-text-primary)" }}
+          >
+            Bring your own portfolio.
+          </h1>
+          <p className="mt-5 text-sm leading-relaxed" style={{ color: "var(--color-text-muted)" }}>
+            Track holdings, watch tickers, and run the same ensemble of
+            models against your own picks -- with every prediction and
+            trade logged to an audit trail you can read.
+          </p>
+        </div>
+
+        <div className="relative rounded-xl border p-5" style={{ borderColor: "var(--color-border)", background: "var(--color-surface)" }}>
+          <p className="mb-4 text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--color-text-faint)" }}>
+            Live right now
+          </p>
+          <MarketPulse />
+        </div>
       </div>
 
-      <motion.div className="relative z-10 w-full max-w-md" variants={pageVariants} initial="hidden" animate="visible">
-        {/* Logo */}
-        <motion.div className="mb-6 flex flex-col items-center" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}>
-          <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl" style={{ background: "linear-gradient(135deg, #2ECC71 0%, #3498DB 100%)" }}>
-            <Activity className="h-7 w-7 text-white" />
+      {/* Form panel */}
+      <div className="flex flex-1 items-center justify-center px-4 py-10 lg:order-1">
+        <motion.div className="w-full max-w-md" variants={cardVariants} initial="hidden" animate="visible">
+          <div className="mb-6 flex flex-col items-center lg:hidden">
+            <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl" style={{ background: "#000000" }}>
+              <Image src="/roneira-mark.png" alt="Roneira" width={30} height={30} className="h-[30px] w-[30px]" priority />
+            </div>
+            <span className="text-lg font-semibold" style={{ color: "var(--color-text-primary)" }}>
+              Roneira AI HIFI
+            </span>
           </div>
-          <h1 className="text-xl font-bold" style={{ color: "var(--color-text-primary)" }}>Create your account</h1>
-          <p className="mt-1 text-sm" style={{ color: "var(--color-text-muted)" }}>Join Roneira AI HIFI</p>
-        </motion.div>
 
-        {/* Signup Card */}
-        <motion.div className="glass rounded-2xl p-8" variants={cardVariants} initial="hidden" animate="visible">
+          <h2 className="mb-1 text-xl font-semibold" style={{ color: "var(--color-text-primary)" }}>Create your account</h2>
+          <p className="mb-6 text-sm" style={{ color: "var(--color-text-muted)" }}>Join Roneira AI HIFI</p>
+
           <form onSubmit={handleSignup} className="space-y-4">
             {/* Full Name */}
             <div>
@@ -308,10 +349,10 @@ export default function SignupPage() {
 
           <p className="mt-5 text-center text-sm" style={{ color: "var(--color-text-muted)" }}>
             Already have an account?{" "}
-            <Link href="/login" className="font-medium transition-colors hover:underline" style={{ color: "#3498DB" }}>Sign in</Link>
+            <Link href="/login" className="font-medium transition-colors hover:underline" style={{ color: "var(--color-info)" }}>Sign in</Link>
           </p>
         </motion.div>
-      </motion.div>
+      </div>
     </div>
   );
 }

@@ -46,6 +46,8 @@ export async function GET() {
     try {
       const response = await fetch(`${ML_BACKEND_URL}/health`, {
         cache: "no-store",
+        // A health probe that can hang defeats the point of probing.
+        signal: AbortSignal.timeout(5_000),
       });
       if (response.ok) {
         mlHealth = (await response.json()) as typeof mlHealth;

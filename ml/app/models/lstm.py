@@ -13,6 +13,12 @@ import numpy as np
 import pandas as pd
 
 from app.models.artifacts import artifact_path, load_metadata, save_metadata
+from app.models.gradient_boost import (
+    build_training_windows,
+    fit_windows,
+    load_artifact,
+    save_artifact,
+)
 
 logger = logging.getLogger("roneira-ml.lstm")
 
@@ -32,6 +38,7 @@ class LSTMPredictor:
     """LSTM deep learning model backed by a saved Keras artifact."""
 
     model_filename = "lstm_model.keras"
+    gb_model_filename = "lstm_gbm.joblib"
     metadata_filename = "lstm_metadata.json"
 
     def __init__(self, sequence_length: int = 60, epochs: int = 25, batch_size: int = 32):
@@ -54,23 +61,37 @@ class LSTMPredictor:
         """
         Loads model and metadata from `ml/artifacts/generated` on boot.
         This enables rapid scaling as inference nodes don't need to retrain.
+
+        Two backends are supported. The Keras artifact wins when TensorFlow is
+        installed; otherwise a gradient-boosted artifact is used, because
+        TensorFlow is deliberately not a declared dependency and this slot would
+        otherwise serve the untrained heuristic in `_fallback_predict`.
         """
         self._metadata = load_metadata(self.metadata_filename)
         path = artifact_path(self.model_filename)
 
-        if not TF_AVAILABLE or not path.exists():
-            if path.exists():
-                logger.warning("LSTM artifact found but TensorFlow is unavailable")
-            return
+        if TF_AVAILABLE and path.exists():
+            try:
+                self._model = self._load_model_from_disk(path)
+                self.sequence_length = int(
+                    self._metadata.get("sequence_length", self.sequence_length)
+                )
+                logger.info("Loaded LSTM artifact from %s", path)
+                return
+            except Exception as exc:
+                logger.error("Failed to load LSTM artifact: %s", exc)
+                self._model = None
 
-        try:
-            self._model = self._load_model_from_disk(path)
-            stored_sequence_length = int(self._metadata.get("sequence_length", self.sequence_length))
-            self.sequence_length = stored_sequence_length
-            logger.info("Loaded LSTM artifact from %s", path)
-        except Exception as exc:
-            logger.error("Failed to load LSTM artifact: %s", exc)
-            self._model = None
+        gb_path = artifact_path(self.gb_model_filename)
+        gb_model = load_artifact(gb_path)
+        if gb_model is not None:
+            self._model = gb_model
+            self.sequence_length = int(
+                self._metadata.get("sequence_length", self.sequence_length)
+            )
+            logger.info("Loaded gradient-boosted LSTM-slot artifact from %s", gb_path)
+        elif path.exists():
+            logger.warning("LSTM artifact found but TensorFlow is unavailable")
 
     def _build_model(self, input_shape: tuple[int, int]):
         if keras is None:
@@ -214,6 +235,38 @@ class LSTMPredictor:
         self._metadata = metadata
         self._model = model
         return metadata
+
+    def train_gradient_boost(self, datasets: list[pd.DataFrame], horizon_days: int = 30) -> dict:
+        """
+        Train the gradient-boosted backend for this slot.
+
+        Used instead of `train()` when TensorFlow is unavailable, which is the
+        default for this project. Produces a joblib artifact that
+        `_load_artifact_bundle` picks up on the next boot.
+        """
+        windows, targets = build_training_windows(
+            datasets,
+            self._prepare_features,
+            self.sequence_length,
+            horizon_days,
+            normalize=self._normalize,
+        )
+        artifact, metrics = fit_windows(windows, targets)
+        save_artifact(artifact, artifact_path(self.gb_model_filename))
+
+        metrics.update(
+            {
+                "sequence_length": self.sequence_length,
+                "horizon_days": horizon_days,
+                "backend_slot": "lstm",
+                "trained_on_frames": len(datasets),
+            }
+        )
+        save_metadata(self.metadata_filename, metrics)
+
+        self._model = artifact
+        self._metadata = metrics
+        return metrics
 
     def predict(self, df: pd.DataFrame, horizon_days: int = 30) -> dict:
         """

@@ -47,17 +47,8 @@ export function Header() {
             : "Loading live market headlines...",
         ];
 
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if ((event.metaKey || event.ctrlKey) && event.key === "k") {
-        event.preventDefault();
-        setCommandPaletteOpen(true);
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [setCommandPaletteOpen]);
+  // Cmd/Ctrl+K is bound inside CommandPalette, which toggles the same store
+  // value. Binding it here too made the two handlers race on one keypress.
 
   useEffect(() => {
     if (!showUserMenu) {
@@ -109,7 +100,7 @@ export function Header() {
           className="text-sm font-semibold"
           style={{ color: "var(--color-text-primary)" }}
         >
-          Stock Price Prediction Tool
+          Intelligent Financial Advisor
         </span>
       </div>
 
@@ -192,8 +183,12 @@ export function Header() {
             className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-white/5"
           >
             <div
-              className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white"
-              style={{ background: "linear-gradient(135deg, #3498DB, #9B59B6)" }}
+              className="flex h-7 w-7 items-center justify-center rounded-full border text-xs font-semibold"
+              style={{
+                background: "var(--color-surface-offset)",
+                borderColor: "var(--color-border)",
+                color: "var(--color-text-primary)",
+              }}
             >
               {(user?.full_name || user?.username || "U")[0]?.toUpperCase()}
             </div>

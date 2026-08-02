@@ -2,15 +2,12 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import type { PredictionResult } from "@/lib/market/types";
 import { getTargetDate } from "@/lib/market/timeframe";
+import { formatIssues, predictRequestSchema } from "@/lib/server/validation";
+import { rateLimit, tooManyRequests } from "@/lib/server/rate-limit";
 
 const ML_BACKEND_URL =
   process.env.NEXT_PUBLIC_ML_BACKEND_URL || "http://localhost:8000";
 
-interface PredictRequestBody {
-  ticker: string;
-  timeframe: string;
-  model_type?: string;
-}
 
 
 async function persistPrediction(prediction: PredictionResult) {
@@ -72,17 +69,26 @@ async function persistPrediction(prediction: PredictionResult) {
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as PredictRequestBody;
-    const ticker = body.ticker?.toUpperCase();
-    const timeframe = body.timeframe;
-    const modelType = body.model_type?.toUpperCase() || "ENSEMBLE";
+    // Each request is a real ML inference call (Random Forest refits per
+    // request per the comment below) -- throttle so one client can't wedge
+    // the FastAPI service for everyone else.
+    const limit = await rateLimit("predict", request, 20, 60);
+    if (!limit.ok) {
+      return tooManyRequests(60);
+    }
 
-    if (!ticker || !timeframe) {
+    const parsed = predictRequestSchema.safeParse(await request.json());
+
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "ticker and timeframe are required" },
+        { error: formatIssues(parsed.error) },
         { status: 400 }
       );
     }
+
+    const ticker = parsed.data.ticker.toUpperCase();
+    const timeframe = parsed.data.timeframe;
+    const modelType = parsed.data.model_type ?? "ENSEMBLE";
 
     // Route prediction requests through the Next.js API to the internal FastAPI service
     // This keeps the ML backend private and validates payloads
@@ -96,6 +102,9 @@ export async function POST(request: Request) {
         include_pdm: true,
       }),
       cache: "no-store",
+      // Inference is slow by nature (Random Forest refits per request), but
+      // unbounded means a wedged ML service hangs this route forever.
+      signal: AbortSignal.timeout(30_000),
     });
 
     if (!mlResponse.ok) {

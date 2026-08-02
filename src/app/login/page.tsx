@@ -3,17 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Eye, EyeOff, Lock, User, AlertCircle, Activity } from "lucide-react";
+import { Eye, EyeOff, Lock, User, AlertCircle } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
-
-const pageVariants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] },
-  },
-};
+import { MarketPulse } from "@/components/auth/MarketPulse";
 
 const cardVariants = {
   hidden: { opacity: 0, y: 20, scale: 0.98 },
@@ -21,16 +14,7 @@ const cardVariants = {
     opacity: 1,
     y: 0,
     scale: 1,
-    transition: { duration: 0.5, delay: 0.15, ease: [0.16, 1, 0.3, 1] },
-  },
-};
-
-const logoVariants = {
-  hidden: { opacity: 0, scale: 0.8 },
-  visible: {
-    opacity: 1,
-    scale: 1,
-    transition: { duration: 0.6, delay: 0.05, ease: [0.16, 1, 0.3, 1] },
+    transition: { duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] },
   },
 };
 
@@ -42,7 +26,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const inputClassName =
-    "w-full rounded-lg py-3 text-sm outline-none transition-all duration-200 focus:border-[#3498DB] focus:shadow-[0_0_0_3px_rgba(52,152,219,0.15)]";
+    "w-full rounded-lg py-3 text-sm outline-none transition-all duration-200 focus:border-[#3498DB] focus:shadow-[0_0_0_3px_rgba(52,152,219,0.18)]";
 
   async function handleLogin(event: React.FormEvent) {
     event.preventDefault();
@@ -79,68 +63,84 @@ export default function LoginPage() {
   }
 
   return (
-    <div
-      className="flex min-h-screen items-center justify-center px-4"
-      style={{ background: "var(--color-bg)" }}
-    >
-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+    <div className="flex min-h-screen" style={{ background: "var(--color-bg)" }}>
+      {/* Brand panel -- the hero here is what the product actually does
+          (live market data, feeding predictions), not an illustration or a
+          logo floating in a void. Hidden below lg: the form is the priority
+          on a phone, not a scrolled-past hero. */}
+      <div
+        className="relative hidden w-[42%] flex-col justify-between overflow-hidden border-r p-12 lg:flex"
+        style={{ borderColor: "var(--color-border)" }}
+      >
         <div
-          className="absolute -right-40 -top-40 h-[500px] w-[500px] rounded-full opacity-[0.04]"
-          style={{
-            background: "radial-gradient(circle, #3498DB 0%, transparent 70%)",
-          }}
+          className="pointer-events-none absolute -left-40 -top-40 h-[520px] w-[520px] rounded-full opacity-[0.07]"
+          style={{ background: "radial-gradient(circle, #C8922F 0%, transparent 70%)" }}
         />
         <div
-          className="absolute -bottom-40 -left-40 h-[500px] w-[500px] rounded-full opacity-[0.03]"
+          className="pointer-events-none absolute inset-0"
           style={{
-            background: "radial-gradient(circle, #9B59B6 0%, transparent 70%)",
+            backgroundImage:
+              "linear-gradient(var(--color-divider) 1px, transparent 1px), linear-gradient(90deg, var(--color-divider) 1px, transparent 1px)",
+            backgroundSize: "56px 56px",
+            maskImage: "radial-gradient(ellipse 90% 70% at 0% 0%, black 0%, transparent 75%)",
+            WebkitMaskImage: "radial-gradient(ellipse 90% 70% at 0% 0%, black 0%, transparent 75%)",
           }}
         />
+
+        <div className="relative flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ background: "#000000" }}>
+            <Image src="/roneira-mark.png" alt="Roneira" width={20} height={20} className="h-5 w-5" priority />
+          </div>
+          <span className="text-sm font-semibold" style={{ color: "var(--color-text-primary)" }}>
+            Roneira AI HIFI
+          </span>
+        </div>
+
+        <div className="relative max-w-md">
+          <h1
+            className="text-[2.75rem] leading-[1.05]"
+            style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", color: "var(--color-text-primary)" }}
+          >
+            Six models. One honest answer.
+          </h1>
+          <p className="mt-5 text-sm leading-relaxed" style={{ color: "var(--color-text-muted)" }}>
+            Live NSE, BSE, and global market data, portfolio tracking, and
+            predictions that show you when the models disagree instead of
+            hiding it behind one confident number.
+          </p>
+        </div>
+
+        <div className="relative rounded-xl border p-5" style={{ borderColor: "var(--color-border)", background: "var(--color-surface)" }}>
+          <p className="mb-4 text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--color-text-faint)" }}>
+            Live right now
+          </p>
+          <MarketPulse />
+        </div>
       </div>
 
-      <motion.div
-        className="relative z-10 w-full max-w-md"
-        variants={pageVariants}
-        initial="hidden"
-        animate="visible"
-      >
+      {/* Form panel */}
+      <div className="flex flex-1 items-center justify-center px-4 py-12">
         <motion.div
-          className="mb-8 flex flex-col items-center"
-          variants={logoVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          <div
-            className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl"
-            style={{
-              background: "linear-gradient(135deg, #3498DB 0%, #9B59B6 100%)",
-            }}
-          >
-            <Activity className="h-8 w-8 text-white" />
-          </div>
-          <h1
-            className="text-2xl font-bold"
-            style={{ color: "var(--color-text-primary)" }}
-          >
-            Roneira AI HIFI
-          </h1>
-          <p className="mt-1 text-sm" style={{ color: "var(--color-text-muted)" }}>
-            High-Impact Finance Intelligence
-          </p>
-        </motion.div>
-
-        <motion.div
-          className="glass rounded-2xl p-8"
+          className="w-full max-w-sm"
           variants={cardVariants}
           initial="hidden"
           animate="visible"
         >
-          <h2
-            className="mb-6 text-center text-lg font-semibold"
-            style={{ color: "var(--color-text-primary)" }}
-          >
-            Sign in to your account
+          <div className="mb-8 flex flex-col items-center lg:hidden">
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl" style={{ background: "#000000" }}>
+              <Image src="/roneira-mark.png" alt="Roneira" width={30} height={30} className="h-[30px] w-[30px]" priority />
+            </div>
+            <span className="text-lg font-semibold" style={{ color: "var(--color-text-primary)" }}>
+              Roneira AI HIFI
+            </span>
+          </div>
+
+          <h2 className="mb-1 text-xl font-semibold" style={{ color: "var(--color-text-primary)" }}>
+            Welcome back
           </h2>
+          <p className="mb-8 text-sm" style={{ color: "var(--color-text-muted)" }}>
+            Sign in to your account to continue.
+          </p>
 
           <form onSubmit={handleLogin} className="space-y-5">
             <div>
@@ -246,14 +246,14 @@ export default function LoginPage() {
               style={{
                 background: loading
                   ? "var(--color-surface-2)"
-                  : "linear-gradient(135deg, #3498DB 0%, #2980B9 100%)",
+                  : "linear-gradient(135deg, #3498DB 0%, #2C7BB5 100%)",
               }}
               onMouseEnter={(event) => {
                 if (!loading) {
                   (event.target as HTMLButtonElement).style.transform =
                     "translateY(-1px)";
                   (event.target as HTMLButtonElement).style.boxShadow =
-                    "0 4px 16px rgba(52,152,219,0.3)";
+                    "0 4px 16px rgba(52,152,219,0.28)";
                 }
               }}
               onMouseLeave={(event) => {
@@ -292,17 +292,17 @@ export default function LoginPage() {
             <Link
               href="/signup"
               className="font-medium transition-colors hover:underline"
-              style={{ color: "#3498DB" }}
+              style={{ color: "var(--color-info)" }}
             >
               Create one
             </Link>
           </p>
-        </motion.div>
 
-        <p className="mt-6 text-center text-xs" style={{ color: "var(--color-text-faint)" }}>
-          Copyright {new Date().getFullYear()} Roneira AI HIFI. All rights reserved.
-        </p>
-      </motion.div>
+          <p className="mt-10 text-center text-xs" style={{ color: "var(--color-text-faint)" }}>
+            Copyright {new Date().getFullYear()} Roneira AI HIFI. All rights reserved.
+          </p>
+        </motion.div>
+      </div>
     </div>
   );
 }

@@ -76,6 +76,52 @@ export interface PredictionResult {
   model_used: string;
   timeframe: string;
   computation_time_ms: number;
+  /** Ensemble only: what each constituent model predicted before blending. */
+  components?: PredictionComponent[] | null;
+  /** Ensemble only: 1 = models agree, lower = they diverge. */
+  agreement_score?: number | null;
+  /** Ensemble only: standard deviation of the constituent price targets. */
+  price_spread?: number | null;
+}
+
+export interface PredictionComponent {
+  name: string;
+  predicted_price: number;
+  confidence: number;
+  weight: number;
+  signal: string;
+  fallback: boolean;
+}
+
+/** One row of the live fundamentals screener (ml/export_stock_screener.py). */
+export interface ScreenerRow {
+  ticker: string;
+  tier: "Large" | "Mid" | "Small";
+  longName: string | null;
+  sector: string | null;
+  industry: string | null;
+  marketCap: number | null;
+  trailingPE: number | null;
+  forwardPE: number | null;
+  returnOnEquity: number | null;
+  debtToEquity: number | null;
+  profitMargins: number | null;
+  dividendYield: number | null;
+  revenueGrowth: number | null;
+  earningsGrowth: number | null;
+  pegRatio: number | null;
+  technical_signal: string | null;
+  quality_metric?: number;
+}
+
+export interface ScreenerResponse {
+  generated_at: string;
+  all: ScreenerRow[];
+  large_cap_strong: ScreenerRow[];
+  mid_cap_strong: ScreenerRow[];
+  small_cap_strong: ScreenerRow[];
+  dividend_payers: ScreenerRow[];
+  undervalued_growth: ScreenerRow[];
 }
 
 export interface NewsArticle {

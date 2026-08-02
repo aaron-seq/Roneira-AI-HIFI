@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import type { CandlePoint, MarketQuote } from "@/lib/market/types";
+import type { CandlePoint, MarketQuote, ScreenerResponse } from "@/lib/market/types";
 
 type MarketOverviewResponse = {
   data: MarketQuote[];
@@ -95,6 +95,17 @@ export function useQuoteHistory(
       ),
     enabled: Boolean(symbol),
     refetchInterval: 5 * 60_000,
+  });
+}
+
+export function useStockScreener() {
+  return useQuery({
+    queryKey: ["market", "screener"],
+    queryFn: () => fetchJson<ScreenerResponse>("/api/screener"),
+    // The ML service itself caches this for 30 minutes; matching that here
+    // avoids polling a mostly-static dataset every 60s like the price hooks.
+    staleTime: 30 * 60_000,
+    refetchInterval: 30 * 60_000,
   });
 }
 

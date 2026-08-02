@@ -12,13 +12,22 @@ logger = logging.getLogger("roneira-ml.ensemble")
 class EnsembleCombiner:
     """Combine multiple model predictions into a single weighted prediction."""
 
-    def combine(self, predictions: list[dict], weights: list[float] | None = None) -> dict:
+    def combine(
+        self,
+        predictions: list[dict],
+        weights: list[float] | None = None,
+        names: list[str] | None = None,
+    ) -> dict:
         """
         Combine predictions from multiple models.
 
         Args:
             predictions: List of prediction dicts (each from a different model)
             weights: Optional weights for each model. If None, uses confidence-based weighting.
+            names: Optional model labels, used to report the per-model breakdown in
+                `components`. Callers should pass these: the blended number alone
+                hides whether the models agreed, and how much they disagreed is
+                the more honest signal to surface.
         """
         if not predictions:
             return {
@@ -99,6 +108,23 @@ class EnsembleCombiner:
         agreement_bonus = max(0, 5 * (1 - relative_spread * 10))
         confidence = min(95, confidence + agreement_bonus)
 
+        labels = names or [f"model_{i}" for i in range(n)]
+
+        # Per-model breakdown. The blended price hides disagreement, which is the
+        # part a reader actually needs: four models clustered tightly is a very
+        # different claim from four models scattered across a 10% range.
+        components = [
+            {
+                "name": label,
+                "predicted_price": round(float(p.get("predicted_price", 0)), 2),
+                "confidence": round(float(p.get("confidence", 50)), 1),
+                "weight": round(float(w), 3),
+                "signal": p.get("short_term_signal", {}).get("signal", "HOLD"),
+                "fallback": bool(p.get("fallback", False)),
+            }
+            for label, p, w in zip(labels, predictions, weights)
+        ]
+
         return {
             "predicted_price": round(predicted_price, 2),
             "confidence": round(confidence, 1),
@@ -106,6 +132,8 @@ class EnsembleCombiner:
             "short_term_signal": {"signal": best_signal, "score": round(min(10, avg_short_score), 1)},
             "long_term_signal": {"signal": best_signal, "score": round(min(10, avg_long_score), 1)},
             "indicators": all_indicators[:8],
-            "ensemble_weights": {f"model_{i}": round(w, 3) for i, w in enumerate(weights)},
+            "ensemble_weights": {label: round(w, 3) for label, w in zip(labels, weights)},
             "agreement_score": round(1 - relative_spread * 10, 3),
+            "price_spread": round(float(price_spread), 2),
+            "components": components,
         }

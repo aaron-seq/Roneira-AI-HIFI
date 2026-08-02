@@ -189,8 +189,8 @@ export default function AdminPage() {
                           <span
                             className="rounded px-2 py-0.5 text-[10px] font-bold uppercase"
                             style={{
-                              background: user.role === "admin" ? "rgba(155,89,182,0.12)" : "rgba(52,152,219,0.12)",
-                              color: user.role === "admin" ? "#9B59B6" : "#3498DB",
+                              background: user.role === "admin" ? "rgba(243,156,18,0.12)" : "rgba(52,152,219,0.12)",
+                              color: user.role === "admin" ? "#F39C12" : "#3498DB",
                             }}
                           >
                             {user.role}

@@ -33,7 +33,7 @@ type FormState = {
 const sectorColors = [
   "#3498DB",
   "#2ECC71",
-  "#9B59B6",
+  "#C8922F",
   "#F39C12",
   "#E74C3C",
   "#1ABC9C",

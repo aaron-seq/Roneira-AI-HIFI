@@ -1,73 +1,33 @@
 #!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
+# Run via git's native core.hooksPath (set by the "prepare" script in
+# package.json), not husky -- husky was never actually installed here: it wasn't
+# a dependency, .husky/_/ didn't exist, and core.hooksPath was unset, so this
+# hook silently never executed.
+#
+# Checks the canonical surfaces only: src/ (Next.js) and ml/ (FastAPI).
+# The previous version ran against backend/, frontend/, and ml-service/ -- all
+# legacy trees that are not built, tested, or deployed -- so every commit passed
+# a gate that validated nothing that ships. It also swallowed output with
+# 2>/dev/null and cd'd into directories without checking they existed.
+set -e
 
 echo "🔍 Running pre-commit checks..."
 
-# =====================================================
-# BACKEND CHECKS
-# =====================================================
-echo "📦 Checking backend..."
+echo "  ⌨️  type-check (src/)"
+npm run type-check
 
-# TypeScript type checking
-cd backend
-if [ -f "package.json" ]; then
-  echo "  ⌨️  Running TypeScript type check..."
-  npm run type-check --silent 2>/dev/null || {
-    echo "  ❌ TypeScript type check failed"
-    exit 1
-  }
-  
-  echo "  🧹 Running ESLint..."
-  npm run lint --silent 2>/dev/null || {
-    echo "  ⚠️  ESLint found issues (continue anyway)"
-  }
+echo "  🧹 lint (src/)"
+npm run lint
+
+echo "  🧪 tests (src/)"
+npm run test:web
+
+# Python suite takes ~14s, so only pay for it when ml/ actually changed.
+if git diff --cached --name-only | grep -q '^ml/'; then
+  echo "  🐍 pytest (ml/)"
+  (cd ml && python -m pytest tests -q)
+else
+  echo "  🐍 pytest (ml/) — skipped, no ml/ changes staged"
 fi
-cd ..
-
-# =====================================================
-# FRONTEND CHECKS
-# =====================================================
-echo "🎨 Checking frontend..."
-
-cd frontend
-if [ -f "package.json" ]; then
-  echo "  ⌨️  Running TypeScript type check..."
-  npm run type-check --silent 2>/dev/null || {
-    echo "  ❌ TypeScript type check failed"
-    exit 1
-  }
-  
-  echo "  🧹 Running ESLint..."
-  npm run lint --silent 2>/dev/null || {
-    echo "  ⚠️  ESLint found issues (continue anyway)"
-  }
-fi
-cd ..
-
-# =====================================================
-# ML SERVICE CHECKS (Python)
-# =====================================================
-echo "🐍 Checking ML service..."
-
-cd ml-service
-if [ -f "requirements.txt" ]; then
-  # Check if flake8 is available
-  if command -v flake8 >/dev/null 2>&1; then
-    echo "  🧹 Running flake8..."
-    flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics 2>/dev/null || {
-      echo "  ❌ flake8 found critical errors"
-      exit 1
-    }
-  fi
-  
-  # Check if mypy is available
-  if command -v mypy >/dev/null 2>&1; then
-    echo "  🔍 Running mypy..."
-    mypy main.py --ignore-missing-imports 2>/dev/null || {
-      echo "  ⚠️  mypy found issues (continue anyway)"
-    }
-  fi
-fi
-cd ..
 
 echo "✅ All pre-commit checks passed!"

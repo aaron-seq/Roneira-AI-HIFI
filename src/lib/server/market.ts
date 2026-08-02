@@ -62,6 +62,7 @@ async function fetchJson(url: string): Promise<JsonRecord> {
       Accept: "application/json",
     },
     cache: "no-store",
+    signal: AbortSignal.timeout(10_000),
   });
 
   if (!response.ok) {
@@ -202,11 +203,16 @@ async function fetchMlQuotes(
     (config) => config.fallbackSymbol ?? config.symbol
   );
 
-  const payload = await fetchJson(
-    `${ML_BACKEND_URL}/market-data?symbols=${encodeURIComponent(
-      fallbackSymbols.join(",")
-    )}`
-  );
+  let payload: JsonRecord;
+  try {
+    payload = await fetchJson(
+      `${ML_BACKEND_URL}/market-data?symbols=${encodeURIComponent(
+        fallbackSymbols.join(",")
+      )}`
+    );
+  } catch {
+    return new Map();
+  }
 
   const rows = Array.isArray(payload.data)
     ? (payload.data as JsonRecord[])
@@ -236,6 +242,17 @@ async function fetchMlQuotes(
   return quotes;
 }
 
+/**
+ * Provider fallback chain (per task.md guardrails):
+ *   1. Twelve Data (`fetchTwelveQuotes`) is tried first for every symbol.
+ *   2. Any symbol Twelve Data didn't return a quote for falls through to
+ *      `fetchMlQuotes`, which asks the FastAPI service in `ml/` for a quote
+ *      -- that service in turn falls back to yfinance when its own primary
+ *      source misses. Twelve Data is never a hard dependency: a full outage
+ *      degrades to 100% yfinance-via-ml/ rather than an empty response.
+ * Results are cached (`getCachedValue`, `QUOTE_TTL_MS` = 60s) so this chain
+ * only runs on a cache miss, not on every request.
+ */
 export async function getNormalizedQuotes(
   configs: QuoteConfig[],
   ttlMs = QUOTE_TTL_MS
@@ -331,6 +348,13 @@ export async function getPeerComparisonPayload(symbol: string) {
   };
 }
 
+// Providers list the same symbol under several descriptions (Finnhub returns
+// RELIANCE.NS twice, as "RELIANCE INDUSTRIES LIMITED" and "Reliance Industries
+// Ltd"). Collapse them so callers keying a list on `symbol` stay unique.
+export function dedupeBySymbol(results: StockSearchResult[]): StockSearchResult[] {
+  return Array.from(new Map(results.map((row) => [row.symbol, row])).values());
+}
+
 export async function searchStocks(query: string): Promise<StockSearchResult[]> {
   return getCachedValue(`search:${query.toLowerCase()}`, SEARCH_TTL_MS, async () => {
     if (!query.trim()) {
@@ -354,7 +378,6 @@ export async function searchStocks(query: string): Promise<StockSearchResult[]> 
               row.type === "ETP" ||
               row.type === "ADR"
           )
-          .slice(0, 8)
           .map((row) => ({
             symbol: String(row.symbol || ""),
             name: String(row.description || row.symbol || ""),
@@ -369,8 +392,11 @@ export async function searchStocks(query: string): Promise<StockSearchResult[]> 
           }))
           .filter((row) => row.symbol.length > 0);
 
-        if (mapped.length > 0) {
-          return mapped;
+        // Dedupe before truncating so we return 8 distinct symbols, not 8 rows
+        // that might collapse into fewer.
+        const deduped = dedupeBySymbol(mapped).slice(0, 8);
+        if (deduped.length > 0) {
+          return deduped;
         }
       } catch {
         // Fall back to Alpha Vantage below.
@@ -390,17 +416,19 @@ export async function searchStocks(query: string): Promise<StockSearchResult[]> 
       const rows = Array.isArray(payload.bestMatches)
         ? (payload.bestMatches as JsonRecord[])
         : [];
-      return rows.slice(0, 8).map((row) => ({
-        symbol: String(row["1. symbol"] || ""),
-        name: String(row["2. name"] || row["1. symbol"] || ""),
-        exchange: String(row["4. region"] || "NASDAQ"),
-        type: String(row["3. type"] || "Equity"),
-        currency:
-          typeof row["8. currency"] === "string"
-            ? row["8. currency"]
-            : undefined,
-        provider: "alpha-vantage" as const,
-      }));
+      return dedupeBySymbol(
+        rows.map((row) => ({
+          symbol: String(row["1. symbol"] || ""),
+          name: String(row["2. name"] || row["1. symbol"] || ""),
+          exchange: String(row["4. region"] || "NASDAQ"),
+          type: String(row["3. type"] || "Equity"),
+          currency:
+            typeof row["8. currency"] === "string"
+              ? row["8. currency"]
+              : undefined,
+          provider: "alpha-vantage" as const,
+        }))
+      ).slice(0, 8);
     } catch {
       return [];
     }

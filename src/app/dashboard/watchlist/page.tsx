@@ -149,12 +149,8 @@ export default function WatchlistPage() {
                               <span
                                 className="rounded px-1.5 py-0.5 text-[8px] font-bold"
                                 style={{
-                                  background:
-                                    stock.exchange === "NSE"
-                                      ? "rgba(52,152,219,0.15)"
-                                      : "rgba(155,89,182,0.15)",
-                                  color:
-                                    stock.exchange === "NSE" ? "#3498DB" : "#9B59B6",
+                                  background: "var(--color-surface-offset)",
+                                  color: "var(--color-text-muted)",
                                 }}
                               >
                                 {stock.exchange}
@@ -216,7 +212,7 @@ export default function WatchlistPage() {
                             className="rounded p-1.5 transition-colors hover:bg-white/5"
                             title="Quick predict"
                           >
-                            <Brain className="h-3.5 w-3.5" style={{ color: "var(--color-ai-purple)" }} />
+                            <Brain className="h-3.5 w-3.5" style={{ color: "var(--color-brass)" }} />
                           </button>
                           <button
                             onClick={() => watchlist.removeMutation.mutate(stock.id)}

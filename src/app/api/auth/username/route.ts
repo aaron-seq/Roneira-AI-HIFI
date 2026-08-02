@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { rateLimit, tooManyRequests } from "@/lib/server/rate-limit";
 
 type ResponseCookie = {
   name: string;
@@ -20,6 +21,14 @@ function normalizeUsername(input: string | null) {
 
 export async function GET(request: NextRequest) {
   try {
+    // Unauthenticated endpoint that echoes whether a username exists --
+    // throttle it so it can't be used to enumerate registered usernames
+    // at unlimited rate (the POST login below already throttles similarly).
+    const limit = await rateLimit("username-check", request, 20, 60);
+    if (!limit.ok) {
+      return tooManyRequests(60);
+    }
+
     const username = normalizeUsername(
       new URL(request.url).searchParams.get("username")
     );
@@ -54,6 +63,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Credential-checking endpoint: throttle to blunt password brute-forcing.
+    const limit = await rateLimit("login", request, 10, 60);
+    if (!limit.ok) {
+      return tooManyRequests(60);
+    }
+
     const body = (await request.json()) as LoginRequestBody;
     const username = normalizeUsername(body.username ?? null);
     const password = body.password?.trim() ?? "";

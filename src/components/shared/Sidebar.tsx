@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
@@ -14,7 +15,7 @@ import {
   Shield,
   ChevronLeft,
   ChevronRight,
-  Activity,
+  ListFilter,
 } from "lucide-react";
 import { useAppStore } from "@/lib/stores/app-store";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,11 @@ const navItems = [
     label: "Watchlist",
     href: "/dashboard/watchlist",
     icon: Star,
+  },
+  {
+    label: "Screener",
+    href: "/dashboard/screener",
+    icon: ListFilter,
   },
   {
     label: "Commodities & Forex",
@@ -87,9 +93,18 @@ export function Sidebar() {
       <div className="flex h-16 items-center gap-3 border-b px-4" style={{ borderColor: "var(--color-border)" }}>
         <div
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-          style={{ background: "linear-gradient(135deg, #3498DB 0%, #9B59B6 100%)" }}
+          style={{ background: "#000000" }}
         >
-          <Activity className="h-5 w-5 text-white" />
+          {/* Roneira ₹E monogram on a solid black tile -- reads cleanly
+              against both the dark and light theme surface colors. */}
+          <Image
+            src="/roneira-mark.png"
+            alt="Roneira"
+            width={20}
+            height={20}
+            className="h-5 w-5"
+            priority
+          />
         </div>
         {!sidebarCollapsed && (
           <motion.div

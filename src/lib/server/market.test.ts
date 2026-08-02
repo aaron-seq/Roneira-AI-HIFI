@@ -4,8 +4,9 @@ import {
   getProviderSymbol,
   unwrapTwelveQuotePayload,
   normalizeQuote,
+  dedupeBySymbol,
 } from "@/lib/server/market";
-import type { QuoteConfig } from "@/lib/market/types";
+import type { QuoteConfig, StockSearchResult } from "@/lib/market/types";
 
 const equityConfig: QuoteConfig = {
   symbol: "AAPL",
@@ -193,5 +194,35 @@ describe("normalizeQuote", () => {
   it("stamps an ISO timestamp", () => {
     const quote = normalizeQuote(equityConfig, { close: "150" }, "twelve-data");
     expect(() => new Date(quote!.timestamp).toISOString()).not.toThrow();
+  });
+});
+
+describe("dedupeBySymbol", () => {
+  const row = (symbol: string, name: string): StockSearchResult => ({
+    symbol,
+    name,
+    exchange: "NSE",
+    type: "Common Stock",
+    provider: "finnhub",
+  });
+
+  it("collapses repeated symbols, keeping one entry per symbol", () => {
+    // Finnhub returns RELIANCE.NS twice under different descriptions, which
+    // broke list rendering for consumers keying on symbol.
+    const results = dedupeBySymbol([
+      row("RELIANCE.NS", "RELIANCE INDUSTRIES LIMITED"),
+      row("RELIANCE.NS", "Reliance Industries Ltd"),
+      row("RPOWER.NS", "Reliance Power Ltd"),
+    ]);
+
+    expect(results.map((entry) => entry.symbol)).toEqual([
+      "RELIANCE.NS",
+      "RPOWER.NS",
+    ]);
+  });
+
+  it("leaves already-unique results untouched", () => {
+    const unique = [row("AAPL", "Apple Inc."), row("MSFT", "Microsoft")];
+    expect(dedupeBySymbol(unique)).toHaveLength(2);
   });
 });
