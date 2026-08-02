@@ -32,6 +32,7 @@ ml/artifacts/generated/
 # Misc
 .DS_Store
 *.log
+*.tsbuildinfo
 
 # Legacy reference tree (see task.md): not built, tested, or deployed.
 # Its lockfile is intentionally untracked — committing it published 18 CVEs
