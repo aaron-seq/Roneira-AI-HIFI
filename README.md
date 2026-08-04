@@ -1,4 +1,4 @@
-# Roneira AI HIFI — High-Impact Finance Intelligence Platform
+# Roneira AI HIFI High-Impact Finance Intelligence Platform
 
 <div align="center">
 
