@@ -4,15 +4,19 @@ import { useEffect, useRef, useState } from "react";
 import { ColorType, createChart, type IChartApi, type Time } from "lightweight-charts";
 import { motion } from "framer-motion";
 import { useQuoteHistory } from "@/lib/hooks/use-live-market";
-import { formatPercent, formatPrice, getPriceColor, getTickerCurrency } from "@/lib/utils";
+import { formatPercent, formatPrice, getPriceColor } from "@/lib/utils";
 
+// getTickerCurrency() only recognises the .NS/.BO equity suffix, not index
+// symbols like ^NSEI -- so currency is declared per-symbol here instead of
+// inferred from the ticker string, the same way MarketQuote.currency is
+// sourced from static config rather than guessed client-side.
 const SYMBOLS = [
-  { symbol: "^NSEI", label: "NIFTY 50" },
-  { symbol: "^GSPC", label: "S&P 500" },
-  { symbol: "AAPL", label: "Apple" },
-  { symbol: "NVDA", label: "NVIDIA" },
-  { symbol: "RELIANCE.NS", label: "Reliance" },
-  { symbol: "TCS.NS", label: "TCS" },
+  { symbol: "^NSEI", label: "NIFTY 50", currency: "INR" },
+  { symbol: "^GSPC", label: "S&P 500", currency: "USD" },
+  { symbol: "AAPL", label: "Apple", currency: "USD" },
+  { symbol: "NVDA", label: "NVIDIA", currency: "USD" },
+  { symbol: "RELIANCE.NS", label: "Reliance", currency: "INR" },
+  { symbol: "TCS.NS", label: "TCS", currency: "INR" },
 ] as const;
 
 const RANGES = [
@@ -88,7 +92,7 @@ export function LandingChart() {
     latest && first && first.close !== 0
       ? ((latest.close - first.close) / first.close) * 100
       : 0;
-  const currency = getTickerCurrency(symbol);
+  const currency = SYMBOLS.find((item) => item.symbol === symbol)?.currency ?? "USD";
 
   return (
     <div

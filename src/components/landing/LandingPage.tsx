@@ -15,6 +15,9 @@ import {
 import { LandingTicker } from "@/components/landing/LandingTicker";
 import { LandingChart } from "@/components/landing/LandingChart";
 import { PredictionPreview } from "@/components/landing/PredictionPreview";
+import { SentimentPulse } from "@/components/landing/SentimentPulse";
+import { StatCounters } from "@/components/landing/StatCounters";
+import { CursorGlow } from "@/components/landing/CursorGlow";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -100,6 +103,7 @@ export function LandingPage() {
 
       {/* Hero */}
       <section className="relative overflow-hidden px-6 pb-16 pt-16 sm:px-10 sm:pt-24">
+        <CursorGlow />
         <div
           className="pointer-events-none absolute -left-40 -top-40 h-[560px] w-[560px] rounded-full opacity-[0.08]"
           style={{ background: "radial-gradient(circle, #C8922F 0%, transparent 70%)" }}
@@ -181,12 +185,21 @@ export function LandingPage() {
               Sign in
             </Link>
           </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            className="mt-16"
+          >
+            <StatCounters />
+          </motion.div>
         </div>
       </section>
 
       <LandingTicker />
 
-      {/* Interactive chart + live prediction */}
+      {/* Interactive chart + live prediction + sentiment */}
       <section className="px-6 py-16 sm:px-10 sm:py-24">
         <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[1.4fr_1fr]">
           <motion.div
@@ -197,14 +210,24 @@ export function LandingPage() {
           >
             <LandingChart />
           </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-80px" }}
-            transition={{ duration: 0.6, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-          >
-            <PredictionPreview />
-          </motion.div>
+          <div className="flex flex-col gap-6">
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-80px" }}
+              transition={{ duration: 0.6, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <PredictionPreview />
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-80px" }}
+              transition={{ duration: 0.6, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <SentimentPulse />
+            </motion.div>
+          </div>
         </div>
       </section>
 
@@ -237,7 +260,8 @@ export function LandingPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-60px" }}
                 transition={{ duration: 0.5, delay: (index % 3) * 0.08, ease: [0.16, 1, 0.3, 1] }}
-                className="card p-6"
+                whileHover={{ y: -4 }}
+                className="card p-6 transition-shadow duration-300 hover:shadow-[0_8px_32px_rgba(52,152,219,0.12)]"
               >
                 <div
                   className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg"

@@ -155,7 +155,7 @@ export function PredictionPreview() {
                 Predicted price ({TIMEFRAMES.find((t) => t.value === timeframe)?.label})
               </span>
               <span
-                className={`badge-${result.short_term_signal.signal.toLowerCase().replace("_", "-")} flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${getSignalBadgeClass(
+                className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${getSignalBadgeClass(
                   result.short_term_signal.signal as "STRONG_BUY" | "BUY" | "HOLD" | "SELL" | "STRONG_SELL"
                 )}`}
               >
