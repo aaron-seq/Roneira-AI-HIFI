@@ -14,8 +14,13 @@ import {
 } from "lucide-react";
 import { logAuditEvent } from "@/lib/client/audit";
 import { useNewsFeed } from "@/lib/hooks/use-news-feed";
+import { useRecentActivity } from "@/lib/hooks/use-audit-log";
 import { useAppStore } from "@/lib/stores/app-store";
 import { createClient } from "@/lib/supabase/client";
+
+function describeActivity(actionType: string, entityType: string): string {
+  return `${actionType.replaceAll("_", " ").toLowerCase()} · ${entityType}`;
+}
 
 export function Header() {
   const router = useRouter();
@@ -24,11 +29,18 @@ export function Header() {
     theme,
     toggleTheme,
     sidebarCollapsed,
-    unreadNotifications,
+    notificationsSeenAt,
+    markNotificationsSeen,
     setCommandPaletteOpen,
     setUser,
   } = useAppStore();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const activityQuery = useRecentActivity();
+  const activity = activityQuery.data ?? [];
+  const unreadNotifications = notificationsSeenAt
+    ? activity.filter((row) => row.created_at > notificationsSeenAt).length
+    : activity.length;
   const preferredMarket =
     user?.preferences.defaultMarket === "NSE" ||
     user?.preferences.defaultMarket === "BSE"
@@ -51,17 +63,18 @@ export function Header() {
   // value. Binding it here too made the two handlers race on one keypress.
 
   useEffect(() => {
-    if (!showUserMenu) {
+    if (!showUserMenu && !showNotifications) {
       return;
     }
 
     function handleClick() {
       setShowUserMenu(false);
+      setShowNotifications(false);
     }
 
     window.addEventListener("click", handleClick);
     return () => window.removeEventListener("click", handleClick);
-  }, [showUserMenu]);
+  }, [showUserMenu, showNotifications]);
 
   async function handleLogout() {
     await logAuditEvent({
@@ -144,23 +157,88 @@ export function Header() {
           </kbd>
         </button>
 
-        <button
-          className="relative rounded-lg p-2 transition-colors hover:bg-white/5"
-          aria-label="Notifications"
-        >
-          <Bell
-            className="h-4 w-4"
-            style={{ color: "var(--color-text-muted)" }}
-          />
-          {unreadNotifications > 0 && (
-            <span
-              className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white"
-              style={{ background: "#E74C3C" }}
+        <div className="relative">
+          <button
+            onClick={(event) => {
+              event.stopPropagation();
+              setShowUserMenu(false);
+              setShowNotifications((open) => {
+                if (!open) {
+                  markNotificationsSeen();
+                }
+                return !open;
+              });
+            }}
+            className="relative rounded-lg p-2 transition-colors hover:bg-white/5"
+            aria-label="Notifications"
+          >
+            <Bell
+              className="h-4 w-4"
+              style={{ color: "var(--color-text-muted)" }}
+            />
+            {unreadNotifications > 0 && (
+              <span
+                className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white"
+                style={{ background: "#E74C3C" }}
+              >
+                {unreadNotifications > 9 ? "9+" : unreadNotifications}
+              </span>
+            )}
+          </button>
+
+          {showNotifications && (
+            <div
+              className="absolute right-0 top-12 z-50 w-72 rounded-xl border py-1 shadow-xl"
+              style={{
+                background: "var(--color-surface-2)",
+                borderColor: "var(--color-border)",
+              }}
+              onClick={(event) => event.stopPropagation()}
             >
-              {unreadNotifications > 9 ? "9+" : unreadNotifications}
-            </span>
+              <div
+                className="border-b px-3 py-2 text-sm font-medium"
+                style={{
+                  borderColor: "var(--color-divider)",
+                  color: "var(--color-text-primary)",
+                }}
+              >
+                Recent activity
+              </div>
+              {activityQuery.isLoading ? (
+                <p
+                  className="px-3 py-3 text-xs"
+                  style={{ color: "var(--color-text-faint)" }}
+                >
+                  Loading...
+                </p>
+              ) : activity.length === 0 ? (
+                <p
+                  className="px-3 py-3 text-xs"
+                  style={{ color: "var(--color-text-faint)" }}
+                >
+                  No recent activity yet.
+                </p>
+              ) : (
+                <ul className="max-h-72 overflow-y-auto">
+                  {activity.map((row) => (
+                    <li
+                      key={row.id}
+                      className="px-3 py-2 text-xs"
+                      style={{ color: "var(--color-text-muted)" }}
+                    >
+                      <p style={{ color: "var(--color-text-primary)" }}>
+                        {describeActivity(row.action_type, row.entity_type)}
+                      </p>
+                      <p style={{ color: "var(--color-text-faint)" }}>
+                        {new Date(row.created_at).toLocaleString()}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           )}
-        </button>
+        </div>
 
         <button
           onClick={toggleTheme}

@@ -1,4 +1,22 @@
+import { existsSync, readFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
+
+// `next dev`/`next build` load .env.local automatically; a standalone
+// `node scripts/seed-admin.mjs` invocation does not, so this previously
+// failed with "Missing NEXT_PUBLIC_SUPABASE_URL" unless the shell already
+// had these exported. package.json declares Node >=18, so the native
+// process.loadEnvFile() (20.6+) isn't safe to rely on here -- this is the
+// whole parse in ~10 lines, not worth a dependency for.
+function loadEnvLocal() {
+  if (!existsSync(".env.local")) return;
+  for (const line of readFileSync(".env.local", "utf8").split("\n")) {
+    const match = line.match(/^\s*([\w.-]+)\s*=\s*(.*)\s*$/);
+    if (!match || match[1].startsWith("#")) continue;
+    const value = match[2].replace(/^["']|["']$/g, "");
+    if (!(match[1] in process.env)) process.env[match[1]] = value;
+  }
+}
+loadEnvLocal();
 
 const {
   NEXT_PUBLIC_SUPABASE_URL,

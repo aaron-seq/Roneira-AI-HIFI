@@ -11,9 +11,12 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 import yfinance as yf
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+
+load_dotenv()
 
 from app.models.random_forest import RandomForestPredictor
 from app.models.technical_analysis import TechnicalAnalyzer
