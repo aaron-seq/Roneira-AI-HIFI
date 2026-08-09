@@ -58,6 +58,33 @@ async function fetchUserMap(userIds: string[]): Promise<Map<string, string>> {
   );
 }
 
+async function fetchRecentActivity(limit: number): Promise<AuditLogRow[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("audit_log")
+    .select("id, user_id, action_type, entity_type, entity_id, created_at")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    throw error;
+  }
+
+  return (data as AuditLogRow[]) ?? [];
+}
+
+// RLS scopes this to the signed-in user's own rows (or all rows for an
+// admin) -- same table the Audit Log page reads, just unfiltered + capped
+// small for a header dropdown.
+export function useRecentActivity(limit = 8) {
+  return useQuery({
+    queryKey: ["audit", "recent", limit],
+    queryFn: () => fetchRecentActivity(limit),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+}
+
 export function useAuditLog(entityFilter: string, actionFilter: string) {
   const rowsQuery = useQuery({
     queryKey: ["audit", entityFilter, actionFilter],

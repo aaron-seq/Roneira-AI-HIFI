@@ -71,6 +71,8 @@ export default function PortfolioPage() {
   const [showModal, setShowModal] = useState(false);
   const [formState, setFormState] = useState<FormState>(emptyFormState());
   const [search, setSearch] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const deferredSearch = useDeferredValue(search);
   const searchQuery = useStockSearch(deferredSearch);
 
@@ -105,6 +107,7 @@ export default function PortfolioPage() {
   function openAddModal() {
     setFormState(emptyFormState());
     setSearch("");
+    setFormError(null);
     setShowModal(true);
   }
 
@@ -120,24 +123,35 @@ export default function PortfolioPage() {
       sector: row.sector || "",
     });
     setSearch(row.ticker);
+    setFormError(null);
     setShowModal(true);
   }
 
   async function handleSubmit() {
-    await portfolio.upsertMutation.mutateAsync({
-      id: formState.id,
-      ticker: formState.ticker,
-      company_name: formState.company_name,
-      exchange: formState.exchange,
-      quantity: Number(formState.quantity),
-      avg_buy_price: Number(formState.avg_buy_price),
-      buy_date: formState.buy_date || null,
-      sector: formState.sector || null,
-      tags: [],
-    });
-    setShowModal(false);
-    setFormState(emptyFormState());
-    setSearch("");
+    setFormError(null);
+    setSubmitting(true);
+    try {
+      await portfolio.upsertMutation.mutateAsync({
+        id: formState.id,
+        ticker: formState.ticker,
+        company_name: formState.company_name,
+        exchange: formState.exchange,
+        quantity: Number(formState.quantity),
+        avg_buy_price: Number(formState.avg_buy_price),
+        buy_date: formState.buy_date || null,
+        sector: formState.sector || null,
+        tags: [],
+      });
+      setShowModal(false);
+      setFormState(emptyFormState());
+      setSearch("");
+    } catch (error) {
+      setFormError(
+        error instanceof Error ? error.message : "Could not save this holding."
+      );
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -485,10 +499,20 @@ export default function PortfolioPage() {
                 />
               </div>
 
+              {formError && (
+                <p
+                  className="mt-4 rounded-lg border px-3 py-2 text-xs"
+                  style={{ borderColor: "#E74C3C", color: "#E74C3C" }}
+                >
+                  {formError}
+                </p>
+              )}
+
               <div className="mt-5 flex gap-2">
                 <button
                   onClick={handleSubmit}
                   disabled={
+                    submitting ||
                     !formState.ticker ||
                     !formState.company_name ||
                     !formState.exchange ||
@@ -498,7 +522,7 @@ export default function PortfolioPage() {
                   className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white disabled:opacity-50"
                   style={{ background: "linear-gradient(135deg, #2ECC71, #27AE60)" }}
                 >
-                  {formState.id ? "Save Changes" : "Add Holding"}
+                  {submitting ? "Saving..." : formState.id ? "Save Changes" : "Add Holding"}
                 </button>
                 <button
                   onClick={() => setShowModal(false)}

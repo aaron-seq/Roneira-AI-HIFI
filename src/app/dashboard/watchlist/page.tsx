@@ -15,6 +15,7 @@ import {
   TrendingUp,
   X,
 } from "lucide-react";
+import { Sparkline } from "@/components/shared/Sparkline";
 import { TableSkeleton } from "@/components/ui/Skeletons";
 import { usePredictionMutation, useStockSearch } from "@/lib/hooks/use-prediction";
 import { useWatchlist } from "@/lib/hooks/use-watchlist";
@@ -28,6 +29,8 @@ export default function WatchlistPage() {
   const [alertModal, setAlertModal] = useState<string | null>(null);
   const [alertInput, setAlertInput] = useState("");
   const [sortBy, setSortBy] = useState<"name" | "change" | "price">("name");
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [predictingTicker, setPredictingTicker] = useState<string | null>(null);
   const deferredSearch = useDeferredValue(addSearch);
   const searchQuery = useStockSearch(deferredSearch);
   const predictionMutation = usePredictionMutation();
@@ -43,21 +46,54 @@ export default function WatchlistPage() {
     name: string;
     exchange: string;
   }) {
-    await watchlist.addMutation.mutateAsync({
-      symbol: stock.symbol,
-      exchange: stock.exchange,
-    });
-    setShowAddModal(false);
-    setAddSearch("");
+    setActionError(null);
+    try {
+      await watchlist.addMutation.mutateAsync({
+        symbol: stock.symbol,
+        exchange: stock.exchange,
+      });
+      setShowAddModal(false);
+      setAddSearch("");
+    } catch (error) {
+      setActionError(
+        error instanceof Error ? error.message : "Could not add that stock."
+      );
+    }
   }
 
   async function handleSetAlert(id: string, price: number | null) {
-    await watchlist.alertMutation.mutateAsync({
-      id,
-      alertPrice: price,
-    });
-    setAlertModal(null);
-    setAlertInput("");
+    setActionError(null);
+    try {
+      await watchlist.alertMutation.mutateAsync({
+        id,
+        alertPrice: price,
+      });
+      setAlertModal(null);
+      setAlertInput("");
+    } catch (error) {
+      setActionError(
+        error instanceof Error ? error.message : "Could not update the alert."
+      );
+    }
+  }
+
+  async function handleQuickPredict(ticker: string) {
+    setActionError(null);
+    setPredictingTicker(ticker);
+    try {
+      await predictionMutation.mutateAsync({
+        ticker,
+        timeframe: "1month",
+        model_type: "ENSEMBLE",
+      });
+      router.push(`/dashboard/predict?ticker=${encodeURIComponent(ticker)}`);
+    } catch (error) {
+      setActionError(
+        error instanceof Error ? error.message : `Could not run a prediction for ${ticker}.`
+      );
+    } finally {
+      setPredictingTicker(null);
+    }
   }
 
   return (
@@ -121,6 +157,7 @@ export default function WatchlistPage() {
                   <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: "var(--color-text-faint)" }}>Stock</th>
                   <th className="px-4 py-3 text-right text-xs font-medium" style={{ color: "var(--color-text-faint)" }}>Price</th>
                   <th className="px-4 py-3 text-right text-xs font-medium" style={{ color: "var(--color-text-faint)" }}>Change</th>
+                  <th className="hidden px-4 py-3 text-right text-xs font-medium md:table-cell" style={{ color: "var(--color-text-faint)" }}>1M Trend</th>
                   <th className="px-4 py-3 text-right text-xs font-medium" style={{ color: "var(--color-text-faint)" }}>Alert</th>
                   <th className="px-4 py-3 text-center text-xs font-medium" style={{ color: "var(--color-text-faint)" }}>Actions</th>
                 </tr>
@@ -175,6 +212,9 @@ export default function WatchlistPage() {
                           {formatPercent(stock.changePercent)}
                         </span>
                       </td>
+                      <td className="hidden px-4 py-3 md:table-cell">
+                        <Sparkline symbol={stock.ticker} className="ml-auto h-8 w-20" />
+                      </td>
                       <td className="px-4 py-3 text-right">
                         {stock.alert_price ? (
                           <span className="font-mono text-xs" data-financial style={{ color: "var(--color-warning)" }}>
@@ -201,18 +241,18 @@ export default function WatchlistPage() {
                             )}
                           </button>
                           <button
-                            onClick={async () => {
-                              await predictionMutation.mutateAsync({
-                                ticker: stock.ticker,
-                                timeframe: "1month",
-                                model_type: "ENSEMBLE",
-                              });
-                              router.push(`/dashboard/predict?ticker=${encodeURIComponent(stock.ticker)}`);
-                            }}
-                            className="rounded p-1.5 transition-colors hover:bg-white/5"
+                            onClick={() => handleQuickPredict(stock.ticker)}
+                            disabled={predictingTicker === stock.ticker}
+                            className="rounded p-1.5 transition-colors hover:bg-white/5 disabled:opacity-50"
                             title="Quick predict"
                           >
-                            <Brain className="h-3.5 w-3.5" style={{ color: "var(--color-brass)" }} />
+                            <Brain
+                              className={cn(
+                                "h-3.5 w-3.5",
+                                predictingTicker === stock.ticker && "animate-pulse"
+                              )}
+                              style={{ color: "var(--color-brass)" }}
+                            />
                           </button>
                           <button
                             onClick={() => watchlist.removeMutation.mutate(stock.id)}
@@ -370,6 +410,31 @@ export default function WatchlistPage() {
                 </button>
               </div>
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {actionError && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="fixed bottom-6 right-6 z-50 flex max-w-sm items-start gap-3 rounded-xl border p-4 shadow-xl"
+            style={{
+              background: "var(--color-surface-2)",
+              borderColor: "#E74C3C",
+            }}
+          >
+            <p className="flex-1 text-sm" style={{ color: "var(--color-text-primary)" }}>
+              {actionError}
+            </p>
+            <button
+              onClick={() => setActionError(null)}
+              className="rounded-lg p-1 transition-colors hover:bg-white/5"
+            >
+              <X className="h-4 w-4" style={{ color: "var(--color-text-muted)" }} />
+            </button>
           </motion.div>
         )}
       </AnimatePresence>

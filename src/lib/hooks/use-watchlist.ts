@@ -86,6 +86,12 @@ export function useWatchlist() {
       if (error) {
         throw error;
       }
+
+      await logAuditEvent({
+        actionType: "ADD_WATCHLIST",
+        entityType: "watchlist",
+        newValues: { ticker: payload.symbol, exchange: payload.exchange },
+      }).catch(() => undefined);
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["watchlist"] });
@@ -94,11 +100,19 @@ export function useWatchlist() {
 
   const removeMutation = useMutation({
     mutationFn: async (id: string) => {
+      const existingRow = rows.find((row) => row.id === id);
       const supabase = createClient();
       const { error } = await supabase.from("watchlist").delete().eq("id", id);
       if (error) {
         throw error;
       }
+
+      await logAuditEvent({
+        actionType: "REMOVE_WATCHLIST",
+        entityType: "watchlist",
+        entityId: id,
+        oldValues: { ticker: existingRow?.ticker ?? null },
+      }).catch(() => undefined);
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["watchlist"] });

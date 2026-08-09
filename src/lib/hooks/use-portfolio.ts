@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { logAuditEvent } from "@/lib/client/audit";
 import { createClient } from "@/lib/supabase/client";
 import { useLiveQuotes } from "@/lib/hooks/use-live-market";
 import type { MarketQuote } from "@/lib/market/types";
@@ -111,6 +112,17 @@ export function usePortfolio() {
         if (error) {
           throw error;
         }
+
+        await logAuditEvent({
+          actionType: "EDIT_HOLDING",
+          entityType: "portfolio",
+          entityId: payload.id,
+          newValues: {
+            ticker: payload.ticker,
+            quantity: payload.quantity,
+            avg_buy_price: payload.avg_buy_price,
+          },
+        }).catch(() => undefined);
         return;
       }
 
@@ -129,6 +141,16 @@ export function usePortfolio() {
       if (error) {
         throw error;
       }
+
+      await logAuditEvent({
+        actionType: "ADD_STOCK",
+        entityType: "portfolio",
+        newValues: {
+          ticker: payload.ticker,
+          quantity: payload.quantity,
+          avg_buy_price: payload.avg_buy_price,
+        },
+      }).catch(() => undefined);
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["portfolio", "holdings"] });
@@ -137,6 +159,7 @@ export function usePortfolio() {
 
   const removeMutation = useMutation({
     mutationFn: async (id: string) => {
+      const existingRow = rows.find((row) => row.id === id);
       const supabase = createClient();
       const { error } = await supabase
         .from("portfolio_holdings")
@@ -145,6 +168,13 @@ export function usePortfolio() {
       if (error) {
         throw error;
       }
+
+      await logAuditEvent({
+        actionType: "DELETE_HOLDING",
+        entityType: "portfolio",
+        entityId: id,
+        oldValues: { ticker: existingRow?.ticker ?? null },
+      }).catch(() => undefined);
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["portfolio", "holdings"] });

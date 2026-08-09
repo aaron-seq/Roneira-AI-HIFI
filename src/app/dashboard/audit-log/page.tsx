@@ -22,6 +22,8 @@ import {
   UserPlus,
 } from "lucide-react";
 import { useAuditLog } from "@/lib/hooks/use-audit-log";
+import type { AuditLogRow } from "@/lib/market/types";
+import { formatPrice } from "@/lib/utils";
 
 const ACTION_ICONS: Record<string, React.ElementType> = {
   ADD_STOCK: Plus,
@@ -71,6 +73,48 @@ const ACTION_FILTERS = [
   "SIGNUP",
   "SETTINGS_CHANGE",
 ];
+
+function describeEntry(entry: AuditLogRow): string {
+  const details = (entry.new_values || entry.old_values || {}) as Record<string, unknown>;
+  const ticker =
+    typeof details.ticker === "string" ? details.ticker.replace(".NS", "") : null;
+
+  switch (entry.action_type) {
+    case "ADD_STOCK":
+      return ticker ? `Added ${ticker} to the portfolio` : "Added a portfolio holding";
+    case "EDIT_HOLDING":
+      return ticker ? `Updated the ${ticker} holding` : "Updated a portfolio holding";
+    case "DELETE_HOLDING":
+      return ticker ? `Removed ${ticker} from the portfolio` : "Removed a portfolio holding";
+    case "ADD_WATCHLIST":
+      return ticker ? `Added ${ticker} to the watchlist` : "Added a stock to the watchlist";
+    case "REMOVE_WATCHLIST":
+      return ticker ? `Removed ${ticker} from the watchlist` : "Removed a stock from the watchlist";
+    case "PRICE_ALERT": {
+      const price = details.alert_price;
+      if (ticker && typeof price === "number") {
+        return `Set a price alert on ${ticker} at ${formatPrice(price)}`;
+      }
+      return ticker ? `Cleared the price alert on ${ticker}` : "Updated a price alert";
+    }
+    case "RUN_PREDICTION": {
+      const model = typeof details.model_used === "string" ? details.model_used : null;
+      return ticker
+        ? `Ran a${model ? ` ${model}` : ""} prediction for ${ticker}`
+        : "Ran a stock prediction";
+    }
+    case "LOGIN":
+      return "Signed in";
+    case "LOGOUT":
+      return "Signed out";
+    case "SIGNUP":
+      return "Created an account";
+    case "SETTINGS_CHANGE":
+      return "Updated account settings";
+    default:
+      return entry.action_type.replace(/_/g, " ").toLowerCase();
+  }
+}
 
 function StatusIcon({ actionType }: { actionType: string }) {
   const Icon = ACTION_ICONS[actionType] || FileText;
@@ -173,7 +217,6 @@ export default function AuditLogPage() {
           <AnimatePresence mode="popLayout">
             {auditQuery.rows.map((entry, index) => {
               const color = ACTION_COLORS[entry.action_type] || "#7F8C8D";
-              const details = entry.new_values || entry.old_values || {};
 
               return (
                 <motion.div
@@ -211,7 +254,7 @@ export default function AuditLogPage() {
                       </span>
                     </div>
                     <p className="text-sm leading-relaxed" style={{ color: "var(--color-text-primary)" }}>
-                      {JSON.stringify(details)}
+                      {describeEntry(entry)}
                     </p>
                     <div className="mt-2 flex items-center gap-3 text-[10px]" style={{ color: "var(--color-text-faint)" }}>
                       <span className="flex items-center gap-1">
