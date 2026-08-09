@@ -15,6 +15,7 @@ import {
   TrendingUp,
   X,
 } from "lucide-react";
+import { Sparkline } from "@/components/shared/Sparkline";
 import { TableSkeleton } from "@/components/ui/Skeletons";
 import { usePredictionMutation, useStockSearch } from "@/lib/hooks/use-prediction";
 import { useWatchlist } from "@/lib/hooks/use-watchlist";
@@ -156,6 +157,7 @@ export default function WatchlistPage() {
                   <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: "var(--color-text-faint)" }}>Stock</th>
                   <th className="px-4 py-3 text-right text-xs font-medium" style={{ color: "var(--color-text-faint)" }}>Price</th>
                   <th className="px-4 py-3 text-right text-xs font-medium" style={{ color: "var(--color-text-faint)" }}>Change</th>
+                  <th className="hidden px-4 py-3 text-right text-xs font-medium md:table-cell" style={{ color: "var(--color-text-faint)" }}>1M Trend</th>
                   <th className="px-4 py-3 text-right text-xs font-medium" style={{ color: "var(--color-text-faint)" }}>Alert</th>
                   <th className="px-4 py-3 text-center text-xs font-medium" style={{ color: "var(--color-text-faint)" }}>Actions</th>
                 </tr>
@@ -209,6 +211,9 @@ export default function WatchlistPage() {
                           )}
                           {formatPercent(stock.changePercent)}
                         </span>
+                      </td>
+                      <td className="hidden px-4 py-3 md:table-cell">
+                        <Sparkline symbol={stock.ticker} className="ml-auto h-8 w-20" />
                       </td>
                       <td className="px-4 py-3 text-right">
                         {stock.alert_price ? (

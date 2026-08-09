@@ -9,6 +9,7 @@ import {
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
+import { Sparkline } from "@/components/shared/Sparkline";
 import { CardGridSkeleton } from "@/components/ui/Skeletons";
 import { useCommoditiesForexData } from "@/lib/hooks/use-live-market";
 import type { MarketQuote } from "@/lib/market/types";
@@ -64,18 +65,21 @@ function QuoteCard({ quote }: { quote: MarketQuote }) {
       <p className="font-mono text-xl font-bold" data-financial style={{ color: "var(--color-text-primary)" }}>
         {formatPrice(quote.price)}
       </p>
-      <div className="mt-2 flex items-center gap-1.5">
-        {isPositive ? (
-          <TrendingUp className="h-3.5 w-3.5 text-profit" />
-        ) : (
-          <TrendingDown className="h-3.5 w-3.5 text-loss" />
-        )}
-        <span
-          className={cn("font-mono text-xs font-semibold", getPriceColor(quote.changePercent))}
-          data-financial
-        >
-          {formatPercent(quote.changePercent)}
-        </span>
+      <div className="mt-2 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5">
+          {isPositive ? (
+            <TrendingUp className="h-3.5 w-3.5 text-profit" />
+          ) : (
+            <TrendingDown className="h-3.5 w-3.5 text-loss" />
+          )}
+          <span
+            className={cn("font-mono text-xs font-semibold", getPriceColor(quote.changePercent))}
+            data-financial
+          >
+            {formatPercent(quote.changePercent)}
+          </span>
+        </div>
+        <Sparkline symbol={quote.symbol} className="h-7 w-16 shrink-0" />
       </div>
       <p className="mt-2 text-[10px]" style={{ color: "var(--color-text-faint)" }}>
         {quote.exchange} · {quote.provider}
