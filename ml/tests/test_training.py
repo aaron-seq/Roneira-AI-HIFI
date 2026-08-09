@@ -92,7 +92,9 @@ class TestGradientBoostCore:
 
         assert metrics["training_windows"] == len(windows)
         assert metrics["validation_mae"] >= 0
-        assert metrics["validation_rmse"] >= metrics["validation_mae"] * 0  # both non-negative
+        assert metrics["validation_rmse"] >= 0
+        # RMSE is always >= MAE for the same error distribution (power-mean inequality).
+        assert metrics["validation_rmse"] >= metrics["validation_mae"]
         assert 35.0 <= metrics["confidence"] <= 85.0
         assert metrics["backend"] in ("xgboost", "sklearn")
 

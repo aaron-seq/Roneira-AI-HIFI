@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ColorType, createChart, type IChartApi, type Time } from "lightweight-charts";
+import { ColorType, createChart, type IChartApi } from "lightweight-charts";
 import { motion } from "framer-motion";
 import { useQuoteHistory } from "@/lib/hooks/use-live-market";
+import { toChartTime } from "@/components/charts/PredictionChart";
 import { formatPercent, formatPrice, getPriceColor } from "@/lib/utils";
 
 // getTickerCurrency() only recognises the .NS/.BO equity suffix, not index
@@ -24,10 +25,6 @@ const RANGES = [
   { range: "6month", interval: "1day", label: "6M" },
   { range: "1year", interval: "1week", label: "1Y" },
 ] as const;
-
-function toChartTime(value: string): Time {
-  return Math.floor(new Date(value).getTime() / 1000) as Time;
-}
 
 export function LandingChart() {
   const [symbol, setSymbol] = useState<(typeof SYMBOLS)[number]["symbol"]>("^NSEI");

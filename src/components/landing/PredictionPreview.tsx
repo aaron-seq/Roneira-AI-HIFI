@@ -65,8 +65,6 @@ export function PredictionPreview() {
     }
   }
 
-  const currency = getTickerCurrency(ticker);
-
   return (
     <div className="card p-6 sm:p-8" style={{ boxShadow: "var(--shadow-elevated)" }}>
       <div className="mb-6 flex items-center gap-2.5">
@@ -91,7 +89,8 @@ export function PredictionPreview() {
           <button
             key={item.ticker}
             onClick={() => setTicker(item.ticker)}
-            className="rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-200"
+            disabled={loading}
+            className="rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60"
             style={{
               background: ticker === item.ticker ? "var(--color-info)" : "var(--color-surface-2)",
               color: ticker === item.ticker ? "#FFFFFF" : "var(--color-text-muted)",
@@ -107,7 +106,8 @@ export function PredictionPreview() {
           <button
             key={item.value}
             onClick={() => setTimeframe(item.value)}
-            className="rounded-md px-2.5 py-1 text-xs transition-all duration-200"
+            disabled={loading}
+            className="rounded-md px-2.5 py-1 text-xs transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60"
             style={{
               background: "transparent",
               border: `1px solid ${timeframe === item.value ? "var(--color-brass)" : "var(--color-border)"}`,
@@ -152,7 +152,7 @@ export function PredictionPreview() {
           >
             <div className="flex items-center justify-between">
               <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>
-                Predicted price ({TIMEFRAMES.find((t) => t.value === timeframe)?.label})
+                Predicted price ({TIMEFRAMES.find((t) => t.value === result.timeframe)?.label ?? result.timeframe})
               </span>
               <span
                 className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${getSignalBadgeClass(
@@ -166,7 +166,7 @@ export function PredictionPreview() {
 
             <div className="flex items-baseline gap-3">
               <span className="font-mono text-2xl font-semibold" data-financial style={{ color: "var(--color-brass-bright)" }}>
-                {currency === "INR" ? "₹" : "$"}
+                {getTickerCurrency(result.ticker) === "INR" ? "₹" : "$"}
                 {formatPrice(result.predicted_price)}
               </span>
               <span
