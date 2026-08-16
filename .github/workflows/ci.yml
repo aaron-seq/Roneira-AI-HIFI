@@ -11,13 +11,12 @@ on:
   workflow_dispatch:
 
 # NOTE ON SCOPE
-# This pipeline validates the *canonical* production surfaces only:
+# This pipeline validates both production surfaces:
 #   - `src/`  — the Next.js app that deploys to Vercel (see vercel.json)
 #   - `ml/`   — the FastAPI ML service
-# The `frontend/`, `backend/`, and `ml-service/` directories are retained as
-# legacy reference material (see task.md "Canonical Paths") and are NOT built,
-# tested, or deployed here. Previously CI exercised only those legacy trees,
-# which meant every change to the code that actually ships went unverified.
+# That is now the whole repository: the legacy `frontend/`, `backend/`,
+# `ml-service/`, `realtime/` and `infrastructure/` trees were deleted, so there
+# is no longer a distinction between "canonical" and "reference" paths.
 # The jobs below implement the launch verification listed in task.md.
 
 jobs:

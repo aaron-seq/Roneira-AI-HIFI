@@ -5,13 +5,12 @@ how they work, and gives concrete guidance on **which model to use when**. It is
 the reference for the model-selection logic in `ml/app/main.py` and for
 contributors adding or tuning models.
 
-> **Scope note.** Two Python services live in this repo:
-> - `ml/` — the current FastAPI backend (`app.main:app`) with six pluggable
->   models and offline-trained LSTM/GAN artifacts. **This is the model layer
->   described below.**
-> - `ml-service/` — an older FastAPI service (`main:app`) plus the standalone
->   `pdm_strategy_engine.py`. It shares the PDM lineage but is a separate
->   deployment. See `ml-service/README.md`.
+> **Scope note.** `ml/` is the only Python service in this repo — the FastAPI
+> backend (`app.main:app`) with six pluggable models and offline-trained
+> LSTM/GAN artifacts. An older `ml-service/` tree shared the PDM lineage as a
+> separate deployment; it was never wired into CI or deployed alongside `ml/`,
+> and has been deleted. Git history has it if the backtesting code there is ever
+> wanted.
 
 ---
 
@@ -75,12 +74,15 @@ deterministic and explainable.
 - **Watch out for**: it encodes fixed heuristics — it cannot adapt to a regime
   its thresholds weren't designed for.
 
-### 5. PVD Momentum (PDM) — `app/models/pdm_momentum.py` (and `ml-service/pdm_strategy_engine.py`)
+### 5. PVD Momentum (PDM) — `app/models/pdm_momentum.py`
 The house strategy: treats price and volume as functions of time and uses their
 **first/second derivatives** (velocity, curvature) plus volume sensitivity and
-institutional-participation detection to flag momentum entries. The
-`ml-service` variant additionally does universe scanning, ATR-based stops, and
-a real historical backtest.
+institutional-participation detection to flag momentum entries.
+
+A now-deleted `ml-service/pdm_strategy_engine.py` variant additionally did
+universe scanning, ATR-based stops, and a real historical backtest. None of
+that exists in the deployed service — if you want backtesting, it is new work,
+recoverable from git history as a starting point.
 
 - **Use it when** you're hunting trend/momentum entries and want volume-confirmed
   signals rather than price alone.
@@ -119,7 +121,8 @@ Two rules of thumb:
 
 ## Known limitations & recent fixes
 
-The PDM engine (`ml-service/pdm_strategy_engine.py`) was overhauled (issue #7):
+The PDM engine was overhauled in the since-deleted `ml-service/` tree (issue #7).
+Recorded here because the same reasoning applies to `app/models/pdm_momentum.py`:
 
 - Removed the hard-coded `[:10]` demo scan cap → full universe is scanned, with
   an optional, explicit `max_scan_candidates` bound (env: `PDM_MAX_SCAN_CANDIDATES`).

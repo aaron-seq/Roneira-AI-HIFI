@@ -119,11 +119,9 @@ chmod +x scripts/setup.sh
 <details>
 <summary><strong>Manual Setup</strong></summary>
 
-> **Where does my change go?** `src/` (Next.js app) and `ml/` (FastAPI service)
-> are the canonical, deployed surfaces. `frontend/`, `backend/`, and
-> `ml-service/` are legacy reference trees — they are not built, tested, or
-> deployed, and CI does not run them. See the Repository Layout table in the
-> README and the canonical paths in `task.md`.
+> **Where does my change go?** `src/` (Next.js app), `ml/` (FastAPI service) and
+> `supabase/` (migrations) are the entire repository. See the Repository Layout
+> table in the README and the canonical paths in `task.md`.
 
 **1. Environment Configuration**
 ```bash
@@ -166,20 +164,12 @@ cd ml && source venv/bin/activate && uvicorn app.main:app --reload --port 8000
 
 ### Docker Development
 
-```bash
-# Start all services with hot reloading
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+There is no Docker path. The previous `docker-compose.yml` composed only the
+legacy services and had no service for `src/` or `ml/` at all, so following it
+built a stack that no longer existed. It was deleted rather than rewritten,
+because the deployment targets are Vercel and Railway/Render — not containers.
 
-# Rebuild specific service
-docker-compose build frontend
-
-# View logs for specific service
-docker-compose logs -f backend
-
-# Run commands inside containers
-docker-compose exec backend npm run test
-docker-compose exec ml-service python -m pytest
-```
+Use the two-terminal local setup above.
 
 ## Branching Model
 
@@ -533,13 +523,14 @@ built, tested, and deployed.
 | **ML service** | `ml/app/main.py` (FastAPI) | `npm run ml:dev` | Six pluggable models + offline LSTM/GAN artifacts. See `ml/MODELS.md`. |
 | **Database** | `supabase/migrations/` | Supabase CLI | Schema, RLS policies, audit triggers. |
 
-### Legacy — reference only, do not extend
+### Removed legacy trees
 
-`frontend/` (Vite client), `backend/` (Express gateway), and `ml-service/`
-(Flask/FastAPI service) are earlier implementations retained for reference.
-They are excluded from CI and from every deployment target. If an issue points
-at a file in one of these trees, check whether the behaviour still exists under
-`src/` or `ml/` — that is almost always where the fix belongs.
+`frontend/` (Vite client), `backend/` (Express gateway), `ml-service/`
+(Flask/FastAPI service), `realtime/` (Socket.IO) and `infrastructure/`
+(TimescaleDB init scripts) were earlier implementations. They were never built,
+tested, or deployed, and have been deleted — git history preserves them. If an
+older issue points at a file in one of those trees, the behaviour either lives
+under `src/` or `ml/` now, or no longer exists.
 
 **Dependency rule for the ML service**: `ml/requirements.txt` is the single
 source of truth for the canonical service.

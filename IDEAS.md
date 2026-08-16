@@ -22,7 +22,7 @@ for attention with things that could ship next.
 - Sector rotation signals, correlation matrices — needs cross-ticker historical data at a scale beyond what's cached today.
 
 **Speculative — real architectural changes, evaluate before committing**
-- WebSocket / real-time price feeds — `realtime/` exists but is orphaned relative to `src/` (see `task.md`); reviving real-time ticks means deciding whether that service or something new fits the Vercel+Supabase+Railway/Render model.
+- WebSocket / real-time price feeds — the old `realtime/` Socket.IO service was deleted (orphaned, built against the Vite frontend's port, never in CI). Reviving real-time ticks means deciding whether to recover it from git history or build something that actually fits the Vercel+Supabase+Railway/Render model.
 - Multi-asset PDM extension (crypto, forex) — current provider fallback chain (Twelve Data → yfinance) is equity-oriented; needs its own data-source evaluation.
 - Mobile PWA — no mobile-specific work has started; would need its own scoping pass.
 - Institutional/regulatory features (MiFID II, SEC reporting), white-label — out of scope for a personal/portfolio-stage project; revisit only if the product's audience actually changes.
