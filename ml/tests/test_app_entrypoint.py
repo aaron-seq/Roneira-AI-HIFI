@@ -53,3 +53,71 @@ def test_health_endpoint_reports_model_load_state():
         "pdm_momentum",
         "ensemble",
     }
+
+
+# ========== Service token (see ml/.env.example) ==========
+# These cover the auth boundary itself, not the handlers behind it: the
+# dependency runs before the route body, so a rejected request never reaches
+# yfinance and these stay fast and network-free.
+
+def test_protected_endpoint_rejects_missing_token(monkeypatch):
+    import app.main as main
+
+    monkeypatch.setattr(main, "ML_SERVICE_TOKEN", "test-secret")
+    client = TestClient(main.app)
+
+    response = client.get("/market-data?symbols=AAPL")
+
+    assert response.status_code == 401
+
+
+def test_protected_endpoint_rejects_wrong_token(monkeypatch):
+    import app.main as main
+
+    monkeypatch.setattr(main, "ML_SERVICE_TOKEN", "test-secret")
+    client = TestClient(main.app)
+
+    response = client.get(
+        "/market-data?symbols=AAPL",
+        headers={"X-ML-Service-Token": "wrong-secret"},
+    )
+
+    assert response.status_code == 401
+
+
+def test_valid_token_passes_the_dependency(monkeypatch):
+    """The correct token must not raise.
+
+    Asserted against the dependency directly rather than through a route, so
+    the test does not depend on yfinance being reachable.
+    """
+    import app.main as main
+
+    monkeypatch.setattr(main, "ML_SERVICE_TOKEN", "test-secret")
+
+    assert main.require_service_token("test-secret") is None
+
+
+def test_unset_token_fails_closed(monkeypatch):
+    """An unconfigured deployment must reject, not silently run open."""
+    import pytest
+    from fastapi import HTTPException
+    import app.main as main
+
+    monkeypatch.setattr(main, "ML_SERVICE_TOKEN", "")
+
+    with pytest.raises(HTTPException) as excinfo:
+        main.require_service_token("anything")
+
+    assert excinfo.value.status_code == 503
+
+
+def test_health_stays_open_without_a_token(monkeypatch):
+    """Platform health checks cannot send custom headers."""
+    import app.main as main
+
+    monkeypatch.setattr(main, "ML_SERVICE_TOKEN", "test-secret")
+    client = TestClient(main.app)
+
+    assert client.get("/health").status_code == 200
+    assert client.get("/").status_code == 200

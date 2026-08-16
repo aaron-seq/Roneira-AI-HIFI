@@ -5,8 +5,8 @@ import { getTargetDate } from "@/lib/market/timeframe";
 import { formatIssues, predictRequestSchema } from "@/lib/server/validation";
 import { rateLimit, tooManyRequests } from "@/lib/server/rate-limit";
 
-const ML_BACKEND_URL =
-  process.env.NEXT_PUBLIC_ML_BACKEND_URL || "http://localhost:8000";
+const ML_BACKEND_URL = process.env.ML_BACKEND_URL || "http://localhost:8000";
+const ML_SERVICE_TOKEN = process.env.ML_SERVICE_TOKEN || "";
 
 
 
@@ -94,7 +94,10 @@ export async function POST(request: Request) {
     // This keeps the ML backend private and validates payloads
     const mlResponse = await fetch(`${ML_BACKEND_URL}/predict`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-ML-Service-Token": ML_SERVICE_TOKEN,
+      },
       body: JSON.stringify({
         ticker,
         timeframe,
@@ -109,10 +112,12 @@ export async function POST(request: Request) {
 
     if (!mlResponse.ok) {
       // Handle integration/fallback issues gracefully if the ML service encounters a problem
+      // Logged server-side only: the upstream body is FastAPI's, and can carry
+      // stack traces / internal schema that a client of this route never needs.
       const errorText = await mlResponse.text();
       console.error("ML backend error:", errorText);
       return NextResponse.json(
-        { error: "ML prediction service unavailable", details: errorText },
+        { error: "ML prediction service unavailable" },
         { status: 502 }
       );
     }

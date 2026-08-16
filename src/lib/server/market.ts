@@ -14,8 +14,8 @@ import type {
 } from "@/lib/market/types";
 import { getCachedValue } from "@/lib/server/cache";
 
-const ML_BACKEND_URL =
-  process.env.NEXT_PUBLIC_ML_BACKEND_URL || "http://localhost:8000";
+const ML_BACKEND_URL = process.env.ML_BACKEND_URL || "http://localhost:8000";
+const ML_SERVICE_TOKEN = process.env.ML_SERVICE_TOKEN || "";
 const TWELVE_DATA_API_KEY = process.env.TWELVE_DATA_API_KEY || "";
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY || "";
 const ALPHA_VANTAGE_API_KEY = process.env.ALPHA_VANTAGE_API_KEY || "";
@@ -56,10 +56,14 @@ export function getProviderSymbol(config: QuoteConfig): string | undefined {
   return undefined;
 }
 
-async function fetchJson(url: string): Promise<JsonRecord> {
+async function fetchJson(
+  url: string,
+  headers: Record<string, string> = {}
+): Promise<JsonRecord> {
   const response = await fetch(url, {
     headers: {
       Accept: "application/json",
+      ...headers,
     },
     cache: "no-store",
     signal: AbortSignal.timeout(10_000),
@@ -70,6 +74,17 @@ async function fetchJson(url: string): Promise<JsonRecord> {
   }
 
   return (await response.json()) as JsonRecord;
+}
+
+/**
+ * Calls to our own ML service, which requires the shared secret.
+ *
+ * Deliberately separate from `fetchJson`: that one is also used for Twelve
+ * Data, Finnhub and Alpha Vantage, and attaching the token there would hand
+ * our service credential to three third parties.
+ */
+function fetchMlJson(url: string): Promise<JsonRecord> {
+  return fetchJson(url, { "X-ML-Service-Token": ML_SERVICE_TOKEN });
 }
 
 export function unwrapTwelveQuotePayload(payload: JsonRecord): Map<string, JsonRecord> {
@@ -205,7 +220,7 @@ async function fetchMlQuotes(
 
   let payload: JsonRecord;
   try {
-    payload = await fetchJson(
+    payload = await fetchMlJson(
       `${ML_BACKEND_URL}/market-data?symbols=${encodeURIComponent(
         fallbackSymbols.join(",")
       )}`
@@ -509,7 +524,7 @@ async function fetchMlHistory(
   interval: string,
   range: string
 ): Promise<CandlePoint[]> {
-  const payload = await fetchJson(
+  const payload = await fetchMlJson(
     `${ML_BACKEND_URL}/history?symbol=${encodeURIComponent(
       config.fallbackSymbol ?? config.symbol
     )}&interval=${encodeURIComponent(interval)}&range=${encodeURIComponent(

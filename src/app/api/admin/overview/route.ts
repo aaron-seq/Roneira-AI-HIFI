@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-const ML_BACKEND_URL =
-  process.env.NEXT_PUBLIC_ML_BACKEND_URL || "http://localhost:8000";
+// No service token sent: /health is deliberately left unauthenticated on the ML
+// side so platform health checks (which cannot set custom headers) keep working.
+const ML_BACKEND_URL = process.env.ML_BACKEND_URL || "http://localhost:8000";
 
 export async function GET() {
   try {
