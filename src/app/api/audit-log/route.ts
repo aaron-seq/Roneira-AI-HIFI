@@ -1,9 +1,17 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { auditEventSchema, formatIssues } from "@/lib/server/validation";
+import { rateLimit, tooManyRequests } from "@/lib/server/rate-limit";
 
 export async function POST(request: Request) {
   try {
+    // audit_log is append-only (migration 009) -- rows written here can never
+    // be deleted, by anyone, so an unthrottled writer has no remediation path.
+    const limit = await rateLimit("audit", request, 30, 60);
+    if (!limit.ok) {
+      return tooManyRequests(60);
+    }
+
     const parsed = auditEventSchema.safeParse(await request.json());
 
     if (!parsed.success) {

@@ -89,6 +89,21 @@ export const predictRequestSchema = z.object({
   model_type: z.enum(PREDICTION_MODELS).optional(),
 });
 
+/**
+ * Stock search query.
+ *
+ * Bounded because `searchStocks` uses the lowercased query as its cache key
+ * (`search:<q>` in market.ts), so an unbounded query space is an unbounded
+ * cache. The character class matches what a real symbol or company name needs
+ * and nothing else.
+ */
+export const searchQuerySchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(32)
+  .regex(/^[A-Za-z0-9 .^=:&-]+$/, "invalid search query");
+
 export const historyQuerySchema = z.object({
   symbol: tickerSchema,
   interval: z

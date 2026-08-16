@@ -50,6 +50,17 @@ export function clientIp(request: Request): string {
 
 function bumpLocal(key: string, windowSeconds: number, limit: number): RateLimitResult {
   const now = Date.now();
+
+  // The key embeds the window index, so a given key is never looked up again
+  // once its window passes -- meaning the `expiresAt` check below can never
+  // fire for it and the entry would live for the process lifetime. Without
+  // this sweep the map grows by one entry per caller per window, forever.
+  for (const [entryKey, entry] of localStore) {
+    if (entry.expiresAt <= now) {
+      localStore.delete(entryKey);
+    }
+  }
+
   const existing = localStore.get(key);
 
   if (!existing || existing.expiresAt <= now) {
@@ -119,6 +130,16 @@ export async function rateLimit(
   } catch {
     return bumpLocal(key, windowSeconds, limit);
   }
+}
+
+/**
+ * Number of retained windows.
+ *
+ * Exported for the same reason as `cacheSize`: the defect this store had was
+ * unbounded growth, which is invisible through `rateLimit`'s return value.
+ */
+export function rateLimitStoreSize(): number {
+  return localStore.size;
 }
 
 /** Standard 429 body/headers for a rejected request. */
