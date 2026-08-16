@@ -9,9 +9,6 @@
   "exclude": [
     "node_modules",
     "ml",
-    "frontend",
-    "backend",
-    "ml-service",
     ".next"
   ]
 }
