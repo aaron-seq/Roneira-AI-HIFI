@@ -33,7 +33,7 @@
     "lightweight-charts": "^4.2.3",
     "lucide-react": "^0.460.0",
     "minimatch": "^10.2.5",
-    "next": "16.2.12",
+    "next": "16.3.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-hook-form": "^7.54.0",
@@ -52,7 +52,7 @@
     "jsdom": "^26.0.0",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "^3.1.1"
+    "vitest": "^3.2.7"
   },
   "engines": {
     "node": ">=18.0.0",
