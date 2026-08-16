@@ -373,8 +373,17 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000   # or: npm run ml:dev
 ```
 
-Point the web app at it with `NEXT_PUBLIC_ML_BACKEND_URL=http://localhost:8000`.
-The FastAPI service stays private behind the Next.js API routes.
+Point the web app at it with `ML_BACKEND_URL=http://localhost:8000`.
+
+The FastAPI service stays private behind the Next.js API routes. Its data
+endpoints (`/predict`, `/market-data`, `/stock/{ticker}`, `/history`,
+`/screener`) require a shared secret: set the **same** `ML_SERVICE_TOKEN` in
+both `.env.local` and `ml/.env`, and the Next.js routes will send it as the
+`X-ML-Service-Token` header. Generate one with `openssl rand -hex 32`.
+
+If `ML_SERVICE_TOKEN` is unset on the ML side, those endpoints return 503 —
+they fail closed rather than running unauthenticated. `/` and `/health` stay
+open so platform health checks keep working.
 
 **Model artifacts:** LSTM and GAN load bundled artifacts from
 `ml/artifacts/generated` at startup and degrade gracefully when the artifacts
@@ -569,7 +578,7 @@ Three targets, matching [ARCHITECTURE.md](./ARCHITECTURE.md):
 | Surface | Platform | Notes |
 |---|---|---|
 | `src/` (Next.js app) | Vercel | `vercel.json` describes this deployment. Set the Supabase and provider-key env vars from `.env.example` in the Vercel project settings. |
-| `ml/` (FastAPI service) | Railway or Render | Boots `uvicorn app.main:app`. Keep it private — only the Next.js server (not the browser) should reach it, via `NEXT_PUBLIC_ML_BACKEND_URL`. |
+| `ml/` (FastAPI service) | Railway or Render | Boots `uvicorn app.main:app`. Only the Next.js server (not the browser) reaches it, via `ML_BACKEND_URL`. The service is publicly routable, so its data endpoints are guarded by `ML_SERVICE_TOKEN` — CORS alone does not restrict non-browser clients. |
 | Auth + database | Supabase (hosted) | Apply `supabase/migrations/*.sql` in filename order (there is no `004`). |
 
 **On free-tier hosting for `ml/`, verified rather than assumed:** Railway has no ongoing
@@ -599,7 +608,9 @@ historical until it's rewritten, and use the table above instead.
       lookup (needed for login), 009 makes `audit_log` append-only against a
       `service_role`/superuser connection too, not just the roles RLS restricts.
 - [ ] Vercel env vars set: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
-      `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_ML_BACKEND_URL`
+      `SUPABASE_SERVICE_ROLE_KEY`, `ML_BACKEND_URL`, `ML_SERVICE_TOKEN`
+- [ ] `ML_SERVICE_TOKEN` set to the **same** value in the Railway/Render env for `ml/`.
+      Without it the ML data endpoints return 503; mismatched, they return 401
 - [ ] `ml/` deployed and reachable from Vercel at the URL above — no training step needed at
       deploy, the trained artifacts are committed (see the free-tier note above)
 - [ ] `npm run build` and `python -m pytest ml/tests -q` both pass locally (same checks CI
