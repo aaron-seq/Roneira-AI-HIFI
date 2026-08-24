@@ -52,16 +52,22 @@ The ML service is never exposed to the browser. All ML traffic goes through
 
 ## Canonical surfaces
 
-| Canonical (built, tested, deployed) | Legacy (unmaintained, not in CI) |
+| Surface | Deploys to |
 |---|---|
-| `src/` — Next.js 16 app → Vercel | `frontend/` — old Vite + React app |
-| `ml/` — FastAPI ML service → Railway/Render | `backend/`, `ml-service/` — old Express / FastAPI services |
+| `src/` — Next.js 16 app | Vercel |
+| `ml/` — FastAPI ML service | Railway/Render |
+| `supabase/` — migrations | Supabase (hosted) |
 
-`realtime/` (Socket.IO tick service) is **also reference-only**, per `task.md`: its CORS
-default targets `localhost:5173` (the legacy Vite port, not `src/`'s 3000), nothing under
-`src/` imports `socket.io-client` or calls it, and it isn't in `ci.yml`. If real-time ticks
-become a requirement, check whether the service still fits the Vercel + Supabase +
-Railway/Render model before reviving it as-is.
+These are the only surfaces. The earlier `frontend/` (Vite + React), `backend/`
+(Express), `ml-service/` (Flask/FastAPI), `realtime/` (Socket.IO) and
+`infrastructure/` (TimescaleDB init scripts) trees, along with
+`docker-compose.yml`, were deleted — they were never built, tested, or deployed,
+and nothing in `src/` or `ml/` referenced them. Git history has them if a
+decision needs revisiting.
+
+There is **no Docker path**. `docker-compose.yml` composed only the legacy
+services and had no service for `src/` or `ml/` at all, so following it built
+the dead stack. Local development is `npm run dev` plus `npm run ml:dev`.
 
 CI is `.github/workflows/ci.yml`, covering `src/` and `ml/`. There is no second workflow —
 the old `continuous-integration.yml` targeted the legacy trees and had a corrupted first
@@ -289,7 +295,7 @@ empty feed; no Upstash means per-instance rate limiting.
 npm install            # required first: the checked-in node_modules is incomplete
 npm run dev            # next dev
 npm run build          # next build
-npm run lint           # eslint (ignores ml/, frontend/, backend/, ml-service/)
+npm run lint           # eslint (ignores ml/)
 npm run type-check     # tsc --noEmit -p tsconfig.typecheck.json
 npm run test:web       # vitest, src/**/*.test.{ts,tsx}
 

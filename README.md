@@ -201,7 +201,7 @@ graph TB
 | **State/cache (client)** | TanStack Query + Zustand | Client-side data fetching cache and UI state | Bundled with web app |
 | **Rate limiting** | Upstash Redis (configured dependency) | API route abuse prevention | Upstash-hosted |
 
-`frontend/`, `backend/`, and `ml-service/` are earlier implementations (Vite/React, Express, Flask) kept only as reference material — they are not built, tested, or deployed. See [Repository Layout](#repository-layout) below.
+See [Repository Layout](#repository-layout) below.
 
 ## UI Components & Features
 
@@ -300,18 +300,19 @@ kept for reference. Contribute to the canonical paths only.
 | `src/` | **Canonical** | The Next.js application (UI + API route handlers). This is what deploys to Vercel — see `vercel.json`. |
 | `ml/` | **Canonical** | The FastAPI ML service (LSTM, GAN, Random Forest, PDM momentum, ensemble). |
 | `supabase/` | **Canonical** | Database schema and migrations. |
-| `frontend/` | Legacy | Earlier Vite/React client. Not built, tested, or deployed. |
-| `backend/` | Legacy | Earlier Express API gateway. Not built, tested, or deployed. |
-| `ml-service/` | Legacy | Earlier Flask/FastAPI ML service. Not built, tested, or deployed. |
-| `realtime/` | Legacy | Socket.IO tick service built against the legacy Vite frontend (CORS defaults to `localhost:5173`). Nothing in `src/` calls it and it isn't wired into CI. |
 
-CI (`.github/workflows/ci.yml`) validates the canonical surfaces only. The
-legacy trees are retained as reference material and intentionally do not gate
-merges. See `task.md` for the authoritative statement of canonical paths.
+These three are the whole repository. CI (`.github/workflows/ci.yml`) validates
+all of them.
 
-> **Working on a fix?** If an issue names a file under `frontend/`, `backend/`,
-> or `ml-service/`, check whether the behaviour still exists under `src/` or
-> `ml/` — that is where the change usually belongs.
+Earlier implementations — `frontend/` (Vite/React), `backend/` (Express),
+`ml-service/` (Flask/FastAPI), `realtime/` (Socket.IO) and `infrastructure/`
+(TimescaleDB init scripts), plus `docker-compose.yml` — were **deleted**. They
+were never built, tested, or deployed, nothing in `src/` or `ml/` referenced
+them, and they made every search return four dead implementations of the same
+concept. Git history preserves them in full.
+
+> **Working on an older issue?** If it names a file under one of those paths,
+> the behaviour either lives under `src/` or `ml/` now, or no longer exists.
 
 ## Getting Started
 
@@ -528,9 +529,9 @@ tool is wired up to check them:
 | Static analysis | ESLint, `tsc --noEmit` | Runs in CI and the pre-commit hook. |
 | Security scan | Trivy (GitHub Action) | Filesystem vulnerability scan on every push/PR. |
 
-No Jest/Supertest, no WebSocket tests (nothing in `src/` calls the orphaned `realtime/`
-service — see `task.md`), no checked-in Playwright E2E suite, no visual-regression tooling.
-If you want any of these, they'd be new work, not an existing-but-undocumented feature.
+No Jest/Supertest, no WebSocket tests (there is no real-time service), no
+checked-in Playwright E2E suite, no visual-regression tooling. If you want any
+of these, they'd be new work, not an existing-but-undocumented feature.
 
 ### Test Execution
 
@@ -596,9 +597,9 @@ Optional: Upstash Redis for shared rate limiting across serverless instances
 (`UPSTASH_REDIS_URL`/`UPSTASH_REDIS_TOKEN`) — without it, rate limiting still
 works but is per-instance rather than global.
 
-`DEPLOYMENT.md` in this repo predates the canonical `src/`/`ml/` split and
-describes the legacy Docker Compose / Railway-multi-service setup; treat it as
-historical until it's rewritten, and use the table above instead.
+[`DEPLOYMENT.md`](DEPLOYMENT.md) has the step-by-step version of the table
+above, including the environment variables each platform needs and how to verify
+the ML service is actually closed to direct traffic.
 
 ### Pre-deploy checklist
 
