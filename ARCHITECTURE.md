@@ -268,11 +268,16 @@ Supabase Auth with cookie sessions via `@supabase/ssr`.
 Copy `.env.example` to `.env.local`.
 
 **Required:** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
-`SUPABASE_SERVICE_ROLE_KEY`.
+`SUPABASE_SERVICE_ROLE_KEY`, `ML_SERVICE_TOKEN` (must match the value set on the
+ML service itself; its data endpoints fail closed with a 503 without it).
 
 **Optional:** `ALPHA_VANTAGE_API_KEY`, `FINNHUB_API_KEY`, `NEWS_API_KEY`,
 `TWELVE_DATA_API_KEY`, `HUGGING_FACE_API_KEY`, `UPSTASH_REDIS_URL`,
-`UPSTASH_REDIS_TOKEN`, `ML_MODEL_DIR`, `NEXT_PUBLIC_ML_BACKEND_URL`.
+`UPSTASH_REDIS_TOKEN`, `ML_MODEL_DIR`, `ML_BACKEND_URL`.
+
+Note `ML_BACKEND_URL` is deliberately **not** `NEXT_PUBLIC_`-prefixed: it is read
+only by server-side route handlers, and the prefix would make it eligible for
+inlining into a client bundle.
 
 Missing optional keys degrade one feature rather than breaking the app: no
 `TWELVE_DATA_API_KEY` means all quotes come from yfinance; no `NEWS_API_KEY` returns an

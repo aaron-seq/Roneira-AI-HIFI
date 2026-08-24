@@ -2,17 +2,19 @@
 Roneira AI HIFI — ML Backend
 FastAPI service for stock prediction, market data, and ML model serving.
 """
+import hmac
 import json
+import os
 import time
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
+from datetime import datetime, timezone
 
 import numpy as np
 import pandas as pd
 import yfinance as yf
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -43,6 +45,42 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ========== Service authentication ==========
+# CORS above is a *browser* policy: FastAPI still runs the handler and returns
+# the body, the browser just withholds it from JS on a disallowed origin. curl
+# ignores it entirely. Since this service must be publicly routable for Vercel
+# to reach it, CORS alone left /predict open to anyone who found the hostname,
+# bypassing the Next.js rate limit and Zod validation (task.md guardrail: "Keep
+# FastAPI private behind Next.js API routes").
+#
+# The caller is a single trusted service, not a user population, so a shared
+# secret is the right size of mechanism -- no key rotation or JWT machinery.
+ML_SERVICE_TOKEN = os.getenv("ML_SERVICE_TOKEN", "")
+
+
+def require_service_token(x_ml_service_token: str = Header(default="")) -> None:
+    """Reject any caller that cannot present the shared secret.
+
+    Fails closed when ML_SERVICE_TOKEN is unset: an unconfigured deployment is
+    the exact case where an open endpoint would go unnoticed, so it must be
+    loud rather than permissive.
+    """
+    if not ML_SERVICE_TOKEN:
+        raise HTTPException(
+            status_code=503,
+            detail="ML_SERVICE_TOKEN is not configured on the ML service",
+        )
+
+    # compare_digest, not ==, so a wrong token cannot be recovered byte-by-byte
+    # from response-time differences.
+    if not hmac.compare_digest(x_ml_service_token, ML_SERVICE_TOKEN):
+        raise HTTPException(status_code=401, detail="Invalid service token")
+
+
+# Applied per-route rather than app-wide so /health stays reachable for the
+# platform's health check, which cannot send custom headers.
+protected = [Depends(require_service_token)]
 
 # ========== Initialize Models ==========
 rf_predictor = RandomForestPredictor()
@@ -200,7 +238,7 @@ async def root():
         "version": "4.0.0",
         "status": "operational",
         "models": ["RANDOM_FOREST", "LSTM", "GAN", "TECHNICAL", "PVD_MOMENTUM", "ENSEMBLE"],
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -220,7 +258,7 @@ async def health_check():
     }
 
 
-@app.post("/predict", response_model=PredictionResponse)
+@app.post("/predict", response_model=PredictionResponse, dependencies=protected)
 def predict(request: PredictionRequest):
     """Run ML prediction on a stock ticker."""
     start_time = time.time()
@@ -312,7 +350,7 @@ def predict(request: PredictionRequest):
     )
 
 
-@app.get("/market-data")
+@app.get("/market-data", dependencies=protected)
 def market_data(symbols: str = "^NSEI,^BSESN,^IXIC,^GSPC"):
     """Fetch live market data for multiple symbols."""
     symbol_list = [s.strip() for s in symbols.split(",")][:20]  # Limit to 20
@@ -347,10 +385,10 @@ def market_data(symbols: str = "^NSEI,^BSESN,^IXIC,^GSPC"):
     with ThreadPoolExecutor(max_workers=8) as pool:
         results = [row for row in pool.map(quote, symbol_list) if row is not None]
 
-    return {"data": results, "timestamp": datetime.utcnow().isoformat()}
+    return {"data": results, "timestamp": datetime.now(timezone.utc).isoformat()}
 
 
-@app.get("/stock/{ticker}")
+@app.get("/stock/{ticker}", dependencies=protected)
 def stock_details(ticker: str):
     """Get detailed information for a single stock."""
     df = fetch_stock_data(ticker)
@@ -370,7 +408,7 @@ def stock_details(ticker: str):
     }
 
 
-@app.get("/history")
+@app.get("/history", dependencies=protected)
 def history(symbol: str, interval: str = "1day", range: str = "6month"):
     interval_map = {
         "1min": "1m",
@@ -422,7 +460,7 @@ def _records(df: pd.DataFrame) -> list[dict]:
     return json.loads(df.to_json(orient="records"))
 
 
-@app.get("/screener")
+@app.get("/screener", dependencies=protected)
 def stock_screener():
     """
     Live fundamentals screener -- same logic and same 42-ticker starter
@@ -439,7 +477,7 @@ def stock_screener():
         raise HTTPException(status_code=502, detail="No screener data available (yfinance fetch failed for every ticker)")
 
     payload = {
-        "generated_at": datetime.utcnow().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
         "all": _records(df),
         "large_cap_strong": _records(screener.screen_fundamentally_strong(df[df["tier"] == "Large"])),
         "mid_cap_strong": _records(screener.screen_fundamentally_strong(df[df["tier"] == "Mid"])),
