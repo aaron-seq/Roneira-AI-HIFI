@@ -14,7 +14,6 @@ import {
   FileText,
   Settings,
   ArrowRight,
-  Command,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/lib/stores/app-store";
@@ -108,7 +107,7 @@ export function CommandPalette() {
         setOpen(false);
       }
     },
-    [filtered, selected]
+    [filtered, selected, setOpen]
   );
 
   return (

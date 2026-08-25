@@ -19,7 +19,6 @@ const UPSTASH_URL = process.env.UPSTASH_REDIS_URL || "";
 const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_TOKEN || "";
 
 declare global {
-  // eslint-disable-next-line no-var
   var __roneiraRateLimit: Map<string, { count: number; expiresAt: number }> | undefined;
 }
 

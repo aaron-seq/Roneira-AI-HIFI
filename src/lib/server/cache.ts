@@ -4,7 +4,6 @@ type CacheEntry<T> = {
 };
 
 declare global {
-  // eslint-disable-next-line no-var
   var __roneiraServerCache: Map<string, CacheEntry<unknown>> | undefined;
 }
 
