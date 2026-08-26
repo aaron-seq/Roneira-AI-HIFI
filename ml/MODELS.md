@@ -91,7 +91,8 @@ recoverable from git history as a starting point.
 
 ### 6. Ensemble — `app/models/ensemble.py`
 Combines Random Forest, Technical, PDM, and LSTM via confidence-weighted
-averaging (default static weights `[0.3, 0.2, 0.2, 0.3]` in `main.py`).
+averaging (default static weights `[0.35, 0.25, 0.25, 0.15]` in `main.py`, in that
+order).
 
 - **Use it as the default** for general-purpose predictions — averaging
   decorrelated models reduces the variance of any single one.

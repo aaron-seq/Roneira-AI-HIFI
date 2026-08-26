@@ -14,6 +14,7 @@ import pandas as pd
 
 from app.models.artifacts import artifact_path, load_metadata, save_metadata
 from app.models.gradient_boost import (
+    GradientBoostArtifact,
     build_training_windows,
     fit_windows,
     load_artifact,
@@ -116,7 +117,17 @@ class LSTMPredictor:
 
     def _prepare_features(self, df: pd.DataFrame) -> np.ndarray:
         features = pd.DataFrame(index=df.index)
-        features["close_norm"] = df["Close"] / df["Close"].iloc[0]
+        # Trend relative to a *rolling* mean, not to df.iloc[0]. The old
+        # `Close / Close.iloc[0]` was the booster's highest-importance column
+        # (0.18) and also the one column whose value depended on how much
+        # history the caller fetched: training used period="max", serving uses
+        # "1y"/"2y", so the same session scored ~8.8 in training and ~1.4 at
+        # serve time. 150 sessions of lookback keeps every row of a 60-day
+        # window inside a 252-row (1y) fetch fully warmed up, so training and
+        # serving see the identical number.
+        features["trend_150"] = (
+            df["Close"] / df["Close"].rolling(150, min_periods=1).mean()
+        )
         features["returns"] = df["Close"].pct_change().fillna(0)
         features["high_low_range"] = (df["High"] - df["Low"]) / df["Close"]
         features["open_close_range"] = (df["Close"] - df["Open"]) / df["Close"]
@@ -243,15 +254,22 @@ class LSTMPredictor:
         Used instead of `train()` when TensorFlow is unavailable, which is the
         default for this project. Produces a joblib artifact that
         `_load_artifact_bundle` picks up on the next boot.
+
+        No `normalize=`: `_normalize` is a frame-wide min-max, so it (a) scaled
+        every training window by statistics that include its own future and
+        (b) used a different divisor at serve time than at fit time, because the
+        frame is 25 years long in training and 1-2 years in production. The
+        remaining features are all ratios and returns, and a tree does not care
+        about monotone rescaling anyway -- only about being fed the same scale it
+        was fitted on. `_normalize` stays for the Keras path, which needs it.
         """
         windows, targets = build_training_windows(
             datasets,
             self._prepare_features,
             self.sequence_length,
             horizon_days,
-            normalize=self._normalize,
         )
-        artifact, metrics = fit_windows(windows, targets)
+        artifact, metrics = fit_windows(windows, targets, purge=horizon_days)
         save_artifact(artifact, artifact_path(self.gb_model_filename))
 
         metrics.update(
@@ -277,7 +295,10 @@ class LSTMPredictor:
             return self._fallback_predict(df, horizon_days)
 
         try:
-            features = self._normalize(self._prepare_features(df))
+            features = self._prepare_features(df)
+            if not isinstance(self._model, GradientBoostArtifact):
+                # Keras path only -- see train_gradient_boost's docstring.
+                features = self._normalize(features)
             if len(features) < self.sequence_length:
                 return self._fallback_predict(df, horizon_days)
 

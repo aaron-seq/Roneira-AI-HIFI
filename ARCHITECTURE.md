@@ -221,11 +221,40 @@ named in this doc. Regenerate with `npm run train:ml` and commit the refreshed f
 the data goes stale enough to matter.
 
 > **Measured skill — read before trusting these numbers.** Both gradient-boosted slots
-> currently report `skill_vs_no_change: 0.0`: validation MAE ≈ 0.069 against a 0.068 "no
-> change" baseline. They are trained on real data but show **no demonstrated edge** at a
-> 30-day horizon. Confidence is derived from that measurement rather than asserted, and
-> the Ensemble weights the LSTM slot at 0.15 accordingly. Re-check
-> `artifacts/generated/lstm_metadata.json` after any retrain before raising it.
+> report a small positive `skill_vs_no_change`: **0.035** (LSTM slot, validation MAE 0.0712
+> vs a 0.0738 "no change" baseline) and **0.030** (GAN slot, 0.0715 vs 0.0738), measured on
+> a held-out final 20% *of dates* with a 30-day purge at the boundary. A 3–3.5% error
+> reduction at a 30-day horizon is a real edge and a thin one; treat the confidence score
+> (≈41.7) as the honest read, and do not size a position on either slot alone. The Ensemble
+> weights the LSTM slot at 0.15 — see the comment in `main.py` for why that did not move.
+> Re-check `artifacts/generated/*_metadata.json` after any retrain.
+>
+> These numbers replace a previously reported `skill_vs_no_change: 0.0`. Three defects were
+> responsible, all of them in how the data reached the booster rather than in the booster:
+>
+> 1. **The top feature was a function of the caller's `period=` argument.**
+>    `close_norm = Close / Close.iloc[0]` carried the highest importance in both models
+>    (0.31 GAN, 0.18 LSTM). Training fetched `period="max"`; `main.py` serves `"1y"`/`"2y"`.
+>    The same session scored ≈8.8 during training and ≈1.4 in production, so production
+>    inputs landed outside the range the split points were fitted for. Measured directly:
+>    the same 30 sessions predicted −3.1% at training depth and −1.2% at serving depth.
+>    Replaced by `Close / Close.rolling(150).mean()` — causal, and identical at any fetch
+>    depth a 1-year window can supply.
+> 2. **The LSTM slot's `_normalize` was a frame-wide min-max**, applied before windowing.
+>    Every training window was therefore scaled by statistics that included its own future,
+>    and the divisor differed between a 25-year fit frame and a 1-year serving frame. The
+>    tree path no longer normalises at all; the remaining features are ratios and returns,
+>    and a tree only needs the scale it was fitted on. `_normalize` stays for the Keras path.
+> 3. **The "chronological" 80/20 split was a ticker holdout.** `build_training_windows`
+>    appended frame after frame, so the last 20% of rows was the last few *tickers*, not the
+>    last few years. Windows are now sorted by date across all frames, and `fit_windows`
+>    purges `horizon_days` rows at the boundary so no training label resolves inside the
+>    validation period.
+>
+> `ml/tests/test_training.py::TestFeatureDepthInvariance` fails if (1) or (2) returns;
+> `TestChronologicalPooling` fails if (3) does. Both were confirmed to fail against the old
+> code before being committed. Retraining also went from 502s to 24s for the LSTM slot
+> (`tree_method="hist"`).
 
 ## Database (Supabase Postgres)
 

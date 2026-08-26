@@ -127,7 +127,13 @@ class GANPredictor:
 
     def _prepare_data(self, df: pd.DataFrame) -> np.ndarray:
         features = pd.DataFrame(index=df.index)
-        features["close_norm"] = df["Close"] / df["Close"].iloc[0]
+        # See lstm.py's _prepare_features: `Close / Close.iloc[0]` was this
+        # booster's top feature at 0.31 importance and depended entirely on the
+        # caller's `period=` argument -- ~9.4 when training on period="max",
+        # ~1.5 when serving a "1y" fetch of the very same sessions.
+        features["trend_150"] = (
+            df["Close"] / df["Close"].rolling(150, min_periods=1).mean()
+        )
         features["returns"] = df["Close"].pct_change().fillna(0)
         features["hl_range"] = (df["High"] - df["Low"]) / df["Close"]
         features["volume_norm"] = df["Volume"] / df["Volume"].rolling(20).mean().fillna(1)
@@ -251,7 +257,7 @@ class GANPredictor:
             self.sequence_length,
             horizon_days,
         )
-        artifact, metrics = fit_windows(windows, targets)
+        artifact, metrics = fit_windows(windows, targets, purge=horizon_days)
         save_artifact(artifact, artifact_path(self.gb_model_filename))
 
         metrics.update(

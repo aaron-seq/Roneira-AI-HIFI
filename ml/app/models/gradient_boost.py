@@ -100,6 +100,11 @@ def build_estimator(n_estimators: int = 300, max_depth: int = 4):
             random_state=42,
             n_jobs=-1,
             objective="reg:squarederror",
+            # Histogram splits instead of the default exact scan. On the real
+            # training set (92k windows x 660 columns) exact took 502s for the
+            # LSTM slot; hist reaches the same validation error in a fraction of
+            # that, which is what makes `npm run train:ml` re-runnable.
+            tree_method="hist",
         )
 
     from sklearn.ensemble import GradientBoostingRegressor
@@ -117,13 +122,21 @@ def fit_windows(
     targets: np.ndarray,
     n_estimators: int = 300,
     max_depth: int = 4,
+    purge: int = 0,
 ) -> tuple[GradientBoostArtifact, dict]:
     """
     Fit on 3-D sequence windows, returning the artifact and validation metrics.
 
     The split is chronological (no shuffling): these are overlapping time
     windows, so a random split would leak future information into training and
-    report an optimistic error.
+    report an optimistic error. `build_training_windows` sorts its output by
+    date for exactly this reason -- appending frame-by-frame made the last 20%
+    of rows *a different set of tickers* rather than a later period, so this
+    split measured cross-instrument transfer while reporting it as a time split.
+
+    `purge` drops that many windows from the end of the training side. Labels
+    are `horizon_days`-forward returns, so without it the last training windows
+    resolve inside the validation period and the score is optimistic.
     """
     X = windows.reshape(windows.shape[0], -1)
     y = np.asarray(targets, dtype=float).reshape(-1)
@@ -132,8 +145,9 @@ def fit_windows(
         raise ValueError("Not enough training windows for the gradient-boosted model.")
 
     split = int(len(X) * 0.8)
-    X_train, X_test = X[:split], X[split:]
-    y_train, y_test = y[:split], y[split:]
+    train_end = max(1, split - max(0, purge))
+    X_train, X_test = X[:train_end], X[split:]
+    y_train, y_test = y[:train_end], y[split:]
 
     estimator = build_estimator(n_estimators=n_estimators, max_depth=max_depth)
     estimator.fit(X_train, y_train)
@@ -154,6 +168,7 @@ def fit_windows(
         "skill_vs_no_change": skill,
         "confidence": float(max(35.0, min(85.0, 40.0 + skill * 50.0))),
         "training_windows": int(len(X)),
+        "train_rows": int(len(X_train)),
         "n_features": int(X.shape[1]),
         "backend": "xgboost" if XGBOOST_AVAILABLE else "sklearn",
     }
@@ -166,7 +181,6 @@ def build_training_windows(
     prepare,
     sequence_length: int,
     horizon_days: int,
-    normalize=None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Turn raw OHLCV frames into (windows, forward-return targets).
@@ -175,7 +189,12 @@ def build_training_windows(
     feature set it was designed around rather than sharing one generic set.
     Targets stop `horizon_days` before the end of each frame -- beyond that the
     realised forward return does not exist yet and would be fabricated.
+
+    Output is sorted by window end date across all frames. Appending frame after
+    frame instead made row order mean "which ticker", so the 80/20 split in
+    `fit_windows` held out the last tickers rather than the last years.
     """
+    stamps: list = []
     windows: list[np.ndarray] = []
     targets: list[float] = []
 
@@ -184,9 +203,6 @@ def build_training_windows(
             continue
 
         features = prepare(frame)
-        if normalize is not None:
-            features = normalize(features)
-
         features = np.nan_to_num(
             np.asarray(features, dtype=float), nan=0.0, posinf=0.0, neginf=0.0
         )
@@ -205,13 +221,18 @@ def build_training_windows(
             if not np.isfinite(window).all():
                 continue
 
+            stamps.append(frame.index[idx])
             windows.append(window)
             targets.append((future - start) / start)
 
     if not windows:
         raise ValueError("No training windows could be built from the supplied data.")
 
-    return np.asarray(windows, dtype=float), np.asarray(targets, dtype=float)
+    order = np.argsort(np.asarray(stamps), kind="stable")
+    return (
+        np.asarray(windows, dtype=float)[order],
+        np.asarray(targets, dtype=float)[order],
+    )
 
 
 def save_artifact(artifact: GradientBoostArtifact, path: Path) -> Path:

@@ -65,7 +65,6 @@ class TestGradientBoostCore:
             predictor._prepare_features,
             sequence_length=60,
             horizon_days=30,
-            normalize=predictor._normalize,
         )
         assert windows.ndim == 3
         assert windows.shape[0] == targets.shape[0]
@@ -86,9 +85,9 @@ class TestGradientBoostCore:
     def test_fit_windows_produces_sane_metrics(self, training_frames):
         predictor = LSTMPredictor(sequence_length=60)
         windows, targets = build_training_windows(
-            training_frames, predictor._prepare_features, 60, 30, normalize=predictor._normalize
+            training_frames, predictor._prepare_features, 60, 30
         )
-        artifact, metrics = fit_windows(windows, targets)
+        artifact, metrics = fit_windows(windows, targets, purge=30)
 
         assert metrics["training_windows"] == len(windows)
         assert metrics["validation_mae"] >= 0
@@ -166,3 +165,100 @@ class TestGANSlotTraining:
         assert result.get("fallback") is not True
         assert "predicted_price" in result
         assert result["predicted_price"] > 0
+
+
+class TestFeatureDepthInvariance:
+    """
+    A window must score the same regardless of how much history preceded it.
+
+    This is the regression guard for the bug that made both sequence slots
+    worthless: `close_norm = Close / Close.iloc[0]` was the top-importance
+    feature in each booster, and its value is a function of the caller's
+    `period=` argument. Training fetched period="max" (~25y); main.py serves
+    period="1y"/"2y". The same session scored ~8.8 during training and ~1.4 in
+    production, so the fitted split points addressed a range production never
+    reaches. The frame-wide min-max in `_normalize` had the same defect plus a
+    look-ahead leak, which is why the tree path no longer applies it.
+
+    Any new feature reaching further back than SERVING_ROWS - sequence_length
+    sessions will fail here. That is the point: it would silently reintroduce
+    the same class of bug.
+    """
+
+    SERVING_ROWS = 252  # period="1y", the shortest window main.py fetches
+
+    @pytest.mark.parametrize(
+        ("factory", "prepare_attr", "sequence_length"),
+        [
+            (LSTMPredictor, "_prepare_features", 60),
+            (GANPredictor, "_prepare_data", 30),
+        ],
+    )
+    def test_window_is_independent_of_preceding_history(
+        self, factory, prepare_attr, sequence_length
+    ):
+        frame = _synthetic_ohlcv(seed=7, periods=1200)
+        prepare = getattr(factory(sequence_length=sequence_length), prepare_attr)
+
+        deep = prepare(frame)[-sequence_length:]
+        shallow = prepare(frame.iloc[-self.SERVING_ROWS:])[-sequence_length:]
+
+        assert deep.shape == shallow.shape
+        # 1e-5, not exact: the EMA features are infinite-impulse, so ~190 rows of
+        # extra warm-up leaves a residue around 1e-7. Anchored or frame-wide
+        # normalised features miss by whole units, not by 1e-7.
+        np.testing.assert_allclose(deep, shallow, atol=1e-5)
+
+    def test_prediction_is_independent_of_preceding_history(self, training_frames):
+        frame = _synthetic_ohlcv(seed=8, periods=1200)
+        predictor = LSTMPredictor(sequence_length=60)
+        predictor.train_gradient_boost(training_frames, horizon_days=30)
+
+        deep = predictor.predict(frame, horizon_days=30)
+        shallow = predictor.predict(frame.iloc[-self.SERVING_ROWS:], horizon_days=30)
+
+        assert deep.get("fallback") is not True
+        assert deep["predicted_return"] == pytest.approx(shallow["predicted_return"], abs=0.01)
+
+
+class TestChronologicalPooling:
+    """`fit_windows` splits on row order, so row order has to mean time."""
+
+    def test_windows_are_sorted_by_date_across_frames(self):
+        # Different seeds, so the two frames' prepared features differ. Using a
+        # re-indexed copy of one frame would make this pass either way.
+        early = _synthetic_ohlcv(seed=11, periods=400)
+        late = _synthetic_ohlcv(seed=12, periods=400)
+        late.index = pd.bdate_range("2030-01-01", periods=len(late))
+
+        predictor = LSTMPredictor(sequence_length=60)
+        # Deliberately out of order: appending frame-by-frame would put every
+        # `late` window first, and the 80/20 split in fit_windows would then hold
+        # out a different *ticker* while reporting a time split.
+        windows, _ = build_training_windows(
+            [late, early], predictor._prepare_features, 60, 30
+        )
+        np.testing.assert_allclose(
+            windows[0], predictor._prepare_features(early)[0:60], atol=1e-9
+        )
+        # ...and the newest window is the last one `late` can supply: windows run
+        # to index len - horizon - 1, beyond which the forward label is unknown.
+        newest = len(late) - 30 - 1
+        np.testing.assert_allclose(
+            windows[-1],
+            predictor._prepare_features(late)[newest - 60:newest],
+            atol=1e-9,
+        )
+
+    def test_purge_drops_windows_whose_label_spans_the_split(self, training_frames):
+        predictor = LSTMPredictor(sequence_length=60)
+        windows, targets = build_training_windows(
+            training_frames, predictor._prepare_features, 60, 30
+        )
+        _, unpurged = fit_windows(windows, targets, purge=0)
+        _, purged = fit_windows(windows, targets, purge=30)
+
+        # Same validation set; 30 fewer training rows, being exactly the ones
+        # whose 30-day forward label resolves inside the validation period.
+        assert purged["train_rows"] == unpurged["train_rows"] - 30
+        assert purged["training_windows"] == unpurged["training_windows"]
