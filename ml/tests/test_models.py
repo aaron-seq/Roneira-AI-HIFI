@@ -172,15 +172,22 @@ class TestTechnicalAnalysis:
         assert "confidence" in result
         assert "indicators" in result
 
-    def test_has_all_6_indicators(self, ta_analyzer, sample_data):
+    def test_has_all_nine_indicators(self, ta_analyzer, sample_data):
         result = ta_analyzer.analyze(sample_data, horizon_days=30)
         names = [ind["name"] for ind in result["indicators"]]
-        assert "RSI (14)" in names
-        assert "MACD" in names
-        assert "Bollinger Bands" in names
-        assert "EMA 20/50" in names
-        assert "Stochastic RSI" in names
-        assert "ADX" in names
+        for expected in (
+            "RSI (14)",
+            "MACD",
+            "Bollinger Bands",
+            "EMA 20/50",
+            "Stochastic RSI",
+            "ADX",
+            "Supertrend (10,3)",
+            "Ichimoku Cloud",
+            "Anchored VWAP",
+        ):
+            assert expected in names, f"missing {expected}"
+        assert len(names) == len(set(names)) == 9
 
     def test_rsi_in_valid_range(self, ta_analyzer, sample_data):
         result = ta_analyzer.analyze(sample_data, horizon_days=30)
@@ -217,6 +224,243 @@ class TestTechnicalAnalysis:
         ta_analyzer.analyze(sample_data, horizon_days=30)
         elapsed = time.time() - start
         assert elapsed < 1.0, f"TA took {elapsed:.2f}s (max 1s)"
+
+
+class TestTechnicalAggregation:
+    """
+    The verdict must follow the net vote, and Neutral must mean neutral.
+
+    The old aggregate was `buy_signals / total_indicators`, which counted every
+    abstention as evidence against buying. `sell_signals` was tallied and then
+    never used. Two consequences, both reproduced by the tests below: a flat
+    tape with one buy, one sell and four abstentions scored 0.167 and was
+    reported as SELL, while a genuine downtrend with a 2-2 mean-reversion /
+    trend split scored 0.333 and was reported as HOLD. Neutral was structurally
+    bearish and the verdict was not monotone in the evidence.
+    """
+
+    BEARISH = {"SELL", "STRONG_SELL"}
+    BULLISH = {"BUY", "STRONG_BUY"}
+
+    @staticmethod
+    def _frame(close, volume=1e6):
+        index = pd.bdate_range("2024-01-01", periods=len(close))
+        series = pd.Series(close, index=index)
+        return pd.DataFrame(
+            {
+                "Open": series,
+                "High": series * 1.004,
+                "Low": series * 0.996,
+                "Close": series,
+                "Volume": np.full(len(close), volume),
+            },
+            index=index,
+        )
+
+    def _regimes(self):
+        n = 300
+        rng = np.random.default_rng(3)
+        return {
+            "hard_downtrend": 200 * np.exp(np.cumsum(np.full(n, -0.004))),
+            "gentle_drift_down": 100 * np.exp(np.cumsum(np.full(n, -0.00035))),
+            "flat_tiny_noise": 100 + rng.normal(0, 0.02, n).cumsum() * 0.01,
+            "choppy_sideways": 100 + np.sin(np.arange(n) / 9) * 0.8,
+            "hard_uptrend": 100 * np.exp(np.cumsum(np.full(n, 0.004))),
+        }
+
+    # ---- the tally -> verdict mapping, tested directly ----
+    # MACD and the EMA cross always take a side, so a frame can never actually
+    # produce 0 or 1 directional votes out of 9. Those are exactly the tallies
+    # where the old buy-share formula was most wrong, so they are exercised on
+    # `_aggregate` rather than through a frame that cannot reach them.
+
+    @pytest.mark.parametrize(
+        ("buy", "sell", "expected"),
+        [
+            (0, 0, "HOLD"),        # nine abstentions -- old formula: STRONG_SELL at 0.0
+            (1, 0, "HOLD"),        # one buy, eight abstentions -- old formula: STRONG_SELL
+            (2, 0, "BUY"),
+            (0, 1, "HOLD"),
+            (0, 2, "SELL"),
+            (2, 2, "HOLD"),        # votes cancel
+            (3, 1, "BUY"),
+            (1, 3, "SELL"),
+            (9, 0, "STRONG_BUY"),
+            (0, 9, "STRONG_SELL"),
+        ],
+    )
+    def test_tally_maps_to_the_expected_verdict(self, ta_analyzer, buy, sell, expected):
+        _, label, _ = ta_analyzer._aggregate(buy, sell, 9)
+        assert label == expected
+
+    def test_abstentions_alone_are_never_directional(self, ta_analyzer):
+        """No votes at all is the neutral midpoint, not a sell."""
+        net, label, score = ta_analyzer._aggregate(0, 0, 9)
+        assert (net, label, score) == (0.0, "HOLD", 5.0)
+
+    def test_the_mapping_is_symmetric(self, ta_analyzer):
+        """
+        Swapping buy and sell must mirror the verdict and reflect the score about
+        5.0. The old formula could not satisfy this at all: `sell` was never read.
+        """
+        mirror = {
+            "STRONG_BUY": "STRONG_SELL", "BUY": "SELL",
+            "HOLD": "HOLD", "SELL": "BUY", "STRONG_SELL": "STRONG_BUY",
+        }
+        for buy in range(10):
+            for sell in range(10 - buy):
+                net, label, score = ta_analyzer._aggregate(buy, sell, 9)
+                flipped_net, flipped_label, flipped_score = ta_analyzer._aggregate(
+                    sell, buy, 9
+                )
+                assert flipped_label == mirror[label], (buy, sell, label, flipped_label)
+                assert flipped_net == pytest.approx(-net)
+                assert flipped_score == pytest.approx(10.0 - score)
+
+    def test_verdict_is_monotone_in_the_net_vote(self, ta_analyzer):
+        """More buys can only ever move the score up, never down."""
+        scores = [ta_analyzer._aggregate(buy, 0, 9)[2] for buy in range(10)]
+        assert scores == sorted(scores)
+        assert scores[0] == 5.0 and scores[-1] == 10.0
+
+    def test_abstentions_never_flip_the_sign_on_a_real_frame(self, ta_analyzer):
+        """The same invariant, end to end through analyze() across regimes."""
+        for name, closes in self._regimes().items():
+            result = ta_analyzer.analyze(self._frame(closes), horizon_days=30)
+            if result["buy_count"] > result["sell_count"]:
+                assert result["short_term_signal"]["signal"] not in self.BEARISH, name
+            if result["sell_count"] > result["buy_count"]:
+                assert result["short_term_signal"]["signal"] not in self.BULLISH, name
+
+    def test_sustained_downtrend_is_reported_bearish(self, ta_analyzer, trending_down_data):
+        """A ~39% decline must not come out as HOLD."""
+        result = ta_analyzer.analyze(trending_down_data, horizon_days=30)
+        assert result["net_vote"] < 0, result
+        assert result["short_term_signal"]["signal"] in self.BEARISH
+
+    def test_sustained_uptrend_is_reported_bullish(self, ta_analyzer, trending_up_data):
+        result = ta_analyzer.analyze(trending_up_data, horizon_days=30)
+        assert result["net_vote"] > 0, result
+        assert result["short_term_signal"]["signal"] in self.BULLISH
+
+    def test_score_agrees_with_the_verdict(self, ta_analyzer):
+        """
+        Score and label cannot point opposite ways, and neither end can leave the
+        0-10 scale. The old code emitted STRONG_SELL at 0.0 and a long-term score
+        of -0.5 from the same `score - 0.5` nudge.
+        """
+        for name, closes in self._regimes().items():
+            result = ta_analyzer.analyze(self._frame(closes), horizon_days=30)
+            short = result["short_term_signal"]["score"]
+            long_ = result["long_term_signal"]["score"]
+            net = result["net_vote"]
+
+            assert 0.0 <= short <= 10.0, f"{name}: short score {short}"
+            assert 0.0 <= long_ <= 10.0, f"{name}: long score {long_}"
+            # Same side of the midpoint as the net vote (0.05 for rounding).
+            assert (short - 5.0) * net >= -0.05, f"{name}: score {short} vs net {net}"
+
+    def test_confidence_scales_with_agreement_not_basket_size(
+        self, ta_analyzer, trending_up_data, trending_down_data
+    ):
+        """
+        Confidence is a function of the net *fraction*, so it cannot be inflated
+        by adding indicators. `(buy - sell) * 8` hit the 85 ceiling at a 5-vote
+        margin, which 9 indicators reach far more easily than 6 did.
+        """
+        up = ta_analyzer.analyze(trending_up_data, horizon_days=30)
+        down = ta_analyzer.analyze(trending_down_data, horizon_days=30)
+        for result in (up, down):
+            assert 30.0 <= result["confidence"] <= 85.0, result["confidence"]
+        assert up["confidence"] > down["confidence"]
+
+
+class TestTechnicalNewIndicators:
+    """Supertrend, Ichimoku and Anchored VWAP (IDEAS.md, near-term)."""
+
+    @staticmethod
+    def _trend(rate, periods=150, volume=1e6):
+        closes = 100 * np.exp(np.cumsum(np.full(periods, rate)))
+        index = pd.bdate_range("2024-01-01", periods=periods)
+        series = pd.Series(closes, index=index)
+        return pd.DataFrame(
+            {
+                "Open": series,
+                "High": series * 1.004,
+                "Low": series * 0.996,
+                "Close": series,
+                "Volume": np.full(periods, volume),
+            },
+            index=index,
+        )
+
+    def test_supertrend_direction_follows_the_trend(self, ta_analyzer):
+        up = self._trend(0.006)
+        down = self._trend(-0.006)
+        _, up_dir = ta_analyzer._supertrend(up["High"], up["Low"], up["Close"])
+        _, down_dir = ta_analyzer._supertrend(down["High"], down["Low"], down["Close"])
+        assert int(up_dir.iloc[-1]) == 1
+        assert int(down_dir.iloc[-1]) == -1
+
+    def test_supertrend_band_sits_below_price_in_an_uptrend(self, ta_analyzer):
+        """In an uptrend the band is the trailing stop, so it must be under price."""
+        up = self._trend(0.006)
+        band, direction = ta_analyzer._supertrend(up["High"], up["Low"], up["Close"])
+        assert int(direction.iloc[-1]) == 1
+        assert float(band.iloc[-1]) < float(up["Close"].iloc[-1])
+
+    def test_ichimoku_spans_are_lagged_not_forward_looking(self, ta_analyzer):
+        """
+        Span A/B at the last bar must be derived from data at least `base` bars
+        old. Comparing today's price against a span computed from today's data
+        would be a look-ahead.
+        """
+        frame = self._trend(0.004, periods=200)
+        tenkan, kijun, span_a, span_b = ta_analyzer._ichimoku(
+            frame["High"], frame["Low"], frame["Close"]
+        )
+        unshifted_b = (
+            frame["High"].rolling(52).max() + frame["Low"].rolling(52).min()
+        ) / 2
+        assert float(span_b.iloc[-1]) == pytest.approx(float(unshifted_b.iloc[-1 - 26]))
+        assert float(span_b.iloc[-1]) < float(unshifted_b.iloc[-1])  # lagged in an uptrend
+        assert np.isfinite([tenkan.iloc[-1], kijun.iloc[-1], span_a.iloc[-1]]).all()
+
+    def test_ichimoku_abstains_when_the_frame_is_too_short(self, ta_analyzer):
+        """52 sessions needed; 30 must abstain rather than take the whole run down."""
+        result = ta_analyzer.analyze(self._trend(0.004, periods=30), horizon_days=30)
+        assert "buy_count" in result, "fell through to the exception fallback"
+        ichimoku = next(i for i in result["indicators"] if i["name"] == "Ichimoku Cloud")
+        assert ichimoku["signal"] == "Neutral"
+
+    def test_anchored_vwap_orders_its_two_anchors(self, ta_analyzer):
+        """Falling from the high: VWAP from the high must sit above VWAP from the low."""
+        down = self._trend(-0.006)
+        from_high, from_low = ta_analyzer._anchored_vwap(
+            down["High"], down["Low"], down["Close"], down["Volume"]
+        )
+        assert from_high is not None and from_low is not None
+        assert from_high > from_low
+
+    def test_anchored_vwap_abstains_without_volume(self, ta_analyzer):
+        """
+        Index tickers (^NSEI, ^GSPC) report Volume 0. An unweighted mean labelled
+        VWAP would be a fabrication, so it returns None and votes Neutral.
+        """
+        flat = self._trend(0.004, volume=0.0)
+        assert ta_analyzer._anchored_vwap(
+            flat["High"], flat["Low"], flat["Close"], flat["Volume"]
+        ) == (None, None)
+
+        result = ta_analyzer.analyze(flat, horizon_days=30)
+        avwap = next(i for i in result["indicators"] if i["name"] == "Anchored VWAP")
+        assert avwap["signal"] == "Neutral"
+
+    def test_last_falls_back_when_the_window_never_warms_up(self, ta_analyzer):
+        all_nan = pd.Series([np.nan, np.nan, np.nan])
+        assert ta_analyzer._last(all_nan, default=50.0) == 50.0
+        assert ta_analyzer._last(pd.Series([], dtype=float), default=7.0) == 7.0
+        assert ta_analyzer._last(pd.Series([1.0, 2.0])) == 2.0
 
 
 # ========== PVD Momentum Tests ==========

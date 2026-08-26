@@ -182,7 +182,7 @@ out first.
 | Model | Kind | Trained? |
 |---|---|---|
 | `RANDOM_FOREST` | sklearn RandomForest, refit per request with TimeSeriesSplit | yes, per request (~2.6s) |
-| `TECHNICAL` | rule-based indicators (RSI, MACD, Bollinger, EMA, Stochastic, ADX) | n/a — deterministic |
+| `TECHNICAL` | rule-based indicators (RSI, MACD, Bollinger, EMA, Stochastic, ADX, Supertrend, Ichimoku, Anchored VWAP) | n/a — deterministic |
 | `PVD_MOMENTUM` | price/volume/divergence momentum engine | n/a — deterministic |
 | `LSTM` slot | gradient-boosted (xgboost), 60-step feature windows | yes, offline artifact |
 | `GAN` slot | gradient-boosted (xgboost), 30-step feature windows | yes, offline artifact |

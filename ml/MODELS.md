@@ -65,14 +65,34 @@ central estimate plus an uncertainty band.
   generation, not precise forecasts. Artifact-dependent like the LSTM.
 
 ### 4. Technical Analysis — `app/models/technical_analysis.py`
-Pure rule-based engine: RSI, MACD, Bollinger Bands, Stochastic RSI, ADX, EMA
-crossovers, aggregated into a buy/sell/neutral tally. No training, fully
-deterministic and explainable.
+Pure rule-based engine over nine indicators: RSI, MACD, Bollinger Bands,
+Stochastic RSI, ADX, EMA crossovers, Supertrend (10,3), Ichimoku Cloud and
+Anchored VWAP. No training, fully deterministic and explainable.
+
+Each indicator votes Buy / Sell / Neutral and the verdict is the **net vote**,
+`(buy - sell) / total`, mapped by `_aggregate`. Two properties that matter:
+
+- **Neutral means neutral.** An indicator that abstains reduces conviction; it
+  does not add direction. The previous aggregate was `buy / total`, which counted
+  every abstention as evidence against buying and never read `sell` at all — a
+  flat tape with one buy, one sell and four abstentions was reported as `SELL`,
+  and a sustained downtrend with a 2-2 mean-reversion/trend split as `HOLD`.
+- **An indicator that cannot be computed abstains** rather than raising. Ichimoku
+  needs 52 sessions; Anchored VWAP needs non-zero volume, which index tickers
+  like `^NSEI` do not report. A short or volume-less frame degrades conviction
+  instead of losing the whole analysis to the exception handler.
+
+Score is 0–10 with 5.0 as "no opinion", so it can never disagree with the label,
+and confidence is derived from the net fraction so it does not inflate when the
+basket size changes.
 
 - **Use it when** you need an instant, transparent, short-horizon read that a
   human can audit indicator-by-indicator.
 - **Watch out for**: it encodes fixed heuristics — it cannot adapt to a regime
-  its thresholds weren't designed for.
+  its thresholds weren't designed for. The mean-reversion indicators (RSI,
+  Bollinger, Stochastic) and the trend indicators (EMA, ADX, Supertrend,
+  Ichimoku) genuinely disagree in a strong trend, and `HOLD` on a 2-2 split is an
+  honest report of that rather than a bug.
 
 ### 5. PVD Momentum (PDM) — `app/models/pdm_momentum.py`
 The house strategy: treats price and volume as functions of time and uses their

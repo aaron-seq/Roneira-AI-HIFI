@@ -125,8 +125,16 @@ roadmap. See [IDEAS.md](./IDEAS.md) for near-term and speculative extensions
 <details>
 <summary><strong>Technical analysis suite</strong></summary>
 
-Six indicators, each with its own buy/sell/neutral signal:
-RSI (14), MACD, Bollinger Bands, EMA 20/50, Stochastic RSI, ADX.
+Nine indicators, each with its own buy/sell/neutral signal:
+RSI (14), MACD, Bollinger Bands, EMA 20/50, Stochastic RSI, ADX,
+Supertrend (10,3), Ichimoku Cloud, Anchored VWAP.
+
+The verdict is the **net vote** — `(buy - sell) / total` — so an indicator that
+abstains reduces conviction rather than adding direction, and one that cannot be
+computed from the data on hand (Ichimoku needs 52 sessions; Anchored VWAP needs
+non-zero volume, which index tickers do not report) abstains instead of raising.
+See [ml/MODELS.md](./ml/MODELS.md) for what the previous buy-share aggregate got
+wrong.
 
 </details>
 

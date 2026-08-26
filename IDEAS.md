@@ -9,8 +9,10 @@ items by how close they are to being buildable against the *current*
 canonical stack (`src/` + `ml/` + Supabase), so "someday" ideas don't compete
 for attention with things that could ship next.
 
+**Shipped**
+- ~~Additional technical indicators (Supertrend, Ichimoku, Anchored VWAP)~~ — done. All three are in `ml/app/models/technical_analysis.py` as `_supertrend`, `_ichimoku` and `_anchored_vwap`, voting alongside the original six. Building them surfaced a bug in the aggregate they feed: it was `buy / total`, which counted every Neutral as evidence against buying, so a flat tape read `SELL` and a sustained downtrend read `HOLD`. The verdict is now the net vote — see the Technical Analysis section of `ml/MODELS.md`. Harmonic patterns, Volume Profile / Market Profile, Wyckoff and Elliott Wave (listed further down) are *not* done and are a different order of effort — they need swing/pivot detection rather than a rolling window.
+
 **Near-term — buildable now, moderate effort, clear user value**
-- Additional technical indicators (Supertrend, Ichimoku, Anchored VWAP) — pure functions, slot into the existing `TECHNICAL` model in `ml/app/models/technical_analysis.py`.
 - Multi-timeframe confluence dashboard — reuses existing prediction/technical endpoints across a few `timeframe` values.
 - Trade journal / performance attribution on the Portfolio dashboard — data already lives in `portfolio_transactions`.
 - Alert system for signal triggers — a natural extension of `predictions_cache` + a scheduled check.
@@ -72,11 +74,11 @@ for attention with things that could ship next.
 
 ### Additional Indicators
 
-- **Anchored VWAP** - Multiple anchored volume-weighted average prices
-- **Supertrend** - Trend-following indicator with ATR-based bands
-- **Ichimoku Cloud** - Full Ichimoku Kinko Hyo implementation
-- **Harmonic Patterns** - Gartley, Butterfly, Crab pattern detection
-- **Order Flow Imbalance** - Buy/Sell pressure analysis
+- ~~**Anchored VWAP**~~ - done, anchored at both the lookback's highest high and lowest low (the two anchors that actually get drawn). Abstains when the anchored segment has no volume.
+- ~~**Supertrend**~~ - done, ATR(10) bands at 3x, with the standard ratcheting bands and direction flip.
+- ~~**Ichimoku Cloud**~~ - done: tenkan, kijun, and both senkou spans. The chikou span is deliberately omitted — it can only be read against price 26 bars back, so it says nothing about the current bar and invites a look-ahead comparison.
+- **Harmonic Patterns** - Gartley, Butterfly, Crab pattern detection — needs swing/pivot detection first, which nothing here has yet.
+- **Order Flow Imbalance** - Buy/Sell pressure analysis — needs tick or L2 data; no current provider supplies it.
 
 ### Multi-Timeframe Analysis
 
@@ -198,6 +200,7 @@ Open an issue with the `enhancement` label to discuss:
 
 ### Q1 2026
 
+- [x] Additional technical indicators (Supertrend, Ichimoku, Anchored VWAP)
 - [ ] LSTM-based momentum prediction
 - [ ] Options flow integration
 - [ ] Real-time WebSocket implementation
