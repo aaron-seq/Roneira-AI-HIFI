@@ -13,12 +13,12 @@ for attention with things that could ship next.
 - ~~Additional technical indicators (Supertrend, Ichimoku, Anchored VWAP)~~ — done. All three are in `ml/app/models/technical_analysis.py` as `_supertrend`, `_ichimoku` and `_anchored_vwap`, voting alongside the original six. Building them surfaced a bug in the aggregate they feed: it was `buy / total`, which counted every Neutral as evidence against buying, so a flat tape read `SELL` and a sustained downtrend read `HOLD`. The verdict is now the net vote — see the Technical Analysis section of `ml/MODELS.md`. Harmonic patterns, Volume Profile / Market Profile, Wyckoff and Elliott Wave (listed further down) are *not* done and are a different order of effort — they need swing/pivot detection rather than a rolling window.
 
 **Near-term — buildable now, moderate effort, clear user value**
-- Multi-timeframe confluence dashboard — reuses existing prediction/technical endpoints across a few `timeframe` values.
-- Trade journal / performance attribution on the Portfolio dashboard — data already lives in `portfolio_transactions`.
-- Alert system for signal triggers — a natural extension of `predictions_cache` + a scheduled check.
+- Multi-timeframe confluence dashboard — reuses existing prediction/technical endpoints across a few `timeframe` values. → [#146](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/146)
+- Trade journal / performance attribution on the Portfolio dashboard — data already lives in `portfolio_transactions`. → [#147](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/147)
+- Alert system for signal triggers — needs a scheduler first; nothing in the stack currently runs periodically, and Render's free tier spins down after 15 min idle. → [#148](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/148)
 
 **Mid-term — real value, needs new infrastructure or a provider decision**
-- Backtesting framework (walk-forward, Monte Carlo) — needs a historical-data store beyond the 6-month cache `market_data.stock_prices` currently holds.
+- Backtesting framework (walk-forward, Monte Carlo) — needs a historical-data store beyond the 6-month cache `market_data.stock_prices` currently holds. **Promoted: every ML claim in this repo rests on a single 80/20 split, and the rule-based models have never been measured at all.** → [#144](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/144)
 - Options flow integration, dark-pool/algo detection — needs a paid data provider; evaluate cost against the free-tier-first posture of the current providers (Twelve Data, Finnhub, Alpha Vantage).
 - Portfolio risk allocation (risk parity, mean-variance, Black-Litterman) — meaningful math, but well-scoped as a pure computation over existing `portfolio_holdings` data.
 - Sector rotation signals, correlation matrices — needs cross-ticker historical data at a scale beyond what's cached today.
@@ -28,6 +28,25 @@ for attention with things that could ship next.
 - Multi-asset PDM extension (crypto, forex) — current provider fallback chain (Twelve Data → yfinance) is equity-oriented; needs its own data-source evaluation.
 - Mobile PWA — no mobile-specific work has started; would need its own scoping pass.
 - Institutional/regulatory features (MiFID II, SEC reporting), white-label — out of scope for a personal/portfolio-stage project; revisit only if the product's audience actually changes.
+
+---
+
+## Tracked work
+
+Anything with an issue number is tracked there, not here. This document is the
+brainstorm; the tracker is the backlog.
+
+| # | What | Kind |
+|---|---|---|
+| [#140](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/140) | `ml/` dev env runs a different Python and numpy than CI and deploy | bug |
+| [#141](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/141) | No way to test React components (vitest is node-only, jsdom unused) | dx |
+| [#142](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/142) | ATR/ADX use an SMA, not Wilder smoothing | bug |
+| [#143](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/143) | GAN slot's 5-draw spread is structurally zero | bug |
+| [#144](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/144) | Walk-forward backtesting | feature |
+| [#145](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/145) | Ensemble weights are hand-set and unvalidated | feature |
+| [#146](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/146) | Multi-timeframe confluence | feature |
+| [#147](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/147) | Trade journal / performance attribution | feature |
+| [#148](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/148) | Signal alerts (blocked on a scheduler decision) | feature |
 
 ---
 
