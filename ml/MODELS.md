@@ -79,8 +79,23 @@ Each indicator votes Buy / Sell / Neutral and the verdict is the **net vote**,
   and a sustained downtrend with a 2-2 mean-reversion/trend split as `HOLD`.
 - **An indicator that cannot be computed abstains** rather than raising. Ichimoku
   needs 52 sessions; Anchored VWAP needs non-zero volume, which index tickers
-  like `^NSEI` do not report. A short or volume-less frame degrades conviction
-  instead of losing the whole analysis to the exception handler.
+  like `^NSEI` do not report, plus at least `min_segment` bars between its anchor
+  and the last bar. A short or volume-less frame degrades conviction instead of
+  losing the whole analysis to the exception handler.
+
+  Abstaining correctly needs a *neutral* fallback, not just a non-crashing one.
+  `_last` returning a bare `0.0` made two indicators vote on no evidence: RSI 0 is
+  maximally oversold, so an unwarmed RSI read Buy, and 0.0 as a Bollinger band put
+  price above the upper band, so an unwarmed Bollinger read Sell. RSI now falls
+  back to 50.0, and the Bollinger bands are checked for warm-up explicitly —
+  a band is a threshold, so no scalar stand-in is neutral with respect to it.
+
+  Anchored VWAP has the mirror-image trap: anchoring on a plain argmax/argmin of
+  the lookback put the anchor on the *latest* bar in any sustained trend, making
+  the segment one bar long and its VWAP equal to the current price. Neither strict
+  comparison could fire, so it abstained in exactly the trends it exists to read.
+  `min_segment` keeps the anchor at least 20 bars back, which is also what a
+  trader means by an anchor: a swing that has already formed.
 
 Score is 0–10 with 5.0 as "no opinion", so it can never disagree with the label,
 and confidence is derived from the net fraction so it does not inflate when the

@@ -263,13 +263,20 @@ class LSTMPredictor:
         about monotone rescaling anyway -- only about being fed the same scale it
         was fitted on. `_normalize` stays for the Keras path, which needs it.
         """
-        windows, targets = build_training_windows(
+        windows, targets, stamps = build_training_windows(
             datasets,
             self._prepare_features,
             self.sequence_length,
             horizon_days,
         )
-        artifact, metrics = fit_windows(windows, targets, purge=horizon_days)
+        # Calendar days, not sessions: ~7/5 plus a few for market holidays, so
+        # the purge covers the whole label horizon rather than part of it.
+        artifact, metrics = fit_windows(
+            windows,
+            targets,
+            stamps=stamps,
+            purge_days=horizon_days * 7 // 5 + 5,
+        )
         save_artifact(artifact, artifact_path(self.gb_model_filename))
 
         metrics.update(

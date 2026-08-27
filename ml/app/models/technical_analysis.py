@@ -31,7 +31,10 @@ class TechnicalAnalyzer:
 
             # 1. RSI (14)
             rsi = self._rsi(close, 14)
-            rsi_val = self._last(rsi)
+            # 50.0, not 0.0: the default has to be the *neutral* reading of each
+            # scale. RSI 0 is maximally oversold, so a frame too short to warm
+            # the 14-session window was voting Buy on no evidence at all.
+            rsi_val = self._last(rsi, default=50.0)
             rsi_prev = float(rsi.iloc[-2]) if len(rsi) > 1 and np.isfinite(rsi.iloc[-2]) else rsi_val
             rsi_signal = (
                 "Buy"
@@ -49,10 +52,25 @@ class TechnicalAnalyzer:
             # 3. Bollinger Bands (20, 2)
             bb_upper, bb_mid, bb_lower = self._bollinger(close, 20, 2)
             current = float(close.iloc[-1])
-            bb_signal = "Buy" if current <= self._last(bb_lower) else (
-                "Sell" if current >= self._last(bb_upper) else "Neutral"
-            )
-            indicators.append({"name": "Bollinger Bands", "value": round(self._last(bb_mid), 2), "signal": bb_signal})
+            # No scalar default works here: a band is a threshold, and any
+            # stand-in number sits on one side of the price. 0.0 made
+            # `current >= upper` true, so a sub-20-session frame voted Sell.
+            # The bands have to be checked for warm-up explicitly.
+            bb_lower_val = self._last(bb_lower, default=float("nan"))
+            bb_upper_val = self._last(bb_upper, default=float("nan"))
+            if not np.isfinite([bb_lower_val, bb_upper_val]).all():
+                bb_signal = "Neutral"
+            elif current <= bb_lower_val:
+                bb_signal = "Buy"
+            elif current >= bb_upper_val:
+                bb_signal = "Sell"
+            else:
+                bb_signal = "Neutral"
+            indicators.append({
+                "name": "Bollinger Bands",
+                "value": round(self._last(bb_mid, default=current), 2),
+                "signal": bb_signal,
+            })
 
             # 4. EMA Crossover (20/50)
             ema20 = close.ewm(span=20).mean()
@@ -233,7 +251,16 @@ class TechnicalAnalyzer:
         return value if np.isfinite(value) else default
 
     def _atr(self, high: pd.Series, low: pd.Series, close: pd.Series, period: int = 14) -> pd.Series:
-        """True range, Wilder-smoothed. Shared by ADX and Supertrend."""
+        """
+        Average true range: a simple rolling mean of true range, **not** Wilder's
+        exponential smoothing.
+
+        The difference matters for anyone comparing these numbers against a
+        charting platform, which will use Wilder. Both ADX and Supertrend read
+        this one function so that swapping in Wilder later is a one-line change
+        that cannot move only half of them -- which is what would have happened
+        while `_adx` kept its own inline copy of this same calculation.
+        """
         tr = pd.concat([
             high - low,
             (high - close.shift()).abs(),
@@ -274,13 +301,7 @@ class TechnicalAnalyzer:
         plus_dm = plus_dm.where((plus_dm > minus_dm) & (plus_dm > 0), 0)
         minus_dm = minus_dm.where((minus_dm > plus_dm) & (minus_dm > 0), 0)
 
-        tr = pd.concat([
-            high - low,
-            (high - close.shift()).abs(),
-            (low - close.shift()).abs(),
-        ], axis=1).max(axis=1)
-
-        atr = tr.rolling(period).mean()
+        atr = self._atr(high, low, close, period)
         plus_di = 100 * (plus_dm.rolling(period).mean() / atr)
         minus_di = 100 * (minus_dm.rolling(period).mean() / atr)
 
@@ -396,24 +417,37 @@ class TechnicalAnalyzer:
         close: pd.Series,
         volume: pd.Series,
         lookback: int = 252,
+        min_segment: int = 20,
     ) -> tuple[float | None, float | None]:
         """
         VWAP anchored at the highest high and at the lowest low of the lookback.
 
         Those are the two anchors traders actually draw: the swing high (where
         trapped buyers sit) and the swing low (where the move began). Returns
-        (from_high, from_low), or (None, None) when the anchored segment has no
-        volume to weight by -- index tickers like ^NSEI report Volume 0, and an
-        unweighted average dressed up as a VWAP would be a lie.
+        (from_high, from_low), or (None, None) when there is no usable segment or
+        no volume to weight by -- index tickers like ^NSEI report Volume 0, and
+        an unweighted average dressed up as a VWAP would be a lie.
+
+        `min_segment` excludes the most recent bars from being *anchors*, and it
+        is what makes the indicator work at all. In any sustained trend the
+        extreme of the lookback is the latest bar, so anchoring on a plain
+        argmax/argmin gave a one-bar segment whose VWAP equalled the current
+        price -- neither strict comparison could fire and the indicator returned
+        Neutral in exactly the uptrends and downtrends it exists to read.
+        Requiring the anchor to be at least `min_segment` bars back also matches
+        what a trader means by an anchor: a swing that has already formed.
         """
         n = len(close)
-        if n == 0:
-            return None, None
-
         window = min(lookback, n)
         start = n - window
-        highs = high.values[start:]
-        lows = low.values[start:]
+        # Anchor candidates stop `min_segment` bars short of the end, so there is
+        # always a real accumulation segment to average over.
+        candidate_end = n - min_segment
+        if candidate_end <= start:
+            return None, None
+
+        highs = high.values[start:candidate_end]
+        lows = low.values[start:candidate_end]
         if not np.isfinite(highs).any() or not np.isfinite(lows).any():
             return None, None
 

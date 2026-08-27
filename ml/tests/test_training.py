@@ -16,7 +16,11 @@ import pandas as pd
 import pytest
 
 from app.models.gan import GANPredictor
-from app.models.gradient_boost import build_training_windows, fit_windows
+from app.models.gradient_boost import (
+    MIN_TRAIN_ROWS,
+    build_training_windows,
+    fit_windows,
+)
 from app.models.lstm import LSTMPredictor
 
 
@@ -60,17 +64,19 @@ def isolated_artifact_dir(tmp_path, monkeypatch):
 class TestGradientBoostCore:
     def test_build_training_windows_shapes(self, training_frames):
         predictor = LSTMPredictor(sequence_length=60)
-        windows, targets = build_training_windows(
+        windows, targets, stamps = build_training_windows(
             training_frames,
             predictor._prepare_features,
             sequence_length=60,
             horizon_days=30,
         )
         assert windows.ndim == 3
-        assert windows.shape[0] == targets.shape[0]
+        assert windows.shape[0] == targets.shape[0] == stamps.shape[0]
         assert windows.shape[1] == 60
         assert np.isfinite(windows).all()
         assert np.isfinite(targets).all()
+        # Sorted, because fit_windows splits on row order and purges on these.
+        assert (np.diff(stamps) >= np.timedelta64(0, "ns")).all()
 
     def test_build_training_windows_rejects_empty_input(self):
         with pytest.raises(ValueError):
@@ -84,10 +90,10 @@ class TestGradientBoostCore:
 
     def test_fit_windows_produces_sane_metrics(self, training_frames):
         predictor = LSTMPredictor(sequence_length=60)
-        windows, targets = build_training_windows(
+        windows, targets, stamps = build_training_windows(
             training_frames, predictor._prepare_features, 60, 30
         )
-        artifact, metrics = fit_windows(windows, targets, purge=30)
+        artifact, metrics = fit_windows(windows, targets, stamps=stamps, purge_days=44)
 
         assert metrics["training_windows"] == len(windows)
         assert metrics["validation_mae"] >= 0
@@ -235,7 +241,7 @@ class TestChronologicalPooling:
         # Deliberately out of order: appending frame-by-frame would put every
         # `late` window first, and the 80/20 split in fit_windows would then hold
         # out a different *ticker* while reporting a time split.
-        windows, _ = build_training_windows(
+        windows, _, _ = build_training_windows(
             [late, early], predictor._prepare_features, 60, 30
         )
         np.testing.assert_allclose(
@@ -250,15 +256,53 @@ class TestChronologicalPooling:
             atol=1e-9,
         )
 
-    def test_purge_drops_windows_whose_label_spans_the_split(self, training_frames):
+    def test_purge_is_measured_in_days_not_rows(self, training_frames):
+        """
+        The purge has to clear a *time* gap, not a row count.
+
+        Counting rows was the bug: the pool is date-sorted, so every ticker
+        contributes a window for the same date. On the real nine-ticker set a
+        30-row purge spanned 2018-04-09 to 2018-04-12 -- two trading sessions
+        against a thirty-session label -- leaving ~28 sessions of overlap in
+        training and inflating the reported skill. A row-count purge passes the
+        old assertion (`train_rows == unpurged - 30`) no matter how many tickers
+        share a date, which is why that assertion caught nothing.
+        """
         predictor = LSTMPredictor(sequence_length=60)
-        windows, targets = build_training_windows(
+        windows, targets, stamps = build_training_windows(
             training_frames, predictor._prepare_features, 60, 30
         )
-        _, unpurged = fit_windows(windows, targets, purge=0)
-        _, purged = fit_windows(windows, targets, purge=30)
+        purge_days = 44
+        _, purged = fit_windows(
+            windows, targets, stamps=stamps, purge_days=purge_days
+        )
 
-        # Same validation set; 30 fewer training rows, being exactly the ones
-        # whose 30-day forward label resolves inside the validation period.
-        assert purged["train_rows"] == unpurged["train_rows"] - 30
-        assert purged["training_windows"] == unpurged["training_windows"]
+        split = int(len(windows) * 0.8)
+        train_rows = purged["train_rows"]
+        gap = stamps[split] - stamps[train_rows - 1]
+        assert gap >= np.timedelta64(purge_days, "D"), (
+            f"last training window is only {gap} before the split date"
+        )
+        # And it purged by dropping whole dates, so with three frames sharing one
+        # calendar it must have dropped far more than `purge_days` rows.
+        assert purged["purged_rows"] > purge_days
+        assert purged["purge_days"] == purge_days
+
+    def test_purge_raises_rather_than_training_on_a_handful_of_rows(self):
+        """
+        `max(1, split - purge)` clamped, so a dataset barely past the 40-window
+        guard trained on a couple of rows and still wrote an artifact with a
+        confidence derived from a handful of validation rows.
+        """
+        rows = MIN_TRAIN_ROWS + 100
+        windows = np.random.default_rng(0).normal(size=(rows, 4, 2))
+        targets = np.zeros(rows)
+        # Every window inside one week, so any real purge clears the lot.
+        stamps = np.array(
+            [np.datetime64("2024-01-01") + np.timedelta64(i % 5, "D") for i in range(rows)],
+            dtype="datetime64[ns]",
+        )
+        stamps.sort()
+
+        with pytest.raises(ValueError, match="training rows"):
+            fit_windows(windows, targets, stamps=stamps, purge_days=44)

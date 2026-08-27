@@ -221,13 +221,24 @@ named in this doc. Regenerate with `npm run train:ml` and commit the refreshed f
 the data goes stale enough to matter.
 
 > **Measured skill — read before trusting these numbers.** Both gradient-boosted slots
-> report a small positive `skill_vs_no_change`: **0.035** (LSTM slot, validation MAE 0.0712
-> vs a 0.0738 "no change" baseline) and **0.030** (GAN slot, 0.0715 vs 0.0738), measured on
-> a held-out final 20% *of dates* with a 30-day purge at the boundary. A 3–3.5% error
-> reduction at a 30-day horizon is a real edge and a thin one; treat the confidence score
-> (≈41.7) as the honest read, and do not size a position on either slot alone. The Ensemble
-> weights the LSTM slot at 0.15 — see the comment in `main.py` for why that did not move.
-> Re-check `artifacts/generated/*_metadata.json` after any retrain.
+> report a small positive `skill_vs_no_change`: **0.036** (LSTM slot, validation MAE 0.0711
+> vs a 0.0738 "no change" baseline) and **0.029** (GAN slot, 0.0717 vs 0.0738), measured on
+> a held-out final 20% *of dates* with a 47-calendar-day purge at the boundary. A 3–3.6%
+> error reduction at a 30-day horizon is a real edge and a thin one; treat the confidence
+> score (≈41.6) as the honest read, and do not size a position on either slot alone. The
+> Ensemble weights the LSTM slot at 0.15 — see the comment in `main.py` for why that did not
+> move. Re-check `artifacts/generated/*_metadata.json` after any retrain.
+>
+> **The purge is in calendar days, not rows, and that distinction is load-bearing.** The
+> pool is date-sorted, so all nine tickers contribute a window for the same date. A 30-*row*
+> purge therefore spanned 2018-04-09 to 2018-04-12 — two trading sessions against a
+> thirty-session label — leaving roughly 28 sessions of overlap in training. `purge_days`
+> now clears a real time gap (`horizon_days * 7 / 5 + 5`, generous because market holidays
+> widen sessions-to-calendar), and `purged_rows` in the metadata records how many rows that
+> removed: 296 and 282, versus 30 before. Correcting it moved the reported skill from 0.035
+> to 0.036 (LSTM) and 0.030 to 0.029 (GAN) — i.e. **the earlier figures were not materially
+> inflated**; the leak mattered for correctness, not for the headline. Do not read the fix
+> as having rescued a bad number.
 >
 > These numbers replace a previously reported `skill_vs_no_change: 0.0`. Three defects were
 > responsible, all of them in how the data reached the booster rather than in the booster:

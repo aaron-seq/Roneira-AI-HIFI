@@ -456,6 +456,72 @@ class TestTechnicalNewIndicators:
         avwap = next(i for i in result["indicators"] if i["name"] == "Anchored VWAP")
         assert avwap["signal"] == "Neutral"
 
+    def test_unwarmed_indicators_abstain_instead_of_voting(self, ta_analyzer):
+        """
+        A frame too short to warm the rolling windows must produce Neutral, not a
+        direction invented from a placeholder.
+
+        `_last` returning a plain 0.0 made two indicators vote on nothing: RSI 0
+        is *maximally oversold*, so it read Buy, and 0.0 as a Bollinger band put
+        price above the upper band, so it read Sell. Before `_last` existed the
+        NaN made every comparison False and both correctly abstained, so this is
+        the regression that introduced.
+        """
+        frame = self._trend(0.004, periods=12)
+        result = ta_analyzer.analyze(frame, horizon_days=30)
+        by_name = {i["name"]: i for i in result["indicators"]}
+
+        # 14- and 20-session windows cannot be warm at 12 rows.
+        assert by_name["RSI (14)"]["signal"] == "Neutral", by_name["RSI (14)"]
+        assert by_name["Bollinger Bands"]["signal"] == "Neutral", by_name["Bollinger Bands"]
+        # And the reported values are readable numbers, not 0.0 placeholders.
+        assert by_name["RSI (14)"]["value"] == 50.0
+        assert by_name["Bollinger Bands"]["value"] > 0.0
+
+    def test_anchored_vwap_votes_in_a_sustained_trend(self, ta_analyzer):
+        """
+        The regime the indicator exists to read must not come out Neutral.
+
+        Anchoring on a plain argmax/argmin of the lookback put the anchor on the
+        *latest* bar in any sustained trend, so the segment was one bar long, its
+        VWAP equalled the current price, and neither strict comparison could
+        fire. Both a clean uptrend and a clean downtrend returned Neutral.
+        """
+        up = ta_analyzer.analyze(self._trend(0.004, periods=200), horizon_days=30)
+        down = ta_analyzer.analyze(self._trend(-0.004, periods=200), horizon_days=30)
+
+        assert next(i for i in up["indicators"] if i["name"] == "Anchored VWAP")["signal"] == "Buy"
+        assert next(i for i in down["indicators"] if i["name"] == "Anchored VWAP")["signal"] == "Sell"
+
+    def test_anchored_vwap_needs_a_segment_to_average_over(self, ta_analyzer):
+        """Fewer bars than `min_segment` leaves no anchor candidate at all."""
+        tiny = self._trend(0.004, periods=15)
+        assert ta_analyzer._anchored_vwap(
+            tiny["High"], tiny["Low"], tiny["Close"], tiny["Volume"], min_segment=20
+        ) == (None, None)
+
+    def test_adx_and_supertrend_share_one_atr(self, ta_analyzer):
+        """
+        `_adx` used to inline its own copy of the true-range calculation, so a
+        later switch to Wilder smoothing would have moved only one of the two.
+        """
+        frame = self._trend(0.004, periods=150)
+        calls = []
+        original = ta_analyzer._atr
+
+        def counting_atr(*args, **kwargs):
+            calls.append(1)
+            return original(*args, **kwargs)
+
+        ta_analyzer._atr = counting_atr
+        try:
+            ta_analyzer._adx(frame["High"], frame["Low"], frame["Close"], 14)
+            ta_analyzer._supertrend(frame["High"], frame["Low"], frame["Close"])
+        finally:
+            ta_analyzer._atr = original
+
+        assert len(calls) == 2, "both indicators must route through _atr"
+
     def test_last_falls_back_when_the_window_never_warms_up(self, ta_analyzer):
         all_nan = pd.Series([np.nan, np.nan, np.nan])
         assert ta_analyzer._last(all_nan, default=50.0) == 50.0
