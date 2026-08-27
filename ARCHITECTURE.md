@@ -182,7 +182,7 @@ out first.
 | Model | Kind | Trained? |
 |---|---|---|
 | `RANDOM_FOREST` | sklearn RandomForest, refit per request with TimeSeriesSplit | yes, per request (~2.6s) |
-| `TECHNICAL` | rule-based indicators (RSI, MACD, Bollinger, EMA, Stochastic, ADX) | n/a — deterministic |
+| `TECHNICAL` | rule-based indicators (RSI, MACD, Bollinger, EMA, Stochastic, ADX, Supertrend, Ichimoku, Anchored VWAP) | n/a — deterministic |
 | `PVD_MOMENTUM` | price/volume/divergence momentum engine | n/a — deterministic |
 | `LSTM` slot | gradient-boosted (xgboost), 60-step feature windows | yes, offline artifact |
 | `GAN` slot | gradient-boosted (xgboost), 30-step feature windows | yes, offline artifact |
@@ -221,11 +221,51 @@ named in this doc. Regenerate with `npm run train:ml` and commit the refreshed f
 the data goes stale enough to matter.
 
 > **Measured skill — read before trusting these numbers.** Both gradient-boosted slots
-> currently report `skill_vs_no_change: 0.0`: validation MAE ≈ 0.069 against a 0.068 "no
-> change" baseline. They are trained on real data but show **no demonstrated edge** at a
-> 30-day horizon. Confidence is derived from that measurement rather than asserted, and
-> the Ensemble weights the LSTM slot at 0.15 accordingly. Re-check
-> `artifacts/generated/lstm_metadata.json` after any retrain before raising it.
+> report a small positive `skill_vs_no_change`: **0.036** (LSTM slot, validation MAE 0.0711
+> vs a 0.0738 "no change" baseline) and **0.029** (GAN slot, 0.0717 vs 0.0738), measured on
+> a held-out final 20% *of dates* with a 47-calendar-day purge at the boundary. A 3–3.6%
+> error reduction at a 30-day horizon is a real edge and a thin one; treat the confidence
+> score (≈41.6) as the honest read, and do not size a position on either slot alone. The
+> Ensemble weights the LSTM slot at 0.15 — see the comment in `main.py` for why that did not
+> move. Re-check `artifacts/generated/*_metadata.json` after any retrain.
+>
+> **The purge is in calendar days, not rows, and that distinction is load-bearing.** The
+> pool is date-sorted, so all nine tickers contribute a window for the same date. A 30-*row*
+> purge therefore spanned 2018-04-09 to 2018-04-12 — two trading sessions against a
+> thirty-session label — leaving roughly 28 sessions of overlap in training. `purge_days`
+> now clears a real time gap (`horizon_days * 7 / 5 + 5`, generous because market holidays
+> widen sessions-to-calendar), and `purged_rows` in the metadata records how many rows that
+> removed: 296 and 282, versus 30 before. Correcting it moved the reported skill from 0.035
+> to 0.036 (LSTM) and 0.030 to 0.029 (GAN) — i.e. **the earlier figures were not materially
+> inflated**; the leak mattered for correctness, not for the headline. Do not read the fix
+> as having rescued a bad number.
+>
+> These numbers replace a previously reported `skill_vs_no_change: 0.0`. Three defects were
+> responsible, all of them in how the data reached the booster rather than in the booster:
+>
+> 1. **The top feature was a function of the caller's `period=` argument.**
+>    `close_norm = Close / Close.iloc[0]` carried the highest importance in both models
+>    (0.31 GAN, 0.18 LSTM). Training fetched `period="max"`; `main.py` serves `"1y"`/`"2y"`.
+>    The same session scored ≈8.8 during training and ≈1.4 in production, so production
+>    inputs landed outside the range the split points were fitted for. Measured directly:
+>    the same 30 sessions predicted −3.1% at training depth and −1.2% at serving depth.
+>    Replaced by `Close / Close.rolling(150).mean()` — causal, and identical at any fetch
+>    depth a 1-year window can supply.
+> 2. **The LSTM slot's `_normalize` was a frame-wide min-max**, applied before windowing.
+>    Every training window was therefore scaled by statistics that included its own future,
+>    and the divisor differed between a 25-year fit frame and a 1-year serving frame. The
+>    tree path no longer normalises at all; the remaining features are ratios and returns,
+>    and a tree only needs the scale it was fitted on. `_normalize` stays for the Keras path.
+> 3. **The "chronological" 80/20 split was a ticker holdout.** `build_training_windows`
+>    appended frame after frame, so the last 20% of rows was the last few *tickers*, not the
+>    last few years. Windows are now sorted by date across all frames, and `fit_windows`
+>    purges `horizon_days` rows at the boundary so no training label resolves inside the
+>    validation period.
+>
+> `ml/tests/test_training.py::TestFeatureDepthInvariance` fails if (1) or (2) returns;
+> `TestChronologicalPooling` fails if (3) does. Both were confirmed to fail against the old
+> code before being committed. Retraining also went from 502s to 24s for the LSTM slot
+> (`tree_method="hist"`).
 
 ## Database (Supabase Postgres)
 

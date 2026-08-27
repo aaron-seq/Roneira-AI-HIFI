@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useDeferredValue, useEffect, useState } from "react";
+import { Suspense, useDeferredValue, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -71,7 +71,19 @@ function PredictPageContent() {
   const searchParams = useSearchParams();
   const presetTicker = searchParams.get("ticker");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStock, setSelectedStock] = useState<StockOption | null>(null);
+  // Derived once at mount, not synced in an effect: a ?ticker= deep link only
+  // ever arrives with a fresh mount (screener, watchlist and news all navigate
+  // in from another page). The old effect also re-applied the preset every time
+  // the field was cleared, so typing over a deep-linked ticker snapped back.
+  const [selectedStock, setSelectedStock] = useState<StockOption | null>(() =>
+    presetTicker
+      ? {
+          symbol: presetTicker,
+          name: presetTicker,
+          exchange: presetTicker.endsWith(".NS") ? "NSE" : "NASDAQ",
+        }
+      : null
+  );
   const [timeframe, setTimeframe] = useState("1month");
   const [model, setModel] = useState("ENSEMBLE");
   const [showSearch, setShowSearch] = useState(false);
@@ -80,16 +92,6 @@ function PredictPageContent() {
   const predictionMutation = usePredictionMutation();
   const result = predictionMutation.data;
   const isPositive = result ? result.price_change >= 0 : false;
-
-  useEffect(() => {
-    if (presetTicker && !selectedStock) {
-      setSelectedStock({
-        symbol: presetTicker,
-        name: presetTicker,
-        exchange: presetTicker.endsWith(".NS") ? "NSE" : "NASDAQ",
-      });
-    }
-  }, [presetTicker, selectedStock]);
 
   async function handleAnalyze() {
     if (!selectedStock) {

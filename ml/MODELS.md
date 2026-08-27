@@ -65,14 +65,49 @@ central estimate plus an uncertainty band.
   generation, not precise forecasts. Artifact-dependent like the LSTM.
 
 ### 4. Technical Analysis — `app/models/technical_analysis.py`
-Pure rule-based engine: RSI, MACD, Bollinger Bands, Stochastic RSI, ADX, EMA
-crossovers, aggregated into a buy/sell/neutral tally. No training, fully
-deterministic and explainable.
+Pure rule-based engine over nine indicators: RSI, MACD, Bollinger Bands,
+Stochastic RSI, ADX, EMA crossovers, Supertrend (10,3), Ichimoku Cloud and
+Anchored VWAP. No training, fully deterministic and explainable.
+
+Each indicator votes Buy / Sell / Neutral and the verdict is the **net vote**,
+`(buy - sell) / total`, mapped by `_aggregate`. Two properties that matter:
+
+- **Neutral means neutral.** An indicator that abstains reduces conviction; it
+  does not add direction. The previous aggregate was `buy / total`, which counted
+  every abstention as evidence against buying and never read `sell` at all — a
+  flat tape with one buy, one sell and four abstentions was reported as `SELL`,
+  and a sustained downtrend with a 2-2 mean-reversion/trend split as `HOLD`.
+- **An indicator that cannot be computed abstains** rather than raising. Ichimoku
+  needs 52 sessions; Anchored VWAP needs non-zero volume, which index tickers
+  like `^NSEI` do not report, plus at least `min_segment` bars between its anchor
+  and the last bar. A short or volume-less frame degrades conviction instead of
+  losing the whole analysis to the exception handler.
+
+  Abstaining correctly needs a *neutral* fallback, not just a non-crashing one.
+  `_last` returning a bare `0.0` made two indicators vote on no evidence: RSI 0 is
+  maximally oversold, so an unwarmed RSI read Buy, and 0.0 as a Bollinger band put
+  price above the upper band, so an unwarmed Bollinger read Sell. RSI now falls
+  back to 50.0, and the Bollinger bands are checked for warm-up explicitly —
+  a band is a threshold, so no scalar stand-in is neutral with respect to it.
+
+  Anchored VWAP has the mirror-image trap: anchoring on a plain argmax/argmin of
+  the lookback put the anchor on the *latest* bar in any sustained trend, making
+  the segment one bar long and its VWAP equal to the current price. Neither strict
+  comparison could fire, so it abstained in exactly the trends it exists to read.
+  `min_segment` keeps the anchor at least 20 bars back, which is also what a
+  trader means by an anchor: a swing that has already formed.
+
+Score is 0–10 with 5.0 as "no opinion", so it can never disagree with the label,
+and confidence is derived from the net fraction so it does not inflate when the
+basket size changes.
 
 - **Use it when** you need an instant, transparent, short-horizon read that a
   human can audit indicator-by-indicator.
 - **Watch out for**: it encodes fixed heuristics — it cannot adapt to a regime
-  its thresholds weren't designed for.
+  its thresholds weren't designed for. The mean-reversion indicators (RSI,
+  Bollinger, Stochastic) and the trend indicators (EMA, ADX, Supertrend,
+  Ichimoku) genuinely disagree in a strong trend, and `HOLD` on a 2-2 split is an
+  honest report of that rather than a bug.
 
 ### 5. PVD Momentum (PDM) — `app/models/pdm_momentum.py`
 The house strategy: treats price and volume as functions of time and uses their
@@ -91,7 +126,8 @@ recoverable from git history as a starting point.
 
 ### 6. Ensemble — `app/models/ensemble.py`
 Combines Random Forest, Technical, PDM, and LSTM via confidence-weighted
-averaging (default static weights `[0.3, 0.2, 0.2, 0.3]` in `main.py`).
+averaging (default static weights `[0.35, 0.25, 0.25, 0.15]` in `main.py`, in that
+order).
 
 - **Use it as the default** for general-purpose predictions — averaging
   decorrelated models reduces the variance of any single one.

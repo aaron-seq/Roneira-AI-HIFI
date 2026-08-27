@@ -1,7 +1,13 @@
 """
 Technical Analysis Engine
-Computes RSI, MACD, Bollinger Bands, Stochastic RSI, ADX, EMA crossovers
-and generates aggregate signals.
+Computes RSI, MACD, Bollinger Bands, Stochastic RSI, ADX, EMA crossovers,
+Supertrend, Ichimoku Cloud and Anchored VWAP, and generates aggregate signals.
+
+Every indicator votes Buy / Sell / Neutral and the verdict is the *net* vote
+(see `analyze`). An indicator that cannot be computed from the data on hand --
+Ichimoku needs 52 sessions, Anchored VWAP needs non-zero volume -- votes
+Neutral rather than raising, so a short frame degrades conviction instead of
+losing the whole analysis to the exception handler.
 """
 import logging
 import numpy as np
@@ -21,44 +27,50 @@ class TechnicalAnalyzer:
             low = df["Low"]
             volume = df["Volume"]
 
-            indicators = []
-            buy_signals = 0
-            sell_signals = 0
-            total_indicators = 0
+            indicators: list[dict] = []
 
             # 1. RSI (14)
             rsi = self._rsi(close, 14)
-            rsi_val = float(rsi.iloc[-1])
-            rsi_prev = float(rsi.iloc[-2]) if len(rsi) > 1 else rsi_val
+            # 50.0, not 0.0: the default has to be the *neutral* reading of each
+            # scale. RSI 0 is maximally oversold, so a frame too short to warm
+            # the 14-session window was voting Buy on no evidence at all.
+            rsi_val = self._last(rsi, default=50.0)
+            rsi_prev = float(rsi.iloc[-2]) if len(rsi) > 1 and np.isfinite(rsi.iloc[-2]) else rsi_val
             rsi_signal = (
                 "Buy"
                 if rsi_val < 35 and rsi_val >= rsi_prev
                 else ("Sell" if rsi_val > 75 and rsi_val < rsi_prev else "Neutral")
             )
             indicators.append({"name": "RSI (14)", "value": round(rsi_val, 2), "signal": rsi_signal})
-            if rsi_signal == "Buy": buy_signals += 1
-            elif rsi_signal == "Sell": sell_signals += 1
-            total_indicators += 1
 
             # 2. MACD (12, 26, 9)
-            macd, signal_line, histogram = self._macd(close)
-            macd_val = float(histogram.iloc[-1])
+            macd, _, histogram = self._macd(close)
+            macd_val = self._last(histogram)
             macd_signal = "Buy" if macd_val > 0 else ("Sell" if macd_val < 0 else "Neutral")
-            indicators.append({"name": "MACD", "value": round(float(macd.iloc[-1]), 4), "signal": macd_signal})
-            if macd_signal == "Buy": buy_signals += 1
-            elif macd_signal == "Sell": sell_signals += 1
-            total_indicators += 1
+            indicators.append({"name": "MACD", "value": round(self._last(macd), 4), "signal": macd_signal})
 
             # 3. Bollinger Bands (20, 2)
             bb_upper, bb_mid, bb_lower = self._bollinger(close, 20, 2)
             current = float(close.iloc[-1])
-            bb_signal = "Buy" if current <= float(bb_lower.iloc[-1]) else (
-                "Sell" if current >= float(bb_upper.iloc[-1]) else "Neutral"
-            )
-            indicators.append({"name": "Bollinger Bands", "value": round(float(bb_mid.iloc[-1]), 2), "signal": bb_signal})
-            if bb_signal == "Buy": buy_signals += 1
-            elif bb_signal == "Sell": sell_signals += 1
-            total_indicators += 1
+            # No scalar default works here: a band is a threshold, and any
+            # stand-in number sits on one side of the price. 0.0 made
+            # `current >= upper` true, so a sub-20-session frame voted Sell.
+            # The bands have to be checked for warm-up explicitly.
+            bb_lower_val = self._last(bb_lower, default=float("nan"))
+            bb_upper_val = self._last(bb_upper, default=float("nan"))
+            if not np.isfinite([bb_lower_val, bb_upper_val]).all():
+                bb_signal = "Neutral"
+            elif current <= bb_lower_val:
+                bb_signal = "Buy"
+            elif current >= bb_upper_val:
+                bb_signal = "Sell"
+            else:
+                bb_signal = "Neutral"
+            indicators.append({
+                "name": "Bollinger Bands",
+                "value": round(self._last(bb_mid, default=current), 2),
+                "signal": bb_signal,
+            })
 
             # 4. EMA Crossover (20/50)
             ema20 = close.ewm(span=20).mean()
@@ -66,59 +78,105 @@ class TechnicalAnalyzer:
             ema_cross = float(ema20.iloc[-1]) > float(ema50.iloc[-1])
             ema_signal = "Buy" if ema_cross else "Sell"
             indicators.append({"name": "EMA 20/50", "value": round(float(ema20.iloc[-1]), 2), "signal": ema_signal})
-            if ema_signal == "Buy": buy_signals += 1
-            elif ema_signal == "Sell": sell_signals += 1
-            total_indicators += 1
 
             # 5. Stochastic RSI
             stoch_rsi = self._stochastic_rsi(close, 14)
-            stoch_val = float(stoch_rsi.iloc[-1])
-            stoch_prev = float(stoch_rsi.iloc[-2]) if len(stoch_rsi) > 1 else stoch_val
+            stoch_val = self._last(stoch_rsi, default=50.0)
+            stoch_prev = (
+                float(stoch_rsi.iloc[-2])
+                if len(stoch_rsi) > 1 and np.isfinite(stoch_rsi.iloc[-2])
+                else stoch_val
+            )
             stoch_signal = (
                 "Buy"
                 if stoch_val < 20 and stoch_val >= stoch_prev
                 else ("Sell" if stoch_val > 80 and stoch_val < stoch_prev else "Neutral")
             )
             indicators.append({"name": "Stochastic RSI", "value": round(stoch_val, 2), "signal": stoch_signal})
-            if stoch_signal == "Buy": buy_signals += 1
-            elif stoch_signal == "Sell": sell_signals += 1
-            total_indicators += 1
 
             # 6. ADX (Average Directional Index)
             adx = self._adx(high, low, close, 14)
-            adx_val = float(adx.iloc[-1])
+            adx_val = self._last(adx)
             adx_signal = "Buy" if adx_val > 25 and ema_cross else (
                 "Sell" if adx_val > 25 and not ema_cross else "Neutral"
             )
             indicators.append({"name": "ADX", "value": round(adx_val, 2), "signal": adx_signal})
-            if adx_signal == "Buy": buy_signals += 1
-            elif adx_signal == "Sell": sell_signals += 1
-            total_indicators += 1
 
-            # Aggregate signal
-            signal_ratio = buy_signals / total_indicators if total_indicators > 0 else 0.5
-            if signal_ratio >= 0.7:
-                overall = "STRONG_BUY"
-                score = 8 + signal_ratio * 2
-            elif signal_ratio >= 0.5:
-                overall = "BUY"
-                score = 6 + signal_ratio * 2
-            elif signal_ratio >= 0.3:
-                overall = "HOLD"
-                score = 4 + signal_ratio * 2
-            elif signal_ratio >= 0.15:
-                overall = "SELL"
-                score = 2 + signal_ratio * 2
+            # 7. Supertrend (10, 3) -- an ATR-banded trailing stop. Which side of
+            # it price is on IS the signal; that is the whole point of it.
+            supertrend, st_direction = self._supertrend(high, low, close, 10, 3.0)
+            st_val = self._last(supertrend, default=current)
+            st_dir = int(st_direction.iloc[-1]) if len(st_direction) else 0
+            st_signal = "Buy" if st_dir > 0 else ("Sell" if st_dir < 0 else "Neutral")
+            indicators.append({"name": "Supertrend (10,3)", "value": round(st_val, 2), "signal": st_signal})
+
+            # 8. Ichimoku Cloud -- price clear of the cloud *and* tenkan/kijun
+            # agreeing. Either alone is the weaker read, so both are required.
+            tenkan, kijun, span_a, span_b = self._ichimoku(high, low, close)
+            span_a_val = self._last(span_a, default=float("nan"))
+            span_b_val = self._last(span_b, default=float("nan"))
+            tk_val = self._last(tenkan, default=float("nan"))
+            kj_val = self._last(kijun, default=float("nan"))
+            if not np.isfinite([span_a_val, span_b_val, tk_val, kj_val]).all():
+                ichimoku_signal = "Neutral"
+            elif current > max(span_a_val, span_b_val) and tk_val > kj_val:
+                ichimoku_signal = "Buy"
+            elif current < min(span_a_val, span_b_val) and tk_val < kj_val:
+                ichimoku_signal = "Sell"
             else:
-                overall = "STRONG_SELL"
-                score = signal_ratio * 2
+                ichimoku_signal = "Neutral"
+            indicators.append({
+                "name": "Ichimoku Cloud",
+                "value": round(float(kj_val), 2) if np.isfinite(kj_val) else 0.0,
+                "signal": ichimoku_signal,
+            })
+
+            # 9. Anchored VWAP -- anchored at both the highest high and the lowest
+            # low of the lookback, the two anchors that actually get drawn. Above
+            # both is participation-weighted strength; below both, weakness.
+            avwap_high, avwap_low = self._anchored_vwap(high, low, close, volume)
+            if avwap_high is None or avwap_low is None:
+                avwap_signal, avwap_value = "Neutral", 0.0
+            else:
+                avwap_value = avwap_low
+                if current > avwap_high and current > avwap_low:
+                    avwap_signal = "Buy"
+                elif current < avwap_high and current < avwap_low:
+                    avwap_signal = "Sell"
+                else:
+                    avwap_signal = "Neutral"
+            indicators.append({
+                "name": "Anchored VWAP",
+                "value": round(float(avwap_value), 2),
+                "signal": avwap_signal,
+            })
+
+            # ---- Aggregate ----
+            # Net vote, not buy-share. `buy / total` counted every Neutral as
+            # evidence against buying, so a flat tape with one buy and one sell
+            # among four abstentions scored 0.167 and was reported as SELL, while
+            # a 2-2 split scored 0.333 and was reported as HOLD. Neutral now means
+            # neutral, and abstentions reduce conviction instead of supplying
+            # direction: net runs -1 (unanimous sell) to +1 (unanimous buy) and
+            # sits at 0 both when nobody votes and when the votes cancel.
+            buy_signals = sum(1 for ind in indicators if ind["signal"] == "Buy")
+            sell_signals = sum(1 for ind in indicators if ind["signal"] == "Sell")
+            total_indicators = len(indicators)
+            net, overall, score = self._aggregate(
+                buy_signals, sell_signals, total_indicators
+            )
 
             # Predicted price from TA trend projection
             recent_trend = float(close.pct_change(5).iloc[-1])
             projected_daily = recent_trend / 5
             predicted_price = current * (1 + projected_daily * horizon_days * 0.3)
 
-            confidence = min(85, max(30, 50 + (buy_signals - sell_signals) * 8))
+            # Keyed off `net`, not the raw vote difference. `(buy - sell) * 8`
+            # saturated the 85 ceiling at a 5-vote margin, so going from 6
+            # indicators to 9 would have quietly made every read more confident
+            # without any new agreement behind it. As a fraction it stays
+            # proportional whatever the basket size.
+            confidence = min(85.0, max(30.0, 50.0 + net * 35.0))
 
             return {
                 "predicted_price": round(predicted_price, 2),
@@ -129,12 +187,13 @@ class TechnicalAnalyzer:
                     "sentiment": round(confidence * 0.5, 1),
                     "historical": round(confidence * 0.8, 1),
                 },
-                "short_term_signal": {"signal": overall, "score": round(min(10, score), 1)},
-                "long_term_signal": {"signal": overall, "score": round(min(10, score - 0.5), 1)},
+                "short_term_signal": {"signal": overall, "score": round(score, 1)},
+                "long_term_signal": {"signal": overall, "score": round(max(0.0, score - 0.5), 1)},
                 "indicators": indicators,
                 "buy_count": buy_signals,
                 "sell_count": sell_signals,
                 "neutral_count": total_indicators - buy_signals - sell_signals,
+                "net_vote": round(net, 3),
             }
 
         except Exception as e:
@@ -144,6 +203,70 @@ class TechnicalAnalyzer:
                 "confidence": 25.0,
                 "indicators": [],
             }
+
+    @staticmethod
+    def _aggregate(buy: int, sell: int, total: int) -> tuple[float, str, float]:
+        """
+        Turn the vote tally into (net, label, score).
+
+        Net vote, not buy-share. The previous `buy / total` counted every
+        abstention as evidence against buying and never used `sell` at all, so
+        Neutral was structurally bearish: nine abstentions -- no information
+        whatsoever -- scored 0.0 and came out STRONG_SELL, and a single buy
+        against eight abstentions came out STRONG_SELL too, despite a positive
+        net vote. Here net runs -1 (unanimous sell) to +1 (unanimous buy) and
+        sits at 0 both when nobody votes and when the votes cancel.
+
+        Score is 0-10 with 5.0 as "no opinion", so it can never point the
+        opposite way to the label.
+        """
+        net = (buy - sell) / total if total else 0.0
+
+        if net >= 0.5:
+            label = "STRONG_BUY"
+        elif net >= 0.2:
+            label = "BUY"
+        elif net > -0.2:
+            label = "HOLD"
+        elif net > -0.5:
+            label = "SELL"
+        else:
+            label = "STRONG_SELL"
+
+        return net, label, min(10.0, max(0.0, 5.0 + net * 5.0))
+
+    @staticmethod
+    def _last(series: pd.Series, default: float = 0.0) -> float:
+        """
+        Last finite value, or `default`.
+
+        Every indicator here is a rolling window, so the first `period` rows are
+        NaN by construction and a frame shorter than the window is *all* NaN.
+        Reading `.iloc[-1]` blind put a NaN into the comparison chain, which is
+        False against everything and quietly biased the vote.
+        """
+        if len(series) == 0:
+            return default
+        value = float(series.iloc[-1])
+        return value if np.isfinite(value) else default
+
+    def _atr(self, high: pd.Series, low: pd.Series, close: pd.Series, period: int = 14) -> pd.Series:
+        """
+        Average true range: a simple rolling mean of true range, **not** Wilder's
+        exponential smoothing.
+
+        The difference matters for anyone comparing these numbers against a
+        charting platform, which will use Wilder. Both ADX and Supertrend read
+        this one function so that swapping in Wilder later is a one-line change
+        that cannot move only half of them -- which is what would have happened
+        while `_adx` kept its own inline copy of this same calculation.
+        """
+        tr = pd.concat([
+            high - low,
+            (high - close.shift()).abs(),
+            (low - close.shift()).abs(),
+        ], axis=1).max(axis=1)
+        return tr.rolling(period).mean()
 
     def _rsi(self, series: pd.Series, period: int = 14) -> pd.Series:
         delta = series.diff()
@@ -178,16 +301,168 @@ class TechnicalAnalyzer:
         plus_dm = plus_dm.where((plus_dm > minus_dm) & (plus_dm > 0), 0)
         minus_dm = minus_dm.where((minus_dm > plus_dm) & (minus_dm > 0), 0)
 
-        tr = pd.concat([
-            high - low,
-            (high - close.shift()).abs(),
-            (low - close.shift()).abs(),
-        ], axis=1).max(axis=1)
-
-        atr = tr.rolling(period).mean()
+        atr = self._atr(high, low, close, period)
         plus_di = 100 * (plus_dm.rolling(period).mean() / atr)
         minus_di = 100 * (minus_dm.rolling(period).mean() / atr)
 
         dx = (abs(plus_di - minus_di) / (plus_di + minus_di)) * 100
         adx = dx.rolling(period).mean()
         return adx
+
+    def _supertrend(
+        self,
+        high: pd.Series,
+        low: pd.Series,
+        close: pd.Series,
+        period: int = 10,
+        multiplier: float = 3.0,
+    ) -> tuple[pd.Series, pd.Series]:
+        """
+        Supertrend: an ATR band that ratchets in the direction of the trend and
+        flips when price closes through it.
+
+        Returns (band, direction) where direction is +1 in an uptrend, -1 in a
+        downtrend, 0 while ATR is still warming up. The bands are path-dependent
+        -- each one can only tighten until a flip resets it -- so this is a loop
+        rather than a vectorised expression.
+        """
+        atr = self._atr(high, low, close, period)
+        hl2 = (high + low) / 2
+        upper_basic = (hl2 + multiplier * atr).values
+        lower_basic = (hl2 - multiplier * atr).values
+        closes = close.values
+
+        n = len(closes)
+        upper = np.full(n, np.nan)
+        lower = np.full(n, np.nan)
+        direction = np.zeros(n, dtype=int)
+        band = np.full(n, np.nan)
+
+        started = False
+        for i in range(n):
+            if not np.isfinite(upper_basic[i]) or not np.isfinite(lower_basic[i]):
+                continue
+
+            if not started:
+                # First bar with a usable ATR: seed the bands and assume the
+                # trend matches where price sits relative to the midpoint.
+                upper[i], lower[i] = upper_basic[i], lower_basic[i]
+                direction[i] = 1 if closes[i] >= hl2.values[i] else -1
+                band[i] = lower[i] if direction[i] > 0 else upper[i]
+                started = True
+                continue
+
+            prev = i - 1
+            # Ratchet: the upper band only falls while price stays under it, the
+            # lower band only rises while price stays above it.
+            upper[i] = (
+                min(upper_basic[i], upper[prev])
+                if closes[prev] <= upper[prev]
+                else upper_basic[i]
+            )
+            lower[i] = (
+                max(lower_basic[i], lower[prev])
+                if closes[prev] >= lower[prev]
+                else lower_basic[i]
+            )
+
+            if closes[i] > upper[prev]:
+                direction[i] = 1
+            elif closes[i] < lower[prev]:
+                direction[i] = -1
+            else:
+                direction[i] = direction[prev]
+
+            band[i] = lower[i] if direction[i] > 0 else upper[i]
+
+        return (
+            pd.Series(band, index=close.index),
+            pd.Series(direction, index=close.index),
+        )
+
+    def _ichimoku(
+        self,
+        high: pd.Series,
+        low: pd.Series,
+        close: pd.Series,
+        conversion: int = 9,
+        base: int = 26,
+        span_b_period: int = 52,
+    ) -> tuple[pd.Series, pd.Series, pd.Series, pd.Series]:
+        """
+        Ichimoku Kinko Hyo: tenkan-sen, kijun-sen, senkou span A and span B.
+
+        The two spans are shifted forward by `base`, which is what makes the
+        cloud sitting under today's price a projection of data from 26 sessions
+        ago. Reading `.iloc[-1]` off the shifted series therefore stays causal --
+        it is the cloud plotted at today's bar, not a peek at the future.
+
+        The chikou span (close shifted *back* 26) is deliberately not returned:
+        it can only be read against price 26 bars ago, so it says nothing about
+        the current bar and would tempt a look-ahead comparison.
+        """
+        def midpoint(window: int) -> pd.Series:
+            return (high.rolling(window).max() + low.rolling(window).min()) / 2
+
+        tenkan = midpoint(conversion)
+        kijun = midpoint(base)
+        span_a = ((tenkan + kijun) / 2).shift(base)
+        span_b = midpoint(span_b_period).shift(base)
+        return tenkan, kijun, span_a, span_b
+
+    def _anchored_vwap(
+        self,
+        high: pd.Series,
+        low: pd.Series,
+        close: pd.Series,
+        volume: pd.Series,
+        lookback: int = 252,
+        min_segment: int = 20,
+    ) -> tuple[float | None, float | None]:
+        """
+        VWAP anchored at the highest high and at the lowest low of the lookback.
+
+        Those are the two anchors traders actually draw: the swing high (where
+        trapped buyers sit) and the swing low (where the move began). Returns
+        (from_high, from_low), or (None, None) when there is no usable segment or
+        no volume to weight by -- index tickers like ^NSEI report Volume 0, and
+        an unweighted average dressed up as a VWAP would be a lie.
+
+        `min_segment` excludes the most recent bars from being *anchors*, and it
+        is what makes the indicator work at all. In any sustained trend the
+        extreme of the lookback is the latest bar, so anchoring on a plain
+        argmax/argmin gave a one-bar segment whose VWAP equalled the current
+        price -- neither strict comparison could fire and the indicator returned
+        Neutral in exactly the uptrends and downtrends it exists to read.
+        Requiring the anchor to be at least `min_segment` bars back also matches
+        what a trader means by an anchor: a swing that has already formed.
+        """
+        n = len(close)
+        window = min(lookback, n)
+        start = n - window
+        # Anchor candidates stop `min_segment` bars short of the end, so there is
+        # always a real accumulation segment to average over.
+        candidate_end = n - min_segment
+        if candidate_end <= start:
+            return None, None
+
+        highs = high.values[start:candidate_end]
+        lows = low.values[start:candidate_end]
+        if not np.isfinite(highs).any() or not np.isfinite(lows).any():
+            return None, None
+
+        typical = ((high + low + close) / 3).values
+        volumes = volume.values.astype(float)
+
+        def vwap_from(anchor: int) -> float | None:
+            weights = volumes[anchor:]
+            prices = typical[anchor:]
+            keep = np.isfinite(weights) & np.isfinite(prices)
+            total = weights[keep].sum()
+            if total <= 0:
+                return None
+            return float((prices[keep] * weights[keep]).sum() / total)
+
+        high_anchor = start + int(np.nanargmax(highs))
+        low_anchor = start + int(np.nanargmin(lows))
+        return vwap_from(high_anchor), vwap_from(low_anchor)

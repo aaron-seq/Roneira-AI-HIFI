@@ -98,11 +98,11 @@ roadmap. See [IDEAS.md](./IDEAS.md) for near-term and speculative extensions
 - **RandomForest** — refit per prediction request with `TimeSeriesSplit`, on engineered
   price/volume/volatility features (~2.6s per call, real, not cached).
 - **Technical** and **PVD Momentum** — deterministic rule-based signal engines (see below).
-- **LSTM and GAN slots** — gradient-boosted (`xgboost`), trained offline on 5 years of real
-  market data (9 tickers, ~10,400 windows each), artifacts committed to the repo. TensorFlow
+- **LSTM and GAN slots** — gradient-boosted (`xgboost`), trained offline on full available
+  history for 9 tickers (~93,000 windows each), artifacts committed to the repo. TensorFlow
   is not a dependency; see [ARCHITECTURE.md](./ARCHITECTURE.md#ml-service-ml) for why and
-  the measured skill of these two models (honestly: no edge over a naive "no change"
-  baseline at a 30-day horizon — the confidence score reflects that).
+  for the measured skill of these two models (a small but real edge over a naive "no change"
+  baseline at a 30-day horizon: 3.5% and 3.0% — the confidence score reflects that).
 - **Ensemble** — a weighted blend (0.35 / 0.25 / 0.25 / 0.15) that also returns each
   constituent model's own price target, confidence, and signal, plus an agreement score.
   The Predict page's model-spread view plots these against spot so you can see when models
@@ -125,8 +125,16 @@ roadmap. See [IDEAS.md](./IDEAS.md) for near-term and speculative extensions
 <details>
 <summary><strong>Technical analysis suite</strong></summary>
 
-Six indicators, each with its own buy/sell/neutral signal:
-RSI (14), MACD, Bollinger Bands, EMA 20/50, Stochastic RSI, ADX.
+Nine indicators, each with its own buy/sell/neutral signal:
+RSI (14), MACD, Bollinger Bands, EMA 20/50, Stochastic RSI, ADX,
+Supertrend (10,3), Ichimoku Cloud, Anchored VWAP.
+
+The verdict is the **net vote** — `(buy - sell) / total` — so an indicator that
+abstains reduces conviction rather than adding direction, and one that cannot be
+computed from the data on hand (Ichimoku needs 52 sessions; Anchored VWAP needs
+non-zero volume, which index tickers do not report) abstains instead of raising.
+See [ml/MODELS.md](./ml/MODELS.md) for what the previous buy-share aggregate got
+wrong.
 
 </details>
 

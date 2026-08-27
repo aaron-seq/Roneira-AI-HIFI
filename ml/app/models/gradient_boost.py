@@ -29,6 +29,7 @@ import logging
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 
 logger = logging.getLogger("roneira-ml.gradient_boost")
 
@@ -100,6 +101,11 @@ def build_estimator(n_estimators: int = 300, max_depth: int = 4):
             random_state=42,
             n_jobs=-1,
             objective="reg:squarederror",
+            # Histogram splits instead of the default exact scan. On the real
+            # training set (92k windows x 660 columns) exact took 502s for the
+            # LSTM slot; hist reaches the same validation error in a fraction of
+            # that, which is what makes `npm run train:ml` re-runnable.
+            tree_method="hist",
         )
 
     from sklearn.ensemble import GradientBoostingRegressor
@@ -112,18 +118,54 @@ def build_estimator(n_estimators: int = 300, max_depth: int = 4):
     )
 
 
+def _to_utc_naive(stamps) -> np.ndarray:
+    """
+    Normalise timestamps to tz-naive UTC datetime64.
+
+    yfinance returns a tz-aware index, and the default tickers span NSE and
+    NASDAQ, so the pool mixes offsets. Casting straight to datetime64[ns] warns
+    ("no explicit representation of timezones available") and silently keeps the
+    local wall-clock reading, which would interleave two exchanges' sessions by
+    up to ten hours when sorting. Converting to UTC first makes the ordering and
+    the purge cutoff mean the same thing for every ticker.
+    """
+    return pd.to_datetime(stamps, utc=True).tz_localize(None).to_numpy(
+        dtype="datetime64[ns]"
+    )
+
+
+MIN_TRAIN_ROWS = 500
+
+
 def fit_windows(
     windows: np.ndarray,
     targets: np.ndarray,
     n_estimators: int = 300,
     max_depth: int = 4,
+    stamps: np.ndarray | None = None,
+    purge_days: int = 0,
 ) -> tuple[GradientBoostArtifact, dict]:
     """
     Fit on 3-D sequence windows, returning the artifact and validation metrics.
 
     The split is chronological (no shuffling): these are overlapping time
     windows, so a random split would leak future information into training and
-    report an optimistic error.
+    report an optimistic error. `build_training_windows` sorts its output by
+    date for exactly this reason -- appending frame-by-frame made the last 20%
+    of rows *a different set of tickers* rather than a later period, so this
+    split measured cross-instrument transfer while reporting it as a time split.
+
+    `purge_days` removes training windows whose forward label resolves inside
+    the validation period. It is measured in **calendar days against `stamps`**,
+    not in rows. Counting rows was wrong once the pool was date-sorted: nine
+    tickers contribute a window for the same date, so a 30-row purge spanned two
+    trading sessions (measured: 2018-04-09 to 2018-04-12) while the label needed
+    thirty. Roughly 28 of the 30 sessions of overlap stayed in training and the
+    reported skill was optimistic.
+
+    Pass calendar days, generously: sessions-to-calendar is about 7/5 and market
+    holidays only widen it, so over-purging by a few days costs a little training
+    data and under-purging silently inflates the score.
     """
     X = windows.reshape(windows.shape[0], -1)
     y = np.asarray(targets, dtype=float).reshape(-1)
@@ -132,8 +174,25 @@ def fit_windows(
         raise ValueError("Not enough training windows for the gradient-boosted model.")
 
     split = int(len(X) * 0.8)
-    X_train, X_test = X[:split], X[split:]
-    y_train, y_test = y[:split], y[split:]
+    train_end = split
+    if stamps is not None and purge_days > 0:
+        stamp_array = _to_utc_naive(stamps)
+        if len(stamp_array) != len(X):
+            raise ValueError("stamps must line up 1:1 with the training windows.")
+        cutoff = stamp_array[split] - np.timedelta64(int(purge_days), "D")
+        train_end = int(np.searchsorted(stamp_array[:split], cutoff, side="left"))
+
+    # Raise rather than clamp. `max(1, ...)` meant a dataset barely past the
+    # 40-window guard trained on a couple of rows and still wrote an artifact,
+    # with a confidence derived from a handful of validation rows.
+    if train_end < MIN_TRAIN_ROWS:
+        raise ValueError(
+            f"Purging {purge_days} days leaves {train_end} training rows "
+            f"(minimum {MIN_TRAIN_ROWS}). Supply more history."
+        )
+
+    X_train, X_test = X[:train_end], X[split:]
+    y_train, y_test = y[:train_end], y[split:]
 
     estimator = build_estimator(n_estimators=n_estimators, max_depth=max_depth)
     estimator.fit(X_train, y_train)
@@ -154,6 +213,9 @@ def fit_windows(
         "skill_vs_no_change": skill,
         "confidence": float(max(35.0, min(85.0, 40.0 + skill * 50.0))),
         "training_windows": int(len(X)),
+        "train_rows": int(len(X_train)),
+        "purge_days": int(purge_days),
+        "purged_rows": int(split - train_end),
         "n_features": int(X.shape[1]),
         "backend": "xgboost" if XGBOOST_AVAILABLE else "sklearn",
     }
@@ -166,8 +228,7 @@ def build_training_windows(
     prepare,
     sequence_length: int,
     horizon_days: int,
-    normalize=None,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Turn raw OHLCV frames into (windows, forward-return targets).
 
@@ -175,7 +236,14 @@ def build_training_windows(
     feature set it was designed around rather than sharing one generic set.
     Targets stop `horizon_days` before the end of each frame -- beyond that the
     realised forward return does not exist yet and would be fabricated.
+
+    Returns (windows, targets, stamps), all sorted by window end date across all
+    frames. Appending frame after frame instead made row order mean "which
+    ticker", so the 80/20 split in `fit_windows` held out the last tickers rather
+    than the last years. The stamps go back out because `fit_windows` needs real
+    dates to purge by -- row counts do not survive pooling (see its docstring).
     """
+    stamps: list = []
     windows: list[np.ndarray] = []
     targets: list[float] = []
 
@@ -184,9 +252,6 @@ def build_training_windows(
             continue
 
         features = prepare(frame)
-        if normalize is not None:
-            features = normalize(features)
-
         features = np.nan_to_num(
             np.asarray(features, dtype=float), nan=0.0, posinf=0.0, neginf=0.0
         )
@@ -205,13 +270,20 @@ def build_training_windows(
             if not np.isfinite(window).all():
                 continue
 
+            stamps.append(frame.index[idx])
             windows.append(window)
             targets.append((future - start) / start)
 
     if not windows:
         raise ValueError("No training windows could be built from the supplied data.")
 
-    return np.asarray(windows, dtype=float), np.asarray(targets, dtype=float)
+    stamp_array = _to_utc_naive(stamps)
+    order = np.argsort(stamp_array, kind="stable")
+    return (
+        np.asarray(windows, dtype=float)[order],
+        np.asarray(targets, dtype=float)[order],
+        stamp_array[order],
+    )
 
 
 def save_artifact(artifact: GradientBoostArtifact, path: Path) -> Path:
