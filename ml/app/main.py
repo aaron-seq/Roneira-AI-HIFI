@@ -23,7 +23,7 @@ load_dotenv()
 from app.models.random_forest import RandomForestPredictor
 from app.models.technical_analysis import TechnicalAnalyzer
 from app.models.pdm_momentum import PVDMomentumEngine
-from app.models.ensemble import EnsembleCombiner
+from app.models.ensemble import ENSEMBLE_MEMBERS, ENSEMBLE_WEIGHTS, EnsembleCombiner
 from app.models.lstm import LSTMPredictor
 from app.models.gan import GANPredictor
 import export_stock_screener as screener
@@ -293,18 +293,12 @@ def predict(request: PredictionRequest):
         ta_result = ta_analyzer.analyze(df, horizon)
         pdm_result = pdm_engine.analyze(df, ticker, horizon)
         lstm_result = lstm_predictor.predict(df, horizon)
-        # The LSTM slot was weighted 0.3 while it served an untrained heuristic.
-        # It now serves a gradient-boosted model that measures
-        # skill_vs_no_change = 0.035 -- validation MAE 0.0712 against a 0.0738
-        # "no change" baseline on a held-out final 20% of dates. That is a real
-        # edge but a small one, and none of the other three members has a
-        # comparable held-out number to weigh it against, so 0.15 stands. Revisit
-        # together with the other weights, not on this one metric alone;
-        # artifacts/generated/lstm_metadata.json carries the current figure.
+        # Members and weights live in ensemble.py, next to the reasoning and
+        # the walk-forward numbers behind them (#145).
         prediction = ensemble.combine(
             [rf_result, ta_result, pdm_result, lstm_result],
-            weights=[0.35, 0.25, 0.25, 0.15],
-            names=["RANDOM_FOREST", "TECHNICAL", "PVD_MOMENTUM", "LSTM"],
+            weights=list(ENSEMBLE_WEIGHTS),
+            names=list(ENSEMBLE_MEMBERS),
         )
     else:
         # Default to Ensemble
