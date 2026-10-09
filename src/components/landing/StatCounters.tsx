@@ -6,13 +6,14 @@ import { motion, useInView, useMotionValue, useSpring } from "framer-motion";
 /**
  * Real counts, not marketing filler: 49 unique symbols across
  * src/lib/market/constants.ts (16 indices + 20 commodities/forex/crypto +
- * 13 tracked equities), 6 models behind /api/predict's ENSEMBLE type
- * (LSTM, GAN, gradient-boost, Random Forest, PDM momentum, ensemble blend),
+ * 13 tracked equities), the 4 members ml/app/main.py's ENSEMBLE branch blends
+ * (Random Forest, Technical, PVD Momentum, LSTM -- GAN is served on its own,
+ * not blended),
  * and 60s as the actual refetchInterval used by use-live-market.ts.
  */
 const STATS = [
   { value: 49, suffix: "+", label: "Instruments tracked" },
-  { value: 6, suffix: "", label: "Models per prediction" },
+  { value: 4, suffix: "", label: "Models blended per prediction" },
   { value: 60, suffix: "s", label: "Live data refresh" },
 ];
 

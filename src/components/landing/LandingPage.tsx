@@ -31,9 +31,9 @@ const fadeUp = {
 const FEATURES = [
   {
     icon: Sparkles,
-    title: "Six-model ensemble",
+    title: "Four-model ensemble",
     description:
-      "LSTM, GAN, gradient-boosted, and Random Forest predictors blended into one call, with a stated agreement score instead of a single confident-looking number.",
+      "Random Forest, LSTM-slot, technical and momentum models blended into one call, each model's own target shown beside the blend with a stated agreement score instead of a single confident-looking number.",
   },
   {
     icon: Gauge,
@@ -134,7 +134,7 @@ export function LandingPage() {
           >
             <Sparkles className="h-3.5 w-3.5" style={{ color: "var(--color-brass-bright)" }} />
             <span className="text-xs font-medium" style={{ color: "var(--color-brass-bright)" }}>
-              Six models. One honest answer.
+              Four models. One honest answer.
             </span>
           </motion.div>
 

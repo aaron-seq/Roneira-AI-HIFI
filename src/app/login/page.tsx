@@ -101,7 +101,7 @@ export default function LoginPage() {
             className="text-[2.75rem] leading-[1.05]"
             style={{ fontFamily: "var(--font-instrument-serif), Georgia, serif", color: "var(--color-text-primary)" }}
           >
-            Six models. One honest answer.
+            Four models. One honest answer.
           </h1>
           <p className="mt-5 text-sm leading-relaxed" style={{ color: "var(--color-text-muted)" }}>
             Live NSE, BSE, and global market data, portfolio tracking, and
