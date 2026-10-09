@@ -143,15 +143,91 @@ order).
 
 ---
 
+## Walk-forward results (#144)
+
+Every number elsewhere in this file came from one train/test split. This is the
+first time each model was checked across many periods, including the ones that
+matter (2008, 2020, 2022). Reproduce with:
+
+```bash
+cd ml
+python backtest.py --models all --folds 10 --horizon 30 --max-origins-per-fold 60
+python -m pytest tests/test_backtest.py        # the harness's own guarantees
+```
+
+**Method.** For each origin date, every model is called exactly the way
+`/predict` serves it: on the trailing 1y window (2y past 180 sessions) and
+through its normal `predict`/`analyze`, seeing nothing after the origin
+(`test_models_never_see_past_the_origin`). The LSTM and GAN slots are refitted
+per fold on windows whose labels resolved before the fold starts, minus a
+calendar-day purge. Origins are 30 sessions apart, so realised returns don't
+overlap. 9 tickers (the training set: NIFTY, S&P 500, NASDAQ, AAPL, MSFT, NVDA,
+RELIANCE, TCS, INFY), 10 contiguous periods from 1934 to 2026, 60 origins per
+period (600 total). Skill is `1 − MAE / MAE(no change)`, **not clipped**:
+negative means worse than predicting no move.
+
+Measured 2026-10-09, horizon 30 sessions:
+
+| Model | Skill | Periods > 0 | Per-period skill (mean ± sd) | Direction hit-rate |
+|---|---|---|---|---|
+| Random Forest | −0.264 | 0/10 | −0.248 ± 0.158 | 54.8% |
+| Technical | −0.233 | 0/10 | −0.237 ± 0.094 | 53.3% |
+| PVD Momentum | −0.008 | 3/10 | −0.006 ± 0.026 | 54.3% |
+| LSTM slot | −0.049 | 4/10 | −0.084 ± 0.234 | 59.2% |
+| GAN slot | −0.037 | 4/10 | −0.074 ± 0.269 | 59.0% |
+| Ensemble, hand-set weights (old) | −0.017 | 5/10 | −0.014 ± 0.047 | 56.0% |
+| Ensemble, equal weights (now) | −0.002 | 4/10 | −0.004 ± 0.039 | 57.5% |
+| Ensemble, inverse-MAE from past folds | −0.001 | 4/9 | −0.003 ± 0.039 | 57.8% |
+
+Do BUY/SELL calls beat the base rate? Prices rose over 30 sessions at 60.2% of
+origins, so a model saying BUY must beat **60.2%**, not 50%:
+
+| Model | #BUY | P(up \| BUY) | #SELL | P(down \| SELL) (base 39.8%) |
+|---|---|---|---|---|
+| Random Forest | 266 | 65.0% | 178 | 43.8% |
+| Technical | 321 | 59.2% | 134 | 39.6% |
+| PVD Momentum | 206 | 59.7% | 105 | 41.0% |
+| LSTM slot | 283 | 62.5% | 22 | 36.4% |
+| GAN slot | 376 | 60.1% | 20 | 35.0% |
+
+**What this says:**
+
+- **No model predicts the size of a 30-session move better than "no change."**
+  The LSTM slot's earlier `skill_vs_no_change` of 0.036 was one good split;
+  across periods it is −0.08 ± 0.23, positive in 4 of 10.
+- **Technical's price target is noise.** It is negative in every period.
+  `analyze` projects price from the last 5 days' return; it does not use its
+  nine indicator votes for the target at all, and the votes themselves do not
+  beat the base rate either.
+- **Random Forest's direction is the only signal above the base rate**: BUY is
+  right 65.0% vs 60.2%, SELL 43.8% vs 39.8%. With n=266 that is about 1.6
+  standard errors, so it is suggestive, not significant. Its magnitude is the worst
+  of the five.
+- **Ensemble weights (#145):** equal weights beat the hand-set
+  `[0.35, 0.25, 0.25, 0.15]` slightly, and inverse-MAE weights learned from
+  earlier periods did no better than equal. Production now uses equal weights
+  (`ENSEMBLE_WEIGHTS` in `app/models/ensemble.py`).
+
+The harness found two production bugs on its first run. Random Forest returned
+an invented +2% for any index with no volume data (`^NSEI` reports zeros), and
+crashed on any zero-volume day. Both are fixed, with regression tests.
+
+Not covered yet: other horizons, transaction costs, and the
+`agreement_bonus` question in #145 (whether agreeing members deserve extra
+confidence). All three are cheap to add to `backtest.py`.
+
+---
+
 ## How to choose (decision guide)
 
+Read the walk-forward results above first: none of these beats "no change" on
+the size of a move, so choose for what you want to *see*, not for accuracy.
+
 ```
-Need it explainable and instant, short horizon?        → TECHNICAL
-Hunting momentum entries with volume confirmation?      → PVD_MOMENTUM (PDM)
-Want a solid CPU-only learned baseline, 1w–3m?          → RANDOM_FOREST
-Temporal structure matters and artifact is trained?     → LSTM
-Care about a *range* of outcomes / scenarios?           → GAN
-Just want the best general-purpose answer?              → ENSEMBLE (default)
+Want to audit a read indicator-by-indicator?            → TECHNICAL (ignore its price target)
+Want a volume-confirmed momentum read?                  → PVD_MOMENTUM (PDM)
+Want the one direction signal above the base rate?      → RANDOM_FOREST (direction, not magnitude)
+Want to see where the models disagree?                  → ENSEMBLE (default) and its model spread
 ```
 
 Two rules of thumb:

@@ -220,6 +220,12 @@ credit, then usage-based billing) — Render is the free-tier-compatible target 
 named in this doc. Regenerate with `npm run train:ml` and commit the refreshed files when
 the data goes stale enough to matter.
 
+> **Superseded by walk-forward results.** The single-split figures below were the best
+> available until `ml/backtest.py` (#144). Across 10 periods from 1934 to 2026, neither slot
+> beats "no change": LSTM slot −0.049, GAN slot −0.037, each positive in only 4 of 10
+> periods. See [ml/MODELS.md](./ml/MODELS.md#walk-forward-results-144). The history below
+> is kept because the defects it describes were real and are fixed.
+>
 > **Measured skill — read before trusting these numbers.** Both gradient-boosted slots
 > report a small positive `skill_vs_no_change`: **0.036** (LSTM slot, validation MAE 0.0711
 > vs a 0.0738 "no change" baseline) and **0.029** (GAN slot, 0.0717 vs 0.0738), measured on
