@@ -71,7 +71,9 @@ export async function POST(request: NextRequest) {
 
     const body = (await request.json()) as LoginRequestBody;
     const username = normalizeUsername(body.username ?? null);
-    const password = body.password?.trim() ?? "";
+    // Not trimmed: signup stores the password exactly as typed, so trimming
+    // here locked out anyone whose password began or ended with a space.
+    const password = body.password ?? "";
 
     if (!username || !password) {
       return NextResponse.json(
