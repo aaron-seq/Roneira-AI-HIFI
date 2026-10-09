@@ -128,8 +128,9 @@ class RandomForestPredictor:
             model.fit(X_scaled, y)
 
             # Predict from latest features
-            latest_features = features.iloc[-1:].values
-            latest_scaled = scaler.transform(latest_features)
+            # A DataFrame, not `.values`: the scaler was fitted with column
+            # names, so passing them lets it verify order instead of warning.
+            latest_scaled = scaler.transform(features.iloc[-1:])
             predicted_return = model.predict(latest_scaled)[0]
 
             current_price = float(df["Close"].iloc[-1])

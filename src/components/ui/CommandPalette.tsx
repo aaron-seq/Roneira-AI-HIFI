@@ -75,9 +75,9 @@ function Palette({ onClose }: { onClose: () => void }) {
     { id: "audit", label: "Audit Log", description: "View all user actions", icon: FileText, action: () => router.push("/dashboard/audit-log"), category: "Navigation" },
     { id: "settings", label: "Settings", description: "Account & preferences", icon: Settings, action: () => router.push("/dashboard/settings"), category: "Navigation" },
     // Quick Actions
-    { id: "predict-aapl", label: "Predict AAPL", description: "Run AI prediction on Apple", icon: Brain, action: () => { router.push("/dashboard/predict"); }, category: "Quick Actions" },
-    { id: "predict-reliance", label: "Predict RELIANCE", description: "Run AI prediction on Reliance", icon: Brain, action: () => { router.push("/dashboard/predict"); }, category: "Quick Actions" },
-    { id: "predict-tsla", label: "Predict TSLA", description: "Run AI prediction on Tesla", icon: Brain, action: () => { router.push("/dashboard/predict"); }, category: "Quick Actions" },
+    { id: "predict-aapl", label: "Predict AAPL", description: "Run AI prediction on Apple", icon: Brain, action: () => router.push("/dashboard/predict?ticker=AAPL"), category: "Quick Actions" },
+    { id: "predict-reliance", label: "Predict RELIANCE", description: "Run AI prediction on Reliance", icon: Brain, action: () => router.push("/dashboard/predict?ticker=RELIANCE.NS"), category: "Quick Actions" },
+    { id: "predict-tsla", label: "Predict TSLA", description: "Run AI prediction on Tesla", icon: Brain, action: () => router.push("/dashboard/predict?ticker=TSLA"), category: "Quick Actions" },
   ];
 
   const filtered = items.filter(
@@ -124,6 +124,9 @@ function Palette({ onClose }: { onClose: () => void }) {
         animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.96, y: -10 }}
         transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Command palette"
         className="glass w-full max-w-lg overflow-hidden rounded-2xl shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
@@ -135,6 +138,7 @@ function Palette({ onClose }: { onClose: () => void }) {
           <input
             autoFocus
             type="text"
+            aria-label="Search pages and actions"
             value={query}
             onChange={(e) => { setQuery(e.target.value); setSelected(0); }}
             onKeyDown={handleKeyDown}

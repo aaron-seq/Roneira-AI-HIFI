@@ -55,12 +55,19 @@ rather than crashing.
   all — check `is_ready()` / the health endpoint before trusting it.
 
 ### 3. GAN — `app/models/gan.py`
-A generator (also offline-trained) that samples plausible forward price
-*trajectories* from a latent vector, giving a distribution you can turn into a
-central estimate plus an uncertainty band.
+A conditional generator (also offline-trained) that maps a latent vector plus
+the recent price window to a forward return. Inference makes **one** call at the
+latent mean (zero noise) and reports that central estimate.
 
-- **Use it when** you care about the *range* of outcomes, not just a single
-  number (e.g. scenario / risk framing).
+It does **not** report a spread. The deployed backend is the gradient-boosted
+artifact (TensorFlow is not a dependency), which ignores the noise input, so
+sampling it repeatedly returned identical values and the old "Prediction Std"
+indicator was always exactly 0 (#143). Confidence comes from validation error.
+A real interval would need quantile regressors — see the `ponytail:` note in
+`gradient_boost.py`.
+
+- **Use it when** you want a second sequence model's point estimate alongside
+  the LSTM slot.
 - **Watch out for**: GANs are the hardest to validate; treat outputs as scenario
   generation, not precise forecasts. Artifact-dependent like the LSTM.
 

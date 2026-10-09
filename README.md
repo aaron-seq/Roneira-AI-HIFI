@@ -327,8 +327,7 @@ concept. Git history preserves them in full.
 ### Prerequisites Checklist
 
 - [ ] **Node.js** >= 18.0.0 ([Download](https://nodejs.org/))
-- [ ] **Python** >= 3.11 ([Download](https://python.org/))
-- [ ] **Docker** & Docker Compose ([Download](https://docker.com/))
+- [ ] **Python** 3.11 exactly — matches `ml/runtime.txt` and CI ([Download](https://www.python.org/downloads/release/python-3119/))
 - [ ] **Git** for version control
 - [ ] **PostgreSQL** 15+ (optional for local development)
 - [ ] **Redis** 7+ (optional for local development)

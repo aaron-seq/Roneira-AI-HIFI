@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isSupabaseConfigured } from "./client";
 
 type CookieToSet = {
   name: string;
@@ -9,6 +10,21 @@ type CookieToSet = {
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
+
+  // createServerClient throws without the env vars, which 500'd every route on
+  // a fresh clone. Keep public pages up and keep /dashboard gated, since
+  // nobody can be signed in.
+  if (!isSupabaseConfigured) {
+    console.error(
+      "Supabase is not configured: set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY (copy .env.example to .env.local)."
+    );
+    if (request.nextUrl.pathname.startsWith("/dashboard")) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      return NextResponse.redirect(url);
+    }
+    return supabaseResponse;
+  }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

@@ -71,10 +71,11 @@ function PredictPageContent() {
   const searchParams = useSearchParams();
   const presetTicker = searchParams.get("ticker");
   const [searchQuery, setSearchQuery] = useState("");
-  // Derived once at mount, not synced in an effect: a ?ticker= deep link only
-  // ever arrives with a fresh mount (screener, watchlist and news all navigate
-  // in from another page). The old effect also re-applied the preset every time
-  // the field was cleared, so typing over a deep-linked ticker snapped back.
+  // Derived once at mount, not synced in an effect: PredictPage keys this
+  // component by ?ticker=, so a new deep link (including one from the command
+  // palette while already on this page) remounts it. The old effect also
+  // re-applied the preset every time the field was cleared, so typing over a
+  // deep-linked ticker snapped back.
   const [selectedStock, setSelectedStock] = useState<StockOption | null>(() =>
     presetTicker
       ? {
@@ -541,10 +542,14 @@ function PredictPageContent() {
   );
 }
 
+function PredictPageKeyed() {
+  return <PredictPageContent key={useSearchParams().get("ticker") ?? ""} />;
+}
+
 export default function PredictPage() {
   return (
     <Suspense fallback={<PredictionSkeleton />}>
-      <PredictPageContent />
+      <PredictPageKeyed />
     </Suspense>
   );
 }
