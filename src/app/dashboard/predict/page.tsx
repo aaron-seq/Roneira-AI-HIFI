@@ -17,7 +17,7 @@ import { ModelSpread } from "@/components/prediction/ModelSpread";
 import { SignalMeter } from "@/components/prediction/SignalMeter";
 import { PredictionSkeleton } from "@/components/ui/Skeletons";
 import { usePredictionMutation, useStockSearch } from "@/lib/hooks/use-prediction";
-import { cn, formatPercent, formatPrice, getConfidenceColor, getPriceColor } from "@/lib/utils";
+import { cn, formatPercent, formatPrice, getPriceColor } from "@/lib/utils";
 
 interface StockOption {
   symbol: string;
@@ -37,9 +37,9 @@ const TIMEFRAMES = [
 
 const MODELS = [
   { value: "ENSEMBLE", label: "Auto (Ensemble)" },
-  { value: "LSTM", label: "LSTM Deep Learning" },
+  { value: "LSTM", label: "Sequence model (gradient-boosted)" },
   { value: "RANDOM_FOREST", label: "Random Forest" },
-  { value: "GAN", label: "GAN Model" },
+  { value: "GAN", label: "Scenario model (gradient-boosted)" },
   { value: "TECHNICAL", label: "Technical Analysis" },
   { value: "PVD_MOMENTUM", label: "PVD Momentum" },
 ];
@@ -118,11 +118,13 @@ function PredictPageContent() {
             color: "var(--color-text-primary)",
           }}
         >
-          Intelligent Financial Advisor
+          AI Prediction
         </h1>
-        <p className="mt-2 text-sm" style={{ color: "var(--color-text-muted)" }}>
-          Live search, artifact-backed model inference, and chart projection from
-          the Next.js launch surface
+        <p className="mt-2 max-w-3xl text-sm" style={{ color: "var(--color-text-muted)" }}>
+          Model estimates of where a stock may trade over the horizon you pick, with each
+          model&apos;s own target shown so you can see when they disagree. In walk-forward
+          tests these models have not yet beaten a simple &ldquo;no change&rdquo; forecast
+          &mdash; treat them as one input, not advice.
         </p>
       </div>
 
@@ -347,16 +349,10 @@ function PredictPageContent() {
                       </div>
                     </div>
 
-                    <div className="mt-6 grid grid-cols-4 gap-3">
-                      {Object.entries(result.confidence_breakdown).map(([key, value]) => (
-                        <div key={key} className="rounded-lg p-3" style={{ background: "var(--color-bg)" }}>
-                          <p className="text-[10px] capitalize" style={{ color: "var(--color-text-faint)" }}>{key}</p>
-                          <p className="font-mono text-sm font-bold" data-financial style={{ color: getConfidenceColor(value) }}>
-                            {value.toFixed(0)}%
-                          </p>
-                        </div>
-                      ))}
-                    </div>
+                    {/* No per-factor confidence tiles: the API's confidence_breakdown
+                        is one confidence number scaled by fixed constants
+                        (e.g. sentiment = 0.5x) -- nothing measures sentiment or
+                        fundamentals -- so showing four "scores" invented three. */}
                   </div>
 
                   <div className="flex flex-col items-center justify-center">
@@ -387,19 +383,15 @@ function PredictPageContent() {
                 <h3 className="mb-6 text-sm font-semibold" style={{ color: "var(--color-text-primary)" }}>
                   Signal Analysis
                 </h3>
-                <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-                  <div className="flex flex-col items-center">
-                    <p className="mb-3 text-xs font-medium" style={{ color: "var(--color-text-muted)" }}>
-                      Short-Term Signal (1D–1W)
-                    </p>
-                    <SignalMeter signal={result.short_term_signal.signal} score={result.short_term_signal.score} />
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <p className="mb-3 text-xs font-medium" style={{ color: "var(--color-text-muted)" }}>
-                      Long-Term Signal (1M–1Y)
-                    </p>
-                    <SignalMeter signal={result.long_term_signal.signal} score={result.long_term_signal.score} />
-                  </div>
+                {/* One meter, for the horizon that was actually requested. This
+                    showed "Short-Term (1D-1W)" and "Long-Term (1M-1Y)" side by
+                    side, but the service computes a single horizon per call;
+                    the second meter restated the first under a different label. */}
+                <div className="flex flex-col items-center">
+                  <p className="mb-3 text-xs font-medium" style={{ color: "var(--color-text-muted)" }}>
+                    Signal · {TIMEFRAMES.find((entry) => entry.value === result.timeframe)?.label ?? result.timeframe}
+                  </p>
+                  <SignalMeter signal={result.short_term_signal.signal} score={result.short_term_signal.score} />
                 </div>
 
                 <div className="mt-6 overflow-x-auto">

@@ -126,7 +126,16 @@ export default function ScreenerPage() {
         </div>
       </div>
 
-      {isLoading && <TableSkeleton rows={10} />}
+      {isLoading && (
+        <>
+          {/* The first load after the 30-minute cache expires fetches 42 tickers
+              live (~1 min measured); say so instead of a silent skeleton. */}
+          <p className="mb-3 text-xs" style={{ color: "var(--color-text-faint)" }} role="status">
+            Fetching live fundamentals for 42 stocks. The first load after a quiet spell can take up to a minute.
+          </p>
+          <TableSkeleton rows={10} />
+        </>
+      )}
 
       {isError && (
         <div className="card p-6 text-sm" style={{ color: "var(--color-loss)" }}>

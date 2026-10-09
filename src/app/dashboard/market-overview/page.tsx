@@ -388,6 +388,11 @@ export default function MarketOverviewPage() {
                 {marketQuery.data?.movers.gainers.map((quote) => (
                   <MoverRow key={quote.symbol} quote={quote} />
                 ))}
+                {marketQuery.data && marketQuery.data.movers.gainers.length === 0 && (
+                  <p className="px-3 py-2 text-xs" style={{ color: "var(--color-text-faint)" }}>
+                    Nothing on the tracked list is up today.
+                  </p>
+                )}
               </div>
             </motion.div>
 
@@ -405,6 +410,11 @@ export default function MarketOverviewPage() {
                 {marketQuery.data?.movers.losers.map((quote) => (
                   <MoverRow key={quote.symbol} quote={quote} />
                 ))}
+                {marketQuery.data && marketQuery.data.movers.losers.length === 0 && (
+                  <p className="px-3 py-2 text-xs" style={{ color: "var(--color-text-faint)" }}>
+                    Nothing on the tracked list is down today.
+                  </p>
+                )}
               </div>
             </motion.div>
           </div>

@@ -302,6 +302,19 @@ function mapSectionQuotes(
     .filter((quote): quote is MarketQuote => Boolean(quote));
 }
 
+/**
+ * Biggest risers and fallers, each only among stocks that actually moved that
+ * way. Taking the bottom five of one ranking listed stocks up 1% as "Top
+ * Losers" on any broad up day.
+ */
+export function splitMovers(quotes: MarketQuote[], count = 5) {
+  const ranked = [...quotes].sort((left, right) => right.changePercent - left.changePercent);
+  return {
+    gainers: ranked.filter((quote) => quote.changePercent > 0).slice(0, count),
+    losers: ranked.filter((quote) => quote.changePercent < 0).reverse().slice(0, count),
+  };
+}
+
 export async function getMarketOverviewPayload() {
   const [overviewQuotes, moverQuotes] = await Promise.all([
     getNormalizedQuotes(MARKET_OVERVIEW_SYMBOLS),
@@ -311,10 +324,6 @@ export async function getMarketOverviewPayload() {
   const overviewMap = new Map(
     overviewQuotes.map((quote) => [quote.symbol, quote])
   );
-  const movers = [...moverQuotes].sort(
-    (left, right) => right.changePercent - left.changePercent
-  );
-
   return {
     data: overviewQuotes,
     sections: {
@@ -323,10 +332,7 @@ export async function getMarketOverviewPayload() {
       europe: mapSectionQuotes(MARKET_OVERVIEW_SECTIONS.europe, overviewMap),
       special: mapSectionQuotes(MARKET_OVERVIEW_SECTIONS.special, overviewMap),
     },
-    movers: {
-      gainers: movers.slice(0, 5),
-      losers: [...movers].reverse().slice(0, 5),
-    },
+    movers: splitMovers(moverQuotes),
     timestamp: new Date().toISOString(),
   };
 }

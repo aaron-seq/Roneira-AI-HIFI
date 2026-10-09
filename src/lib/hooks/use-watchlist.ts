@@ -12,6 +12,8 @@ type WatchlistItem = {
   exchange: string;
   notes: string | null;
   alert_price: number | null;
+  /** Set by the post-close alert run when the level was touched (ADR 0001). */
+  alert_triggered_at: string | null;
   sort_order: number;
   added_at: string;
 };
@@ -26,7 +28,7 @@ async function fetchWatchlist() {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("watchlist")
-    .select("id, ticker, exchange, notes, alert_price, sort_order, added_at")
+    .select("id, ticker, exchange, notes, alert_price, alert_triggered_at, sort_order, added_at")
     .order("sort_order", { ascending: true })
     .order("added_at", { ascending: true });
 
@@ -125,7 +127,8 @@ export function useWatchlist() {
       const supabase = createClient();
       const { error } = await supabase
         .from("watchlist")
-        .update({ alert_price: payload.alertPrice })
+        // Setting a level (or clearing it) re-arms a one-shot alert.
+        .update({ alert_price: payload.alertPrice, alert_triggered_at: null })
         .eq("id", payload.id);
 
       if (error) {
