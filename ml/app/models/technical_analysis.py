@@ -250,23 +250,39 @@ class TechnicalAnalyzer:
         value = float(series.iloc[-1])
         return value if np.isfinite(value) else default
 
+    @staticmethod
+    def _wilder(series: pd.Series, period: int) -> pd.Series:
+        """
+        Wilder's smoothing (RMA): seeded with the plain mean of the first
+        `period` values, then `y_t = (y_{t-1} * (period - 1) + x_t) / period`.
+
+        This is what every charting platform means by ATR(14) and ADX(14). A
+        plain rolling mean drifted from it on every bar, which moved Supertrend's
+        bands -- and so its flip points -- and changed what `adx > 25` meant.
+        The recursion is exactly `ewm(alpha=1/period, adjust=False)` once its
+        first value is the SMA seed, so only the seed needs placing by hand.
+        """
+        values = series.to_numpy(dtype=float)
+        out = np.full(len(values), np.nan)
+        finite = np.flatnonzero(np.isfinite(values))
+        if len(finite) and len(values) - finite[0] >= period:
+            seed = finite[0] + period - 1
+            tail = values[seed:].copy()
+            tail[0] = np.nanmean(values[finite[0]:seed + 1])
+            out[seed:] = pd.Series(tail).ewm(alpha=1 / period, adjust=False).mean().to_numpy()
+        return pd.Series(out, index=series.index)
+
     def _atr(self, high: pd.Series, low: pd.Series, close: pd.Series, period: int = 14) -> pd.Series:
         """
-        Average true range: a simple rolling mean of true range, **not** Wilder's
-        exponential smoothing.
-
-        The difference matters for anyone comparing these numbers against a
-        charting platform, which will use Wilder. Both ADX and Supertrend read
-        this one function so that swapping in Wilder later is a one-line change
-        that cannot move only half of them -- which is what would have happened
-        while `_adx` kept its own inline copy of this same calculation.
+        Wilder average true range. ADX and Supertrend both read this one
+        function, so the two can never disagree about what ATR is.
         """
         tr = pd.concat([
             high - low,
             (high - close.shift()).abs(),
             (low - close.shift()).abs(),
         ], axis=1).max(axis=1)
-        return tr.rolling(period).mean()
+        return self._wilder(tr, period)
 
     def _rsi(self, series: pd.Series, period: int = 14) -> pd.Series:
         delta = series.diff()
@@ -296,18 +312,21 @@ class TechnicalAnalyzer:
         return stoch
 
     def _adx(self, high: pd.Series, low: pd.Series, close: pd.Series, period=14) -> pd.Series:
-        plus_dm = high.diff()
-        minus_dm = (-low.diff())
-        plus_dm = plus_dm.where((plus_dm > minus_dm) & (plus_dm > 0), 0)
-        minus_dm = minus_dm.where((minus_dm > plus_dm) & (minus_dm > 0), 0)
+        up = high.diff()
+        down = -low.diff()
+        # Both masks read the *original* moves. Reassigning plus_dm before
+        # minus_dm read it gave -DM = down on a tie, where Wilder gives 0.
+        # `.where(up.notna())` keeps the first bar NaN so the smoother seeds
+        # from real moves, not a fabricated zero.
+        plus_dm = up.where((up > down) & (up > 0), 0.0).where(up.notna())
+        minus_dm = down.where((down > up) & (down > 0), 0.0).where(down.notna())
 
         atr = self._atr(high, low, close, period)
-        plus_di = 100 * (plus_dm.rolling(period).mean() / atr)
-        minus_di = 100 * (minus_dm.rolling(period).mean() / atr)
+        plus_di = 100 * (self._wilder(plus_dm, period) / atr)
+        minus_di = 100 * (self._wilder(minus_dm, period) / atr)
 
         dx = (abs(plus_di - minus_di) / (plus_di + minus_di)) * 100
-        adx = dx.rolling(period).mean()
-        return adx
+        return self._wilder(dx, period)
 
     def _supertrend(
         self,

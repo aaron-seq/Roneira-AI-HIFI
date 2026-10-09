@@ -522,6 +522,34 @@ class TestTechnicalNewIndicators:
 
         assert len(calls) == 2, "both indicators must route through _atr"
 
+    def test_atr_is_wilder_smoothed(self, ta_analyzer):
+        """ATR(3) against a by-hand Wilder: SMA seed, then (prev * 2 + tr) / 3."""
+        high = pd.Series([10.0, 11.0, 12.5, 12.0, 13.0, 14.5, 14.0])
+        low = pd.Series([9.0, 9.5, 11.0, 10.5, 12.0, 12.5, 13.0])
+        close = pd.Series([9.5, 10.5, 12.0, 11.0, 12.5, 14.0, 13.5])
+
+        tr = [1.0]
+        for i in range(1, len(close)):
+            tr.append(max(high[i] - low[i], abs(high[i] - close[i - 1]), abs(low[i] - close[i - 1])))
+        expected = [np.nan, np.nan, sum(tr[:3]) / 3]
+        for value in tr[3:]:
+            expected.append((expected[-1] * 2 + value) / 3)
+
+        atr = ta_analyzer._atr(high, low, close, 3)
+        np.testing.assert_allclose(atr.to_numpy(), expected, rtol=0, atol=1e-9)
+
+    def test_adx_tie_gives_no_directional_movement(self, ta_analyzer):
+        """
+        An up-move exactly equal to the down-move is no directional movement
+        for either side under Wilder. `_adx` used to zero +DM first and then
+        compare -DM against the zeroed copy, so every tie counted as a full
+        down-move and this symmetric, directionless frame read as ADX 100.
+        """
+        i = np.arange(60, dtype=float)
+        high, low = pd.Series(100 + i), pd.Series(100 - i)
+        adx = ta_analyzer._adx(high, low, pd.Series(np.full(60, 100.0)), 14)
+        assert adx.dropna().empty
+
     def test_last_falls_back_when_the_window_never_warms_up(self, ta_analyzer):
         all_nan = pd.Series([np.nan, np.nan, np.nan])
         assert ta_analyzer._last(all_nan, default=50.0) == 50.0
@@ -618,6 +646,14 @@ class TestEnsemble:
         result = ensemble.combine(preds)
         assert result["confidence"] > 60  # Should get agreement bonus
 
+    def test_agreement_score_never_negative(self, ensemble):
+        """A >10% relative spread used to report a negative agreement score."""
+        result = ensemble.combine([
+            {"predicted_price": 50.0, "confidence": 60},
+            {"predicted_price": 150.0, "confidence": 60},
+        ])
+        assert result["agreement_score"] == 0.0
+
     def test_indicators_deduplicated(self, ensemble):
         preds = [
             {"predicted_price": 100, "confidence": 70, "indicators": [{"name": "RSI", "value": 55, "signal": "Buy"}, {"name": "MACD", "value": 0.5, "signal": "Buy"}], "short_term_signal": {"signal": "BUY", "score": 7}, "long_term_signal": {"signal": "BUY", "score": 6}},
@@ -710,6 +746,23 @@ class _StubPredictorModel:
 
 
 class TestArtifactBackedDeepLearning:
+    def test_gan_makes_one_call_and_reports_no_fake_spread(self, sample_data):
+        """
+        Five draws against a deterministic backend were five identical calls
+        and a "Prediction Std" that was always 0 (#143).
+        """
+        stub = _StubPredictorModel(0.02)
+        calls = []
+        stub.predict = lambda *a, **k: calls.append(1) or np.array([[0.02]])
+        predictor = GANPredictor()
+        predictor._generator = stub
+        predictor._metadata = {"confidence": 55.0}
+
+        result = predictor.predict(sample_data, horizon_days=30)
+        assert len(calls) == 1
+        assert "Prediction Std" not in {i["name"] for i in result["indicators"]}
+        assert result["confidence"] == 55.0
+
     def test_lstm_fallback_without_artifact(self, sample_data):
         predictor = LSTMPredictor()
         predictor._model = None

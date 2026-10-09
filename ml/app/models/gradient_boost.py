@@ -17,11 +17,10 @@ so `lstm.py` and `gan.py` keep their feature engineering, signal thresholds, and
 artifact-loading structure unchanged. The GAN slot additionally calls
 `predict([noise, sequence], verbose=0)`; the adapter accepts that shape too.
 
-ponytail: point estimate only. The GAN slot samples 5 times expecting a spread,
-which is now degenerate (std 0), so its confidence comes from validation error
-rather than sample dispersion. Upgrade path if the spread matters: fit quantile
-regressors (sklearn GradientBoostingRegressor(loss="quantile")) at p10/p50/p90
-and interpolate per draw.
+ponytail: point estimate only, so the GAN slot reports no spread and takes its
+confidence from validation error (#143). Upgrade path if an interval is ever
+surfaced in the UI: fit quantile regressors (sklearn
+GradientBoostingRegressor(loss="quantile")) at p10/p50/p90.
 """
 from __future__ import annotations
 

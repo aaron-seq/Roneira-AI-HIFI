@@ -247,9 +247,8 @@ class GANPredictor:
         Train the gradient-boosted backend for this slot.
 
         Used instead of `train()` when TensorFlow is unavailable, which is the
-        default for this project. Note the sampling loop in `predict` becomes
-        degenerate against a deterministic regressor (five identical draws), so
-        confidence here derives from validation error rather than the spread.
+        default for this project. A tree ignores the latent noise, so this
+        backend is a point estimate; confidence derives from validation error.
         """
         windows, targets, stamps = build_training_windows(
             datasets,
@@ -295,17 +294,19 @@ class GANPredictor:
                 return self._fallback_predict(df, horizon_days)
 
             latest_seq = features[-self.sequence_length:].reshape(1, self.sequence_length, features.shape[1])
-            predictions = []
-            for _ in range(5):
-                noise = np.random.normal(0, 1, (1, self.latent_dim))
-                prediction = float(self._generator.predict([noise, latest_seq], verbose=0)[0][0])
-                predictions.append(prediction)
+            # One call at the latent mean (zero noise): the central estimate.
+            # This used to average five random draws and report their std as
+            # "Prediction Std", but the deployed backend is a deterministic
+            # regressor that drops the noise, so the five calls were identical
+            # and the displayed spread was always exactly 0 (#143). Confidence
+            # comes from validation error, which is an actual measurement.
+            noise = np.zeros((1, self.latent_dim))
+            prediction = float(self._generator.predict([noise, latest_seq], verbose=0)[0][0])
 
-            predicted_return = float(np.clip(np.mean(predictions), -0.25, 0.25))
-            pred_std = float(np.std(predictions))
+            predicted_return = float(np.clip(prediction, -0.25, 0.25))
             current_price = float(df["Close"].iloc[-1])
             predicted_price = current_price * (1 + predicted_return)
-            confidence = float(max(30, min(85, self._metadata.get("confidence", 55.0) - pred_std * 100)))
+            confidence = float(max(30, min(85, self._metadata.get("confidence", 55.0))))
 
             if predicted_return > 0.04:
                 signal = "STRONG_BUY"
@@ -337,7 +338,6 @@ class GANPredictor:
                 "long_term_signal": {"signal": signal, "score": round(min(10, score + 0.4), 1)},
                 "indicators": [
                     {"name": "GAN Predicted Return", "value": round(predicted_return * 100, 4), "signal": "Buy" if predicted_return > 0 else "Sell"},
-                    {"name": "Prediction Std", "value": round(pred_std * 100, 4), "signal": "Buy" if pred_std < 0.02 else "Neutral"},
                     {"name": "Generator Loss", "value": round(float(self._metadata.get("generator_loss", 0.0)), 4), "signal": "Neutral"},
                 ],
                 "training_info": self._metadata,

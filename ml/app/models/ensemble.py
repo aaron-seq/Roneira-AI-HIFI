@@ -104,8 +104,11 @@ class EnsembleCombiner:
         avg_price = np.mean([p.get("predicted_price", 0) for p in predictions])
         relative_spread = price_spread / avg_price if avg_price > 0 else 1.0
 
-        # Low spread = high agreement = confidence boost
-        agreement_bonus = max(0, 5 * (1 - relative_spread * 10))
+        # Low spread = high agreement = confidence boost. Clamped to [0, 1]:
+        # past a 10% relative spread this went negative and was reported to
+        # the UI as a negative agreement score (#145).
+        agreement = float(min(1.0, max(0.0, 1 - relative_spread * 10)))
+        agreement_bonus = 5 * agreement
         confidence = min(95, confidence + agreement_bonus)
 
         labels = names or [f"model_{i}" for i in range(n)]
@@ -133,7 +136,7 @@ class EnsembleCombiner:
             "long_term_signal": {"signal": best_signal, "score": round(min(10, avg_long_score), 1)},
             "indicators": all_indicators[:8],
             "ensemble_weights": {label: round(w, 3) for label, w in zip(labels, weights)},
-            "agreement_score": round(1 - relative_spread * 10, 3),
+            "agreement_score": round(agreement, 3),
             "price_spread": round(float(price_spread), 2),
             "components": components,
         }
