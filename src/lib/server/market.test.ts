@@ -5,6 +5,7 @@ import {
   unwrapTwelveQuotePayload,
   normalizeQuote,
   dedupeBySymbol,
+  splitMovers,
 } from "@/lib/server/market";
 import type { QuoteConfig, StockSearchResult } from "@/lib/market/types";
 
@@ -224,5 +225,23 @@ describe("dedupeBySymbol", () => {
   it("leaves already-unique results untouched", () => {
     const unique = [row("AAPL", "Apple Inc."), row("MSFT", "Microsoft")];
     expect(dedupeBySymbol(unique)).toHaveLength(2);
+  });
+});
+
+describe("splitMovers", () => {
+  const quote = (symbol: string, changePercent: number) =>
+    ({ symbol, changePercent }) as Parameters<typeof splitMovers>[0][number];
+
+  it("never lists a stock that rose as a loser, or one that fell as a gainer", () => {
+    const { gainers, losers } = splitMovers(
+      [quote("A", 3), quote("B", 1.2), quote("C", 0.4), quote("D", -0.5), quote("E", -2)],
+      5
+    );
+    expect(gainers.map((q) => q.symbol)).toEqual(["A", "B", "C"]);
+    expect(losers.map((q) => q.symbol)).toEqual(["E", "D"]);
+  });
+
+  it("returns empty lists on a day when nothing moved that way", () => {
+    expect(splitMovers([quote("A", 1), quote("B", 2)]).losers).toEqual([]);
   });
 });

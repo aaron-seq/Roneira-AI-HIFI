@@ -64,7 +64,7 @@ export default function NewsPage() {
             News Feed
           </h1>
           <p className="mt-1 text-sm" style={{ color: "var(--color-text-muted)" }}>
-            Curated market headlines with deterministic launch sentiment tagging
+            Market headlines, tagged positive, negative or neutral by keyword rules
           </p>
         </div>
         <button
@@ -210,7 +210,7 @@ export default function NewsPage() {
             <div className="card flex flex-col items-center py-16">
               <Newspaper className="mb-3 h-10 w-10" style={{ color: "var(--color-text-faint)" }} />
               <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
-                No articles match your filter.
+                No headlines available right now. The news provider returned nothing for this market.
               </p>
             </div>
           )}
