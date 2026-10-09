@@ -49,9 +49,15 @@ class RandomForestPredictor:
         features["volatility_5d"] = df["Close"].pct_change().rolling(5).std()
         features["volatility_20d"] = df["Close"].pct_change().rolling(20).std()
 
-        # Volume
-        features["volume_ratio"] = df["Volume"] / df["Volume"].rolling(20).mean()
-        features["volume_change"] = df["Volume"].pct_change(1)
+        # Volume. Zero volume means "not reported" (indices such as ^NSEI are
+        # all zeros), not "nobody traded": as raw input it made volume_ratio
+        # 0/0 on every row, so dropna() below emptied the frame and every index
+        # prediction fell through to the fallback; and a single zero day made
+        # volume_change +/-inf, which dropna() does not catch and sklearn
+        # rejects. Missing volume is treated as neutral instead.
+        volume = df["Volume"].replace(0, np.nan)
+        features["volume_ratio"] = (volume / volume.rolling(20, min_periods=1).mean()).fillna(1.0)
+        features["volume_change"] = volume.pct_change(1, fill_method=None).fillna(0.0)
 
         # RSI
         delta = df["Close"].diff()
@@ -78,7 +84,7 @@ class RandomForestPredictor:
         # Day of week
         features["day_of_week"] = df.index.dayofweek
 
-        return features.dropna()
+        return features.replace([np.inf, -np.inf], np.nan).dropna()
 
     def predict(self, df: pd.DataFrame, horizon_days: int = 30) -> dict:
         """Run Random Forest prediction."""
@@ -98,10 +104,13 @@ class RandomForestPredictor:
             if len(X) < 50:
                 logger.warning("Insufficient data for Random Forest prediction")
                 current_price = float(df["Close"].iloc[-1])
+                # "No change", flagged -- not the +2% this used to invent,
+                # which the Ensemble then blended at weight 0.35.
                 return {
-                    "predicted_price": current_price * 1.02,
+                    "predicted_price": current_price,
                     "confidence": 30.0,
                     "indicators": [],
+                    "fallback": True,
                 }
 
             # Scale features
@@ -186,4 +195,5 @@ class RandomForestPredictor:
                 "confidence": 20.0,
                 "indicators": [],
                 "error": str(e),
+                "fallback": True,
             }
