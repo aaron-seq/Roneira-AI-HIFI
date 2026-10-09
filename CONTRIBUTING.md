@@ -76,10 +76,8 @@ Look for issues labeled with:
 
 **Required Software**
 - Node.js >= 18.0.0
-- Python >= 3.11
+- Python 3.11 — exactly, to match `ml/runtime.txt` and CI. Not "3.11 or newer": `numpy<2.1` has no 3.13 wheels, so a newer interpreter silently resolves a different numpy than the one tested (#140)
 - Git >= 2.30
-- Docker >= 20.10 (recommended)
-- Docker Compose >= 2.0
 
 </td>
 <td width="50%">
@@ -88,7 +86,6 @@ Look for issues labeled with:
 - VS Code with extensions:
   - TypeScript and JavaScript Language Features
   - Python Extension Pack
-  - Docker Extension
   - GitLens
   - Prettier - Code formatter
 
@@ -139,7 +136,7 @@ npm ci
 
 # ML service (requirements.txt is the single source of truth)
 cd ml
-python -m venv venv
+python3.11 -m venv venv   # Windows: py -3.11 -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 cd ..
