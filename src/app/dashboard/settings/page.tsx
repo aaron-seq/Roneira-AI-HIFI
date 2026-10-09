@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -56,17 +56,45 @@ const notificationItems: Array<{
 ];
 
 export default function SettingsPage() {
+  const user = useAppStore((state) => state.user);
+
+  if (!user) {
+    return (
+      <div className="mx-auto max-w-3xl">
+        <div className="card p-6">
+          <h1
+            className="text-2xl font-bold"
+            style={{ color: "var(--color-text-primary)" }}
+          >
+            Settings
+          </h1>
+          <p className="mt-2 text-sm" style={{ color: "var(--color-text-muted)" }}>
+            Your session could not be loaded. Please sign in again to manage
+            account settings.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Keyed by user id: the form's state is initialised from the profile once
+  // per user, instead of an effect copying the profile into state on every
+  // change (which also overwrote unsaved edits whenever the store refreshed).
+  return <SettingsForm key={user.id} user={user} />;
+}
+
+function SettingsForm({ user }: { user: UserProfile }) {
   const router = useRouter();
-  const { user, setUser, setTheme: applyTheme } = useAppStore();
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
-  const [fullName, setFullName] = useState("");
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
+  const { setUser, setTheme: applyTheme } = useAppStore();
+  const [theme, setTheme] = useState<"dark" | "light">(user.preferences.theme);
+  const [fullName, setFullName] = useState(user.full_name ?? "");
+  const [username, setUsername] = useState(user.username ?? "");
+  const email = user.email ?? "";
   const [defaultMarket, setDefaultMarket] =
-    useState<UserPreferences["defaultMarket"]>("NSE");
-  const [defaultModel, setDefaultModel] = useState("ENSEMBLE");
+    useState<UserPreferences["defaultMarket"]>(user.preferences.defaultMarket);
+  const [defaultModel, setDefaultModel] = useState(user.preferences.defaultModel);
   const [notifications, setNotifications] = useState<NotificationPreferences>(
-    DEFAULT_NOTIFICATION_PREFERENCES
+    user.preferences.notifications ?? DEFAULT_NOTIFICATION_PREFERENCES
   );
   const [status, setStatus] = useState<{
     tone: "success" | "error";
@@ -74,31 +102,7 @@ export default function SettingsPage() {
   } | null>(null);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    if (!user) {
-      return;
-    }
-
-    setFullName(user.full_name ?? "");
-    setUsername(user.username ?? "");
-    setEmail(user.email ?? "");
-    setTheme(user.preferences.theme);
-    setDefaultMarket(user.preferences.defaultMarket);
-    setDefaultModel(user.preferences.defaultModel);
-    setNotifications(
-      user.preferences.notifications ?? DEFAULT_NOTIFICATION_PREFERENCES
-    );
-  }, [user]);
-
   async function handleSave() {
-    if (!user) {
-      setStatus({
-        tone: "error",
-        message: "Sign in again to update your settings.",
-      });
-      return;
-    }
-
     setSaving(true);
     setStatus(null);
 
@@ -206,25 +210,6 @@ export default function SettingsPage() {
     setUser(null);
     router.push("/login");
     router.refresh();
-  }
-
-  if (!user) {
-    return (
-      <div className="mx-auto max-w-3xl">
-        <div className="card p-6">
-          <h1
-            className="text-2xl font-bold"
-            style={{ color: "var(--color-text-primary)" }}
-          >
-            Settings
-          </h1>
-          <p className="mt-2 text-sm" style={{ color: "var(--color-text-muted)" }}>
-            Your session could not be loaded. Please sign in again to manage
-            account settings.
-          </p>
-        </div>
-      </div>
-    );
   }
 
   return (
@@ -459,13 +444,16 @@ export default function SettingsPage() {
                   </p>
                 </div>
                 <button
+                  role="switch"
+                  aria-checked={notifications[notification.key]}
+                  aria-label={notification.label}
                   onClick={() =>
                     setNotifications((current) => ({
                       ...current,
                       [notification.key]: !current[notification.key],
                     }))
                   }
-                  className="relative h-5 w-9 rounded-full transition-colors"
+                  className="relative h-5 w-9 shrink-0 rounded-full transition-colors"
                   style={{
                     background: notifications[notification.key]
                       ? "#2ECC71"

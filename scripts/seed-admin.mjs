@@ -62,7 +62,8 @@ if (!userId) {
     user_metadata: {
       username: ADMIN_USERNAME,
       full_name: ADMIN_FULL_NAME,
-      role: "admin",
+      // No role here: the signup trigger ignores metadata roles (migration
+      // 010). The service-role upsert below is what makes this user admin.
     },
   });
 
