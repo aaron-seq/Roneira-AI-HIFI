@@ -133,10 +133,12 @@ export default function SignupPage() {
         email,
         password,
         options: {
+          // No `role` here: handle_new_user always creates "user"
+          // (supabase/migrations/010_lock_user_role.sql) -- the client never
+          // decides its own privileges.
           data: {
             username,
             full_name: fullName,
-            role: "user",
           },
           emailRedirectTo: `${window.location.origin}/dashboard/market-overview`,
         },
