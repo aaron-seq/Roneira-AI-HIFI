@@ -9,23 +9,6 @@ interface CompetitorTableProps {
   sector?: string | null;
 }
 
-function getSignal(changePercent: number) {
-  if (changePercent >= 2) return "BUY";
-  if (changePercent <= -2) return "SELL";
-  return "HOLD";
-}
-
-function getSignalColor(signal: string) {
-  switch (signal) {
-    case "BUY":
-      return "#2ECC71";
-    case "SELL":
-      return "#E74C3C";
-    default:
-      return "#F39C12";
-  }
-}
-
 export function CompetitorTable({ ticker, sector }: CompetitorTableProps) {
   const peerQuery = usePeerComparison(ticker);
 
@@ -69,14 +52,11 @@ export function CompetitorTable({ ticker, sector }: CompetitorTableProps) {
               <th className="px-3 py-2 text-right text-xs font-medium" style={{ color: "var(--color-text-faint)" }}>Price</th>
               <th className="px-3 py-2 text-right text-xs font-medium" style={{ color: "var(--color-text-faint)" }}>Today</th>
               <th className="px-3 py-2 text-right text-xs font-medium" style={{ color: "var(--color-text-faint)" }}>Exchange</th>
-              <th className="px-3 py-2 text-right text-xs font-medium" style={{ color: "var(--color-text-faint)" }}>AI Signal</th>
             </tr>
           </thead>
           <tbody>
             {peerQuery.data.peers.map((peer) => {
               const isSelected = peer.symbol === ticker;
-              const signal = getSignal(peer.changePercent);
-              const signalColor = getSignalColor(signal);
 
               return (
                 <tr
@@ -109,18 +89,6 @@ export function CompetitorTable({ ticker, sector }: CompetitorTableProps) {
                   </td>
                   <td className="px-3 py-3 text-right text-xs" style={{ color: "var(--color-text-muted)" }}>
                     {peer.exchange}
-                  </td>
-                  <td className="px-3 py-3 text-right">
-                    <span
-                      className="inline-block rounded px-2 py-0.5 text-[10px] font-bold"
-                      style={{
-                        background: `${signalColor}15`,
-                        color: signalColor,
-                        border: `1px solid ${signalColor}30`,
-                      }}
-                    >
-                      {signal}
-                    </span>
                   </td>
                 </tr>
               );

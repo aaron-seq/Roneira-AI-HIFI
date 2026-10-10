@@ -5,6 +5,10 @@ import { logAuditEvent } from "@/lib/client/audit";
 import { createClient } from "@/lib/supabase/client";
 import { useLiveQuotes } from "@/lib/hooks/use-live-market";
 import type { MarketQuote } from "@/lib/market/types";
+import { summarisePortfolio, type Currency } from "@/lib/portfolio/summary";
+import { useAppStore } from "@/lib/stores/app-store";
+
+const USD_INR = "USDINR=X";
 
 type PortfolioHolding = {
   id: string;
@@ -16,14 +20,6 @@ type PortfolioHolding = {
   buy_date: string | null;
   sector: string | null;
   tags: string[];
-};
-
-export type PortfolioRow = PortfolioHolding & {
-  currentPrice: number;
-  currentValue: number;
-  investedValue: number;
-  pnl: number;
-  pnlPercent: number;
 };
 
 async function fetchHoldings() {
@@ -48,32 +44,29 @@ export function usePortfolio() {
     queryKey: ["portfolio", "holdings"],
     queryFn: fetchHoldings,
   });
-  const symbols = (holdingsQuery.data ?? []).map((row) => row.ticker);
-  const quotesQuery = useLiveQuotes(symbols);
+  const holdings = holdingsQuery.data ?? [];
+  // USDINR=X rides along with the holdings so mixed INR/USD books can be
+  // totalled in one currency instead of adding rupees to dollars.
+  const symbols = holdings.map((row) => row.ticker);
+  const quotesQuery = useLiveQuotes(symbols.length > 0 ? [...symbols, USD_INR] : []);
   const quotesBySymbol = new Map(
     ((quotesQuery.data?.data ?? []) as MarketQuote[]).map((quote) => [
       quote.symbol,
       quote,
     ])
   );
-
-  const rows: PortfolioRow[] = (holdingsQuery.data ?? []).map((holding) => {
-    const livePrice =
-      quotesBySymbol.get(holding.ticker)?.price ?? holding.avg_buy_price;
-    const investedValue = holding.quantity * holding.avg_buy_price;
-    const currentValue = holding.quantity * livePrice;
-    const pnl = currentValue - investedValue;
-    const pnlPercent = investedValue > 0 ? (pnl / investedValue) * 100 : 0;
-
-    return {
-      ...holding,
-      currentPrice: livePrice,
-      currentValue,
-      investedValue,
-      pnl,
-      pnlPercent,
-    };
-  });
+  const base: Currency = useAppStore((state) =>
+    state.user?.preferences.defaultMarket === "NASDAQ" ||
+    state.user?.preferences.defaultMarket === "NYSE"
+      ? "USD"
+      : "INR"
+  );
+  const summary = summarisePortfolio(
+    holdings,
+    quotesBySymbol,
+    quotesBySymbol.get(USD_INR)?.price ?? null,
+    base
+  );
 
   const upsertMutation = useMutation({
     mutationFn: async (payload: {
@@ -159,7 +152,7 @@ export function usePortfolio() {
 
   const removeMutation = useMutation({
     mutationFn: async (id: string) => {
-      const existingRow = rows.find((row) => row.id === id);
+      const existingRow = holdings.find((row) => row.id === id);
       const supabase = createClient();
       const { error } = await supabase
         .from("portfolio_holdings")
@@ -183,7 +176,7 @@ export function usePortfolio() {
 
   return {
     ...holdingsQuery,
-    rows,
+    summary,
     upsertMutation,
     removeMutation,
     isLoading:

@@ -21,6 +21,11 @@ numpy>=1.24.0,<2.1.0
 
 # ML Models
 scikit-learn>=1.3.0,<2.0.0
+# Capped because it pins the format of the committed artifacts
+# (ml/artifacts/generated/*_gbm.joblib are pickled 1.7 XGBRegressors). 2.0
+# changed tree_method defaults and model serialisation, so lifting this means
+# retraining both slots (`npm run train:ml`) and re-running ml/backtest.py --
+# not just bumping the pin. See #151.
 xgboost>=1.7.0,<2.0.0
 
 # Utilities

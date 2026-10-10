@@ -144,9 +144,31 @@ cd ..
 
 **3. Database Setup**
 
-Schema lives in `supabase/migrations/`. Apply it to your Supabase project with
-the Supabase CLI (`supabase db push`) or by running the migration SQL in the
-dashboard's SQL editor.
+Schema lives in `supabase/migrations/`. Pick one:
+
+*Local stack (recommended for development, needs Docker):*
+
+```bash
+npx supabase start        # first run pulls the images; applies migrations + supabase/seed.sql
+npx supabase status       # prints the API URL, anon key and service_role key
+```
+
+Copy the printed values into `.env.local`:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key from supabase status>
+SUPABASE_SERVICE_ROLE_KEY=<service_role key from supabase status>
+```
+
+The seed creates two **local-only test accounts** with a portfolio, transaction
+history and watchlist. Their usernames and passwords are at the top of
+[`supabase/seed.sql`](./supabase/seed.sql). Sign in on `/login` with the
+username. `npx supabase db reset` rebuilds the database from scratch;
+`npx supabase stop` shuts the stack down. Studio runs at http://127.0.0.1:54323.
+
+*Hosted project:* apply the migrations with `npx supabase db push`, or run the
+SQL files in order in the dashboard's SQL editor. Never run `seed.sql` there.
 
 **4. Start Development Servers**
 ```bash
@@ -161,12 +183,21 @@ cd ml && source venv/bin/activate && uvicorn app.main:app --reload --port 8000
 
 ### Docker Development
 
-There is no Docker path. The previous `docker-compose.yml` composed only the
-legacy services and had no service for `src/` or `ml/` at all, so following it
-built a stack that no longer existed. It was deleted rather than rewritten,
-because the deployment targets are Vercel and Railway/Render — not containers.
+Docker is used for one thing: the local Supabase stack above, which the
+Supabase CLI manages. The app and the ML service themselves run directly
+(the two-terminal setup above). The old `docker-compose.yml` composed only the
+legacy services and had no service for `src/` or `ml/`, so it was deleted
+rather than rewritten -- the deployment targets are Vercel and
+Railway/Render, not containers.
 
-Use the two-terminal local setup above.
+**Windows: "The file cannot be accessed by the system" on Docker Desktop
+start.** Docker Desktop can leave broken Unix-socket files behind
+(`%LOCALAPPDATA%\Docker\run\*.sock`,
+`%LOCALAPPDATA%\docker-secrets-engine\engine.sock`) that Windows then cannot
+delete or rename, and the next start fails on them. Quit Docker Desktop,
+rename those two folders (for example add `.old`), and start it again; it
+recreates them. Do not use "Reset to factory defaults" for this -- it deletes
+every image and volume.
 
 ## Branching Model
 
