@@ -7,7 +7,6 @@ import logging
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import TimeSeriesSplit
 
 logger = logging.getLogger("roneira-ml.random_forest")
@@ -100,6 +99,9 @@ class RandomForestPredictor:
             valid = ~target.isna()
             X = features.loc[valid]
             y = target.loc[valid]
+            # The target for a row becomes observable h *source sessions*
+            # later, not h feature rows later (feature rows may be dropped).
+            label_ends = pd.Series(df.index, index=df.index).shift(-horizon_days).loc[X.index]
 
             if len(X) < 50:
                 logger.warning("Insufficient data for Random Forest prediction")
@@ -113,11 +115,10 @@ class RandomForestPredictor:
                     "fallback": True,
                 }
 
-            # Scale features
-            scaler = StandardScaler()
-            X_scaled = scaler.fit_transform(X)
-
-            # Train with TimeSeriesSplit
+            # Trees do not need scaling. In particular, fitting a scaler on
+            # all rows before splitting would inspect the validation period.
+            # TimeSeriesSplit alone is not enough: forward labels from the
+            # last training rows overlap the validation period unless purged.
             tscv = TimeSeriesSplit(n_splits=3)
             scores = []
 
@@ -128,25 +129,28 @@ class RandomForestPredictor:
                 n_jobs=-1,
             )
 
-            for train_idx, test_idx in tscv.split(X_scaled):
-                model.fit(X_scaled[train_idx], y.iloc[train_idx])
-                score = model.score(X_scaled[test_idx], y.iloc[test_idx])
+            for train_idx, test_idx in tscv.split(X):
+                validation_start = X.index[test_idx[0]]
+                train_idx = train_idx[(label_ends.iloc[train_idx] < validation_start).to_numpy()]
+                if len(train_idx) < 2:
+                    # Long horizons can leave no historical labels resolved
+                    # for an early fold. Do not invent a validation score.
+                    continue
+                model.fit(X.iloc[train_idx], y.iloc[train_idx])
+                score = model.score(X.iloc[test_idx], y.iloc[test_idx])
                 scores.append(max(0, score))
 
             # Final model on all data
-            model.fit(X_scaled, y)
+            model.fit(X, y)
 
             # Predict from latest features
-            # A DataFrame, not `.values`: the scaler was fitted with column
-            # names, so passing them lets it verify order instead of warning.
-            latest_scaled = scaler.transform(features.iloc[-1:])
-            predicted_return = model.predict(latest_scaled)[0]
+            predicted_return = model.predict(features.iloc[-1:])[0]
 
             current_price = float(df["Close"].iloc[-1])
             predicted_price = current_price * (1 + predicted_return)
 
             # Confidence from cross-val score
-            avg_score = np.mean(scores) if scores else 0.3
+            avg_score = np.mean(scores) if scores else 0.0
             confidence = min(95, max(25, avg_score * 100 + 30))
 
             # Feature importances

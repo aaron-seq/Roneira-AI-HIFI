@@ -107,6 +107,44 @@ def ensemble():
 
 # ========== Random Forest Tests ==========
 class TestRandomForest:
+    @pytest.mark.parametrize("horizon,drop_features", [(30, False), (30, True), (180, False)])
+    def test_validation_trains_only_on_labels_resolved_before_the_fold(
+        self, monkeypatch, rf_model, sample_data, horizon, drop_features
+    ):
+        import app.models.random_forest as module
+
+        real_regressor = module.RandomForestRegressor
+        observed_folds = []
+
+        class RecordingRegressor(real_regressor):
+            def fit(self, X, y):
+                self.training_index = X.index.copy()
+                return super().fit(X, y)
+
+            def score(self, X, y):
+                positions = sample_data.index.get_indexer(self.training_index)
+                last_label = sample_data.index[positions + horizon].max()
+                assert last_label < X.index.min(), "training label crosses validation start"
+                observed_folds.append((last_label, X.index.min()))
+                return super().score(X, y)
+
+        monkeypatch.setattr(module, "RandomForestRegressor", RecordingRegressor)
+        if drop_features:
+            original_features = rf_model._create_features(sample_data)
+            # Missing feature rows must not turn the horizon into a feature-row gap.
+            monkeypatch.setattr(rf_model, "_create_features", lambda _: original_features.iloc[::2])
+
+        result = rf_model.predict(sample_data, horizon_days=horizon)
+        assert "error" not in result
+        assert result.get("fallback") is not True
+        if horizon < 180:
+            assert observed_folds
+        else:
+            # No fold can resolve this long horizon with the available history;
+            # final inference remains possible, but no score is fabricated.
+            assert not observed_folds
+            assert result["model_score"] == 0.0
+
     def test_prediction_returns_valid_structure(self, rf_model, sample_data):
         result = rf_model.predict(sample_data, horizon_days=30)
         assert "predicted_price" in result

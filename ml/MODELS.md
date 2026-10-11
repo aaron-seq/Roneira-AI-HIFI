@@ -35,7 +35,14 @@ parameters) from the rule-based engines (which apply fixed formulas).
 ### 1. Random Forest — `app/models/random_forest.py`
 A `RandomForestRegressor` (200 trees, depth 12) over ~20 engineered features:
 multi-horizon returns, SMA/EMA ratios, RSI, MACD, volatility, and volume ratios,
-validated with `TimeSeriesSplit` to avoid look-ahead leakage.
+validated with `TimeSeriesSplit` **plus a purge by each target's actual
+resolution timestamp**. A forward-return label must resolve strictly before
+the validation fold starts. Feature rows may be missing, so the purge uses
+source-session timestamps rather than assuming one feature row per session.
+Trees use unscaled features; no preprocessing is fitted on validation rows.
+Early folds with no resolved training labels are omitted rather than assigned
+an invented score. The returned confidence remains a heuristic, not a calibrated
+probability of a profitable trade (see #158).
 
 - **Use it when** you want a dependable, CPU-only, non-linear baseline and can
   tolerate the model retraining on the fetched window each request.
@@ -132,9 +139,9 @@ recoverable from git history as a starting point.
   the confidence score (now continuous, see below) should gate acting on it.
 
 ### 6. Ensemble — `app/models/ensemble.py`
-Combines Random Forest, Technical, PDM, and LSTM via confidence-weighted
-averaging (default static weights `[0.35, 0.25, 0.25, 0.15]` in `main.py`, in that
-order).
+Combines Random Forest, Technical, PDM, and LSTM with explicit equal weights
+(`[0.25, 0.25, 0.25, 0.25]`, shared in `ensemble.py`). The combiner can also use
+confidence weights when a caller omits explicit weights.
 
 - **Use it as the default** for general-purpose predictions — averaging
   decorrelated models reduces the variance of any single one.
@@ -145,9 +152,8 @@ order).
 
 ## Walk-forward results (#144)
 
-Every number elsewhere in this file came from one train/test split. This is the
-first time each model was checked across many periods, including the ones that
-matter (2008, 2020, 2022). Reproduce with:
+The harness evaluates models across multiple periods, including 2008, 2020 and
+2022 when the selected histories cover them. Run the current harness with:
 
 ```bash
 cd ml
@@ -159,14 +165,24 @@ python -m pytest tests/test_backtest.py        # the harness's own guarantees
 `/predict` serves it: on the trailing 1y window (2y past 180 sessions) and
 through its normal `predict`/`analyze`, seeing nothing after the origin
 (`test_models_never_see_past_the_origin`). The LSTM and GAN slots are refitted
-per fold on windows whose labels resolved before the fold starts, minus a
-calendar-day purge. Origins are 30 sessions apart, so realised returns don't
+per fold from frames truncated strictly before the fold starts, so training
+windows cannot contain labels from that fold even when holidays or missing
+sessions stretch the horizon. A calendar embargo is retained in addition to
+this exact boundary. Inverse-MAE weights learn only from earlier-fold labels
+whose actual resolution timestamps precede the scored fold. Origins are 30 sessions apart, so realised returns don't
 overlap. 9 tickers (the training set: NIFTY, S&P 500, NASDAQ, AAPL, MSFT, NVDA,
 RELIANCE, TCS, INFY), 10 contiguous periods from 1934 to 2026, 60 origins per
 period (600 total). Skill is `1 − MAE / MAE(no change)`, **not clipped**:
 negative means worse than predicting no move.
 
-Measured 2026-10-09, horizon 30 sessions:
+**Historical run, measured 2026-10-09, horizon 30 sessions.** These are retained
+as a record of the pre-review implementation, not measurements of the corrected
+harness. Review found an estimated calendar purge that could admit unresolved
+sequence-model labels, inverse-MAE weights that could use unresolved prior-fold
+outcomes, and unpurged Random Forest internal validation. Those paths now have
+regression tests. The benchmark has **not** been rerun; sequence-model,
+Random Forest and ensemble numbers below must be remeasured before being used
+as evidence for current-model performance or a trading edge.
 
 | Model | Skill | Periods > 0 | Per-period skill (mean ± sd) | Direction hit-rate |
 |---|---|---|---|---|
@@ -176,7 +192,7 @@ Measured 2026-10-09, horizon 30 sessions:
 | LSTM slot | −0.049 | 4/10 | −0.084 ± 0.234 | 59.2% |
 | GAN slot | −0.037 | 4/10 | −0.074 ± 0.269 | 59.0% |
 | Ensemble, hand-set weights (old) | −0.017 | 5/10 | −0.014 ± 0.047 | 56.0% |
-| Ensemble, equal weights (now) | −0.002 | 4/10 | −0.004 ± 0.039 | 57.5% |
+| Ensemble, equal weights | −0.002 | 4/10 | −0.004 ± 0.039 | 57.5% |
 | Ensemble, inverse-MAE from past folds | −0.001 | 4/9 | −0.003 ± 0.039 | 57.8% |
 
 Do BUY/SELL calls beat the base rate? Prices rose over 30 sessions at 60.2% of
@@ -190,7 +206,7 @@ origins, so a model saying BUY must beat **60.2%**, not 50%:
 | LSTM slot | 283 | 62.5% | 22 | 36.4% |
 | GAN slot | 376 | 60.1% | 20 | 35.0% |
 
-**What this says:**
+**What the historical run suggested (pending remeasurement):**
 
 - **No model predicts the size of a 30-session move better than "no change."**
   The LSTM slot's earlier `skill_vs_no_change` of 0.036 was one good split;
@@ -199,7 +215,7 @@ origins, so a model saying BUY must beat **60.2%**, not 50%:
   `analyze` projects price from the last 5 days' return; it does not use its
   nine indicator votes for the target at all, and the votes themselves do not
   beat the base rate either.
-- **Random Forest's direction is the only signal above the base rate**: BUY is
+- **Random Forest's recorded direction was above the base rate**: BUY is
   right 65.0% vs 60.2%, SELL 43.8% vs 39.8%. With n=266 that is about 1.6
   standard errors, so it is suggestive, not significant. Its magnitude is the worst
   of the five.
@@ -220,13 +236,14 @@ confidence). All three are cheap to add to `backtest.py`.
 
 ## How to choose (decision guide)
 
-Read the walk-forward results above first: none of these beats "no change" on
-the size of a move, so choose for what you want to *see*, not for accuracy.
+Read the historical results and their review caveat first. No current trading
+edge has been established; choose for the information you want to inspect
+while the corrected harness is remeasured.
 
 ```
 Want to audit a read indicator-by-indicator?            → TECHNICAL (ignore its price target)
 Want a volume-confirmed momentum read?                  → PVD_MOMENTUM (PDM)
-Want the one direction signal above the base rate?      → RANDOM_FOREST (direction, not magnitude)
+Want to inspect a learned direction estimate?          → RANDOM_FOREST (unvalidated as a trading edge)
 Want to see where the models disagree?                  → ENSEMBLE (default) and its model spread
 ```
 

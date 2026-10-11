@@ -164,12 +164,20 @@ class Backtester:
 
     def _fit_slot(self, prepare, sequence_length: int, cutoff: pd.Timestamp) -> GradientBoostArtifact:
         """Fit a sequence slot on every window whose label resolved before `cutoff`."""
+        cutoff_utc = pd.to_datetime(cutoff, utc=True)
+        # Build labels only from prices already observable at the fold start.
+        # Calendar-day estimates alone cannot cover exchange holidays, gaps
+        # or suspended trading: h sessions may span arbitrarily many days.
+        historical_frames = [
+            frame.loc[pd.to_datetime(frame.index, utc=True) < cutoff_utc]
+            for frame in self.frames.values()
+        ]
         windows, targets, stamps = build_training_windows(
-            list(self.frames.values()), prepare, sequence_length, self.horizon
+            historical_frames, prepare, sequence_length, self.horizon
         )
-        # A window stamped at t has its label at t + horizon sessions; the
-        # purge keeps any label that resolves inside the fold out of training.
-        limit = np.datetime64(cutoff.tz_localize(None)) - np.timedelta64(self.purge_days, "D")
+        # Retain the optional calendar embargo in addition to the exact
+        # label-availability boundary enforced by truncating the frames.
+        limit = np.datetime64(cutoff_utc.tz_localize(None)) - np.timedelta64(self.purge_days, "D")
         keep = stamps < limit
         if keep.sum() < 500:
             raise ValueError(f"only {int(keep.sum())} training windows before {cutoff.date()}")
@@ -219,6 +227,8 @@ class Backtester:
                     "fold": fold.index,
                     "ticker": ticker,
                     "date": str(frame.index[pos].date()),
+                    "origin_timestamp": frame.index[pos].isoformat(),
+                    "label_timestamp": frame.index[pos + self.horizon].isoformat(),
                     "realised": future / current - 1.0,
                 }
                 record.update(self._predict_all(frame, ticker, pos, models))
@@ -236,7 +246,8 @@ def ensemble_variants(records: pd.DataFrame) -> pd.DataFrame:
 
     Done offline from the same per-origin member predictions, so every variant
     is scored on identical origins. Inverse-MAE weights are computed from the
-    *preceding* folds only, so they never see the fold they are scored on.
+    *preceding* folds only, and only labels observed before the scored fold
+    starts. A previous fold's last origin can resolve inside the next fold.
     """
     members = [m for m in ENSEMBLE_MEMBERS if m in records.columns]
     if len(members) < 2:
@@ -247,9 +258,15 @@ def ensemble_variants(records: pd.DataFrame) -> pd.DataFrame:
         out["ENSEMBLE_PRODUCTION"] = matrix @ np.asarray(ENSEMBLE_WEIGHTS)
     out["ENSEMBLE_EQUAL"] = matrix.mean(axis=1)
 
+    if not {"origin_timestamp", "label_timestamp"}.issubset(out.columns):
+        raise ValueError("Inverse-MAE evaluation requires origin_timestamp and label_timestamp.")
+    origins = pd.to_datetime(out["origin_timestamp"], utc=True)
+    label_ends = pd.to_datetime(out["label_timestamp"], utc=True)
+
     inverse = np.full(len(out), np.nan)
     for fold in sorted(out["fold"].unique()):
-        past = out[out["fold"] < fold]
+        fold_start = origins[out["fold"] == fold].min()
+        past = out[(out["fold"] < fold) & (label_ends < fold_start)]
         if past.empty:
             continue
         mae = np.array([np.mean(np.abs(past[m] - past["realised"])) for m in members])

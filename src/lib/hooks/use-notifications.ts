@@ -1,7 +1,8 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { useAppStore } from "@/lib/stores/app-store";
 
 export type NotificationRow = {
   id: string;
@@ -13,13 +14,12 @@ export type NotificationRow = {
   read_at: string | null;
 };
 
-const KEY = ["notifications"];
-
-async function fetchNotifications(): Promise<NotificationRow[]> {
+async function fetchNotifications(userId: string): Promise<NotificationRow[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("notifications")
     .select("id, kind, ticker, title, body, created_at, read_at")
+    .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(10);
   if (error) throw error;
@@ -33,24 +33,33 @@ async function fetchNotifications(): Promise<NotificationRow[]> {
  */
 export function useNotifications() {
   const queryClient = useQueryClient();
+  const userId = useAppStore((state) => state.user?.id);
+  const key = ["notifications", userId];
   const query = useQuery({
-    queryKey: KEY,
-    queryFn: fetchNotifications,
+    queryKey: key,
+    queryFn: () => fetchNotifications(userId!),
+    enabled: isSupabaseConfigured && Boolean(userId),
     staleTime: 60_000,
     refetchInterval: 5 * 60_000,
   });
-  const rows = query.data ?? [];
+  const rows = userId ? query.data ?? [] : [];
 
   const markAllRead = useMutation({
+    mutationKey: ["notifications", "mark-read", userId],
+    // A retry after switching accounts could inherit the new hook closure.
+    // The user can explicitly retry this optional read-marker operation.
+    retry: false,
     mutationFn: async () => {
+      if (!userId) throw new Error("You must be signed in to read notifications.");
       const supabase = createClient();
       const { error } = await supabase
         .from("notifications")
         .update({ read_at: new Date().toISOString() })
+        .eq("user_id", userId)
         .is("read_at", null);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: KEY }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
   });
 
   return {

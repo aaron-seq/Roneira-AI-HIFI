@@ -121,3 +121,68 @@ def test_health_stays_open_without_a_token(monkeypatch):
 
     assert client.get("/health").status_code == 200
     assert client.get("/").status_code == 200
+
+
+def test_market_data_rejects_oversized_batches_without_fetching(monkeypatch):
+    import app.main as main
+
+    monkeypatch.setattr(main, "ML_SERVICE_TOKEN", "test-secret")
+    def unexpected_fetch(*args, **kwargs):
+        raise AssertionError("oversized requests must not fetch any symbols")
+    monkeypatch.setattr(main, "fetch_stock_data", unexpected_fetch)
+    symbols = ",".join(f"TEST{i}.NS" for i in range(21))
+    response = TestClient(main.app).get(
+        "/market-data", params={"symbols": symbols},
+        headers={"X-ML-Service-Token": "test-secret"},
+    )
+
+    assert response.status_code == 422
+    assert "20 unique symbols" in response.json()["detail"]
+
+
+def test_market_data_preserves_daily_session_and_deduplicates_symbols(monkeypatch):
+    import pandas as pd
+    import app.main as main
+
+    monkeypatch.setattr(main, "ML_SERVICE_TOKEN", "test-secret")
+    index = pd.date_range("2026-10-08", periods=2, tz="Asia/Kolkata")
+    history = pd.DataFrame({
+        "Close": [100.0, 110.0], "High": [105.0, 115.0],
+        "Low": [95.0, 99.0], "Volume": [1000, 2000],
+    }, index=index)
+    fetched = []
+    def fetch(symbol, **kwargs):
+        fetched.append(symbol)
+        return history
+    monkeypatch.setattr(main, "fetch_stock_data", fetch)
+    monkeypatch.setattr(main, "get_company_info", lambda symbol: {"name": symbol})
+
+    response = TestClient(main.app).get(
+        "/market-data", params={"symbols": " TCS.NS, TCS.NS, ,"},
+        headers={"X-ML-Service-Token": "test-secret"},
+    )
+
+    assert response.status_code == 200
+    assert fetched == ["TCS.NS"]
+    row = response.json()["data"][0]
+    assert row["session_date"] == "2026-10-09"
+    assert row["session_timezone"] == "Asia/Kolkata"
+    assert row["timestamp"] is None
+    assert row["price"] == 110.0
+    assert row["change"] == 10.0
+
+
+def test_market_data_empty_symbols_does_not_fetch(monkeypatch):
+    import app.main as main
+
+    monkeypatch.setattr(main, "ML_SERVICE_TOKEN", "test-secret")
+    def unexpected_fetch(*args, **kwargs):
+        raise AssertionError("empty requests must not fetch any symbols")
+    monkeypatch.setattr(main, "fetch_stock_data", unexpected_fetch)
+
+    response = TestClient(main.app).get(
+        "/market-data", params={"symbols": " , , "},
+        headers={"X-ML-Service-Token": "test-secret"},
+    )
+    assert response.status_code == 200
+    assert response.json()["data"] == []

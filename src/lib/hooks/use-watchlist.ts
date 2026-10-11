@@ -1,10 +1,11 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { logAuditEvent } from "@/lib/client/audit";
-import { createClient } from "@/lib/supabase/client";
+import { logAuditEvent, type AuditEventInput } from "@/lib/client/audit";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { useLiveQuotes } from "@/lib/hooks/use-live-market";
 import type { MarketQuote } from "@/lib/market/types";
+import { useAppStore } from "@/lib/stores/app-store";
 
 type WatchlistItem = {
   id: string;
@@ -24,11 +25,12 @@ export type WatchlistRow = WatchlistItem & {
   changePercent: number;
 };
 
-async function fetchWatchlist() {
+async function fetchWatchlist(userId: string) {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("watchlist")
     .select("id, ticker, exchange, notes, alert_price, alert_triggered_at, sort_order, added_at")
+    .eq("user_id", userId)
     .order("sort_order", { ascending: true })
     .order("added_at", { ascending: true });
 
@@ -39,13 +41,39 @@ async function fetchWatchlist() {
   return (data as WatchlistItem[]) ?? [];
 }
 
+async function accountClient(accountId: string | undefined) {
+  if (!accountId || useAppStore.getState().user?.id !== accountId) {
+    throw new Error("Your account changed. Reopen the watchlist before saving.");
+  }
+  const supabase = createClient();
+  const { data } = await supabase.auth.getUser();
+  if (data.user?.id !== accountId || useAppStore.getState().user?.id !== accountId) {
+    throw new Error("Your account changed. Reopen the watchlist before saving.");
+  }
+  return { supabase, accountId };
+}
+
+async function logAccountEvent(
+  supabase: ReturnType<typeof createClient>,
+  accountId: string,
+  event: AuditEventInput
+) {
+  if (useAppStore.getState().user?.id !== accountId) return;
+  const { data } = await supabase.auth.getUser();
+  if (data.user?.id !== accountId || useAppStore.getState().user?.id !== accountId) return;
+  await logAuditEvent(event);
+}
+
 export function useWatchlist() {
   const queryClient = useQueryClient();
+  const userId = useAppStore((state) => state.user?.id);
   const itemsQuery = useQuery({
-    queryKey: ["watchlist"],
-    queryFn: fetchWatchlist,
+    queryKey: ["watchlist", userId],
+    queryFn: () => fetchWatchlist(userId!),
+    enabled: isSupabaseConfigured && Boolean(userId),
   });
-  const symbols = (itemsQuery.data ?? []).map((row) => row.ticker);
+  const items = userId ? itemsQuery.data ?? [] : [];
+  const symbols = items.map((row) => row.ticker);
   const quotesQuery = useLiveQuotes(symbols);
   const quotesBySymbol = new Map(
     ((quotesQuery.data?.data ?? []) as MarketQuote[]).map((quote) => [
@@ -54,7 +82,7 @@ export function useWatchlist() {
     ])
   );
 
-  const rows: WatchlistRow[] = (itemsQuery.data ?? []).map((item) => {
+  const rows: WatchlistRow[] = items.map((item) => {
     const quote = quotesBySymbol.get(item.ticker);
     return {
       ...item,
@@ -65,20 +93,17 @@ export function useWatchlist() {
   });
 
   const addMutation = useMutation({
+    mutationKey: ["watchlist", "add", userId],
+    retry: false,
     mutationFn: async (payload: {
       symbol: string;
       exchange: string;
       notes?: string;
     }) => {
-      const supabase = createClient();
-      const { data: userResult } = await supabase.auth.getUser();
-      const userId = userResult.user?.id;
-      if (!userId) {
-        throw new Error("You must be signed in to update your watchlist.");
-      }
+      const { supabase, accountId } = await accountClient(userId);
 
       const { error } = await supabase.from("watchlist").insert({
-        user_id: userId,
+        user_id: accountId,
         ticker: payload.symbol,
         exchange: payload.exchange,
         notes: payload.notes ?? "",
@@ -89,7 +114,7 @@ export function useWatchlist() {
         throw error;
       }
 
-      await logAuditEvent({
+      await logAccountEvent(supabase, accountId, {
         actionType: "ADD_WATCHLIST",
         entityType: "watchlist",
         newValues: { ticker: payload.symbol, exchange: payload.exchange },
@@ -101,15 +126,17 @@ export function useWatchlist() {
   });
 
   const removeMutation = useMutation({
+    mutationKey: ["watchlist", "remove", userId],
+    retry: false,
     mutationFn: async (id: string) => {
       const existingRow = rows.find((row) => row.id === id);
-      const supabase = createClient();
-      const { error } = await supabase.from("watchlist").delete().eq("id", id);
+      const { supabase, accountId } = await accountClient(userId);
+      const { error } = await supabase.from("watchlist").delete().eq("id", id).eq("user_id", accountId);
       if (error) {
         throw error;
       }
 
-      await logAuditEvent({
+      await logAccountEvent(supabase, accountId, {
         actionType: "REMOVE_WATCHLIST",
         entityType: "watchlist",
         entityId: id,
@@ -122,20 +149,23 @@ export function useWatchlist() {
   });
 
   const alertMutation = useMutation({
+    mutationKey: ["watchlist", "alert", userId],
+    retry: false,
     mutationFn: async (payload: { id: string; alertPrice: number | null }) => {
       const existingRow = rows.find((row) => row.id === payload.id);
-      const supabase = createClient();
+      const { supabase, accountId } = await accountClient(userId);
       const { error } = await supabase
         .from("watchlist")
         // Setting a level (or clearing it) re-arms a one-shot alert.
         .update({ alert_price: payload.alertPrice, alert_triggered_at: null })
-        .eq("id", payload.id);
+        .eq("id", payload.id)
+        .eq("user_id", accountId);
 
       if (error) {
         throw error;
       }
 
-      await logAuditEvent({
+      await logAccountEvent(supabase, accountId, {
         actionType: "PRICE_ALERT",
         entityType: "watchlist",
         entityId: payload.id,

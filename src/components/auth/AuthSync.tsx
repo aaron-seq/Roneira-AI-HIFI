@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import {
   DEFAULT_NOTIFICATION_PREFERENCES,
@@ -103,15 +104,34 @@ async function fetchUserProfile(): Promise<UserProfile | null> {
 }
 
 export function AuthSync() {
+  const queryClient = useQueryClient();
   const setTheme = useAppStore((state) => state.setTheme);
   const setUser = useAppStore((state) => state.setUser);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
     const supabase = createClient();
+    let generation = 0;
+    let active = true;
+
+    function clearIdentity() {
+      setUser(null);
+      queryClient.clear();
+    }
 
     async function hydrateUser() {
-      const profile = await fetchUserProfile();
+      const requestGeneration = ++generation;
+      let profile: UserProfile | null;
+      try {
+        profile = await fetchUserProfile();
+      } catch {
+        if (active && requestGeneration === generation) clearIdentity();
+        return;
+      }
+      // An older profile request must never restore an account after logout
+      // or overwrite a newer account's hydration.
+      if (!active || requestGeneration !== generation) return;
+      if (useAppStore.getState().user?.id !== profile?.id) queryClient.clear();
       setUser(profile);
       if (profile) {
         setTheme(profile.preferences.theme);
@@ -122,14 +142,19 @@ export function AuthSync() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(() => {
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if ((useAppStore.getState().user?.id ?? null) !== (session?.user?.id ?? null)) {
+        clearIdentity();
+      }
       void hydrateUser();
     });
 
     return () => {
+      active = false;
+      generation++;
       subscription.unsubscribe();
     };
-  }, [setTheme, setUser]);
+  }, [queryClient, setTheme, setUser]);
 
   return null;
 }

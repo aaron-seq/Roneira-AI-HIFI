@@ -78,6 +78,8 @@ def test_inverse_mae_weights_only_learn_from_earlier_folds():
             realised = 0.01 * (i - 5)
             rows.append({
                 "fold": fold, "date": f"2020-0{fold + 1}-1{i}", "realised": realised,
+                "origin_timestamp": f"2020-0{fold + 1}-1{i}T00:00:00Z",
+                "label_timestamp": (pd.Timestamp(f"2020-0{fold + 1}-1{i}", tz="UTC") + pd.Timedelta(days=5)).isoformat(),
                 "RANDOM_FOREST": realised,           # perfect
                 "TECHNICAL": -realised,              # always wrong
                 "PVD_MOMENTUM": 0.0,
@@ -93,6 +95,60 @@ def test_inverse_mae_weights_only_learn_from_earlier_folds():
     err_equal = np.abs(later["ENSEMBLE_EQUAL"] - later["realised"]).mean()
     assert err_inverse < err_equal
     assert "ENSEMBLE_PRODUCTION" in out
+
+
+def test_inverse_mae_does_not_learn_labels_resolving_in_the_scored_fold():
+    records = pd.DataFrame([
+        {"fold": 0, "origin_timestamp": "2020-01-01T00:00:00Z", "label_timestamp": "2020-01-15T00:00:00Z",
+         "realised": 0.02, "RANDOM_FOREST": 0.02, "TECHNICAL": -0.02},
+        {"fold": 0, "origin_timestamp": "2020-01-25T00:00:00Z", "label_timestamp": "2020-02-15T00:00:00Z",
+         "realised": -0.5, "RANDOM_FOREST": 0.5, "TECHNICAL": -0.5},
+        {"fold": 1, "origin_timestamp": "2020-02-01T00:00:00Z", "label_timestamp": "2020-02-20T00:00:00Z",
+         "realised": 0.03, "RANDOM_FOREST": 0.03, "TECHNICAL": -0.03},
+    ])
+    before = ensemble_variants(records)
+    changed = records.copy()
+    changed.loc[1, "realised"] = 0.5
+    after = ensemble_variants(changed)
+    assert before.loc[2, "ENSEMBLE_INVERSE_MAE"] == pytest.approx(0.03)
+    assert after.loc[2, "ENSEMBLE_INVERSE_MAE"] == pytest.approx(before.loc[2, "ENSEMBLE_INVERSE_MAE"])
+
+
+@pytest.mark.parametrize("purge_days", [0, 47])
+def test_slot_labels_resolve_before_fold_start_even_with_missing_sessions(monkeypatch, purge_days):
+    import backtest
+
+    frame = _frame(n=1000)
+    # A long suspension makes 30 observed sessions span more than the estimated
+    # 47-day purge, exposing future labels if the full frame is used to train.
+    frame = frame.drop(frame.index[810:850])
+    cutoff = frame.index[825]
+    tester = Backtester({"A": frame}, horizon=30, purge_days=purge_days)
+    seen = []
+
+    def prepare(historical):
+        assert historical.index.max() < cutoff
+        seen.append(historical)
+        return historical[["Close"]].to_numpy()
+
+    class Estimator:
+        def fit(self, X, y):
+            assert len(X) >= 500
+            # Since build_training_windows gets no prices at or after cutoff,
+            # it cannot construct a label resolving at or after that boundary.
+            assert np.isfinite(y).all()
+
+    monkeypatch.setattr(backtest, "build_estimator", Estimator)
+    tester._fit_slot(prepare, sequence_length=30, cutoff=cutoff)
+    assert len(seen) == 1
+
+
+def test_inverse_mae_requires_label_availability_metadata():
+    with pytest.raises(ValueError, match="label_timestamp"):
+        ensemble_variants(pd.DataFrame({
+            "fold": [0, 1], "realised": [0.01, 0.02],
+            "RANDOM_FOREST": [0.01, 0.02], "TECHNICAL": [-0.01, -0.02],
+        }))
 
 
 def test_signal_precision_is_measured_against_the_base_rate():
