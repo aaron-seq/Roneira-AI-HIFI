@@ -41,6 +41,11 @@ describe("formatCurrency", () => {
     expect(formatCurrency(5)).toBe("$5.00");
     expect(formatCurrency(5.129)).toBe("$5.13");
   });
+
+  it("abbreviates in each currency's own convention when compact", () => {
+    expect(formatCurrency(1234567, "INR", { compact: true })).toBe("₹12.35L");
+    expect(formatCurrency(1234567, "USD", { compact: true })).toBe("$1.23M");
+  });
 });
 
 describe("formatPercent", () => {

@@ -23,7 +23,7 @@ load_dotenv()
 from app.models.random_forest import RandomForestPredictor
 from app.models.technical_analysis import TechnicalAnalyzer
 from app.models.pdm_momentum import PVDMomentumEngine
-from app.models.ensemble import EnsembleCombiner
+from app.models.ensemble import ENSEMBLE_MEMBERS, ENSEMBLE_WEIGHTS, EnsembleCombiner
 from app.models.lstm import LSTMPredictor
 from app.models.gan import GANPredictor
 import export_stock_screener as screener
@@ -293,18 +293,12 @@ def predict(request: PredictionRequest):
         ta_result = ta_analyzer.analyze(df, horizon)
         pdm_result = pdm_engine.analyze(df, ticker, horizon)
         lstm_result = lstm_predictor.predict(df, horizon)
-        # The LSTM slot was weighted 0.3 while it served an untrained heuristic.
-        # It now serves a gradient-boosted model that measures
-        # skill_vs_no_change = 0.035 -- validation MAE 0.0712 against a 0.0738
-        # "no change" baseline on a held-out final 20% of dates. That is a real
-        # edge but a small one, and none of the other three members has a
-        # comparable held-out number to weigh it against, so 0.15 stands. Revisit
-        # together with the other weights, not on this one metric alone;
-        # artifacts/generated/lstm_metadata.json carries the current figure.
+        # Members and weights live in ensemble.py, next to the reasoning and
+        # the walk-forward numbers behind them (#145).
         prediction = ensemble.combine(
             [rf_result, ta_result, pdm_result, lstm_result],
-            weights=[0.35, 0.25, 0.25, 0.15],
-            names=["RANDOM_FOREST", "TECHNICAL", "PVD_MOMENTUM", "LSTM"],
+            weights=list(ENSEMBLE_WEIGHTS),
+            names=list(ENSEMBLE_MEMBERS),
         )
     else:
         # Default to Ensemble
@@ -354,7 +348,9 @@ def predict(request: PredictionRequest):
 @app.get("/market-data", dependencies=protected)
 def market_data(symbols: str = "^NSEI,^BSESN,^IXIC,^GSPC"):
     """Fetch live market data for multiple symbols."""
-    symbol_list = [s.strip() for s in symbols.split(",")][:20]  # Limit to 20
+    symbol_list = list(dict.fromkeys(s.strip() for s in symbols.split(",") if s.strip()))
+    if len(symbol_list) > 20:
+        raise HTTPException(status_code=422, detail="At most 20 unique symbols per request; split into batches")
 
     def quote(symbol: str) -> dict | None:
         try:
@@ -364,6 +360,9 @@ def market_data(symbols: str = "^NSEI,^BSESN,^IXIC,^GSPC"):
             change = current - prev
             change_pct = (change / prev) * 100 if prev else 0
             company = get_company_info(symbol)
+            bar_date = pd.Timestamp(hist.index[-1])
+            session_date = None if pd.isna(bar_date) else bar_date.date().isoformat()
+            session_timezone = str(bar_date.tz) if bar_date.tz is not None else None
 
             return {
                 "symbol": symbol,
@@ -374,6 +373,11 @@ def market_data(symbols: str = "^NSEI,^BSESN,^IXIC,^GSPC"):
                 "volume": int(hist["Volume"].iloc[-1]) if "Volume" in hist.columns else 0,
                 "high": round(float(hist["High"].iloc[-1]), 2),
                 "low": round(float(hist["Low"].iloc[-1]), 2),
+                # Daily index midnight labels a session; it is not a trade's
+                # as-of timestamp. Never substitute request time for either.
+                "timestamp": None,
+                "session_date": session_date,
+                "session_timezone": session_timezone,
             }
         except Exception as e:
             logger.warning(f"Failed to fetch {symbol}: {e}")

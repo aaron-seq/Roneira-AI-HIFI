@@ -28,6 +28,9 @@ import {
 } from "@/lib/stores/app-store";
 import { cn } from "@/lib/utils";
 
+// Only toggles with something behind them. "Prediction complete", "news
+// sentiment" and a "weekly P&L email" were listed here too, but nothing sent
+// any of them -- a switch that does nothing is worse than no switch.
 const notificationItems: Array<{
   key: keyof NotificationPreferences;
   label: string;
@@ -36,22 +39,7 @@ const notificationItems: Array<{
   {
     key: "priceAlerts",
     label: "Price Alerts",
-    desc: "Get notified when a stock hits your target price",
-  },
-  {
-    key: "predictionComplete",
-    label: "Prediction Complete",
-    desc: "Notification when ML analysis finishes",
-  },
-  {
-    key: "newsSentiment",
-    label: "News Sentiment Alerts",
-    desc: "Alert when bearish sentiment is detected",
-  },
-  {
-    key: "weeklyReport",
-    label: "Weekly Portfolio Report",
-    desc: "Receive a weekly P&L summary email",
+    desc: "In-app alert when a watchlist price level is touched (checked after each market close)",
   },
 ];
 
@@ -402,9 +390,9 @@ function SettingsForm({ user }: { user: UserProfile }) {
                 }}
               >
                 <option value="ENSEMBLE">Ensemble (Auto)</option>
-                <option value="LSTM">LSTM</option>
+                <option value="LSTM">Sequence model (gradient-boosted)</option>
                 <option value="RANDOM_FOREST">Random Forest</option>
-                <option value="GAN">GAN</option>
+                <option value="GAN">Scenario model (gradient-boosted)</option>
                 <option value="TECHNICAL">Technical Analysis</option>
                 <option value="PVD_MOMENTUM">PVD Momentum</option>
               </select>

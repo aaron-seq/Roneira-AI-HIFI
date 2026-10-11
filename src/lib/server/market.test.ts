@@ -5,8 +5,11 @@ import {
   unwrapTwelveQuotePayload,
   normalizeQuote,
   dedupeBySymbol,
+  splitMovers,
 } from "@/lib/server/market";
 import type { QuoteConfig, StockSearchResult } from "@/lib/market/types";
+import { clearCachedValue } from "@/lib/server/cache";
+import { getNormalizedQuotes } from "@/lib/server/market";
 
 const equityConfig: QuoteConfig = {
   symbol: "AAPL",
@@ -34,6 +37,8 @@ describe("toNumber", () => {
 
   it("returns null for values that are not numeric", () => {
     expect(toNumber("N/A")).toBeNull();
+    expect(toNumber("")).toBeNull();
+    expect(toNumber("   ")).toBeNull();
     expect(toNumber(null)).toBeNull();
     expect(toNumber(undefined)).toBeNull();
     expect(toNumber({})).toBeNull();
@@ -191,9 +196,92 @@ describe("normalizeQuote", () => {
     expect(quote?.volume).toBeNull();
   });
 
-  it("stamps an ISO timestamp", () => {
+  it("does not invent a provider timestamp or session for an undated quote", () => {
     const quote = normalizeQuote(equityConfig, { close: "150" }, "twelve-data");
-    expect(() => new Date(quote!.timestamp).toISOString()).not.toThrow();
+    expect(quote?.timestamp).toBeNull();
+    expect(quote?.sessionDate).toBeNull();
+  });
+
+  it("retains a stale provider time and derives the date in the exchange timezone", () => {
+    const asOf = "2026-10-02T00:30:00Z";
+    const quote = normalizeQuote(equityConfig, {
+      close: "150", timestamp: Date.parse(asOf) / 1000,
+      exchange_timezone: "America/New_York",
+    }, "twelve-data");
+    expect(quote?.timestamp).toBe(asOf.replace("Z", ".000Z"));
+    expect(quote?.sessionDate).toBe("2026-10-01");
+    expect(quote?.sessionTimezone).toBe("America/New_York");
+  });
+
+  it("retains the Yahoo daily session without treating midnight as a quote time", () => {
+    const quote = normalizeQuote({ ...equityConfig, symbol: "TCS.NS", exchange: "NSE" }, {
+      price: 3000, session_date: "2026-10-09", session_timezone: "Asia/Kolkata",
+      timestamp: null,
+    }, "yfinance");
+    expect(quote).toMatchObject({ timestamp: null, sessionDate: "2026-10-09", sessionTimezone: "Asia/Kolkata" });
+  });
+
+  it("preserves Twelve Data's exchange-local session without guessing an offset", () => {
+    const quote = normalizeQuote(equityConfig, {
+      close: "150", datetime: "2026-10-09 16:00:00", exchange_timezone: "America/New_York",
+    }, "twelve-data");
+    expect(quote?.timestamp).toBeNull();
+    expect(quote?.sessionDate).toBe("2026-10-09");
+  });
+
+  it("rejects malformed session dates and unknown timezone provenance", () => {
+    const quote = normalizeQuote(equityConfig, {
+      close: "150", session_date: "2026-02-30", timestamp: "invalid",
+      exchange_timezone: "Unknown/Exchange",
+    }, "twelve-data");
+    expect(quote).toMatchObject({ timestamp: null, sessionDate: null, sessionTimezone: null });
+  });
+});
+
+describe("ML quote batching", () => {
+  beforeEach(() => clearCachedValue());
+  afterEach(() => vi.unstubAllGlobals());
+
+  const config = (symbol: string): QuoteConfig => ({ ...equityConfig, symbol, exchange: "NSE" });
+  const reply = (symbols: string[]) => new Response(JSON.stringify({
+    data: symbols.map((symbol) => ({ symbol, price: 100, session_date: "2026-10-09", session_timezone: "Asia/Kolkata" })),
+  }), { status: 200, headers: { "Content-Type": "application/json" } });
+
+  it.each([
+    { total: 20, batchSizes: [20] },
+    { total: 21, batchSizes: [20, 1] },
+    { total: 45, batchSizes: [20, 20, 5] },
+  ])("fetches all $total symbols including trailing FX for a mixed portfolio", async ({ total, batchSizes }) => {
+    const configs: QuoteConfig[] = Array.from({ length: total - 1 }, (_, i) => i % 2 === 0
+      ? { ...equityConfig, symbol: `HOLDING${i}.NS`, exchange: "NSE", currency: "INR" }
+      : { ...equityConfig, symbol: `USHOLDING${i}`, exchange: "NASDAQ", currency: "USD" });
+    configs.push({ ...equityConfig, symbol: "USDINR=X", exchange: "FX", assetType: "forex", currency: "INR" });
+    const symbols = configs.map((entry) => entry.symbol);
+    const batches: string[][] = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(String(input));
+      if (url.hostname === "api.twelvedata.com") return new Response("{}", { status: 503 });
+      const batch = url.searchParams.get("symbols")!.split(",");
+      batches.push(batch);
+      return reply(batch);
+    }));
+
+    const quotes = await getNormalizedQuotes(configs);
+    expect(batches.map((batch) => batch.length)).toEqual(batchSizes);
+    expect(quotes.map((quote) => quote.symbol)).toEqual(symbols);
+    expect(quotes.at(-1)?.symbol).toBe("USDINR=X");
+  });
+
+  it("keeps later batches when an earlier ML request fails", async () => {
+    const symbols = Array.from({ length: 21 }, (_, i) => `BATCH${i}.NS`);
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(String(input));
+      if (url.hostname === "api.twelvedata.com") return new Response("{}", { status: 503 });
+      const batch = url.searchParams.get("symbols")!.split(",");
+      return batch.length === 20 ? new Response("{}", { status: 503 }) : reply(batch);
+    }));
+
+    expect((await getNormalizedQuotes(symbols.map(config))).map((quote) => quote.symbol)).toEqual(["BATCH20.NS"]);
   });
 });
 
@@ -224,5 +312,23 @@ describe("dedupeBySymbol", () => {
   it("leaves already-unique results untouched", () => {
     const unique = [row("AAPL", "Apple Inc."), row("MSFT", "Microsoft")];
     expect(dedupeBySymbol(unique)).toHaveLength(2);
+  });
+});
+
+describe("splitMovers", () => {
+  const quote = (symbol: string, changePercent: number) =>
+    ({ symbol, changePercent }) as Parameters<typeof splitMovers>[0][number];
+
+  it("never lists a stock that rose as a loser, or one that fell as a gainer", () => {
+    const { gainers, losers } = splitMovers(
+      [quote("A", 3), quote("B", 1.2), quote("C", 0.4), quote("D", -0.5), quote("E", -2)],
+      5
+    );
+    expect(gainers.map((q) => q.symbol)).toEqual(["A", "B", "C"]);
+    expect(losers.map((q) => q.symbol)).toEqual(["E", "D"]);
+  });
+
+  it("returns empty lists on a day when nothing moved that way", () => {
+    expect(splitMovers([quote("A", 1), quote("B", 2)]).losers).toEqual([]);
   });
 });

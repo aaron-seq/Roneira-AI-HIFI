@@ -6,16 +6,22 @@ export function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(inputs));
 }
 
-/** Format a number as currency (INR or USD) */
+/**
+ * Format a number as currency (INR or USD). `compact` abbreviates large
+ * values in the currency's own convention: lakh/crore for INR (₹12.35L),
+ * thousand/million for USD ($1.23M).
+ */
 export function formatCurrency(
   value: number,
-  currency: "INR" | "USD" = "USD"
+  currency: "INR" | "USD" = "USD",
+  { compact = false }: { compact?: boolean } = {}
 ): string {
   return new Intl.NumberFormat(currency === "INR" ? "en-IN" : "en-US", {
     style: "currency",
     currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    ...(compact
+      ? { notation: "compact", maximumFractionDigits: 2 }
+      : { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
   }).format(value);
 }
 

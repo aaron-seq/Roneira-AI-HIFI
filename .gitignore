@@ -69,3 +69,6 @@ ml/exports/
 # them needs breaking major upgrades. Refresh dependencies before reviving.
 frontend/package-lock.json
 venv/
+
+# Backtest price cache (ml/backtest.py) -- re-downloadable, not source.
+ml/.cache/

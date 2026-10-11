@@ -14,13 +14,9 @@ import {
 } from "lucide-react";
 import { logAuditEvent } from "@/lib/client/audit";
 import { useNewsFeed } from "@/lib/hooks/use-news-feed";
-import { useRecentActivity } from "@/lib/hooks/use-audit-log";
+import { useNotifications } from "@/lib/hooks/use-notifications";
 import { useAppStore } from "@/lib/stores/app-store";
 import { createClient } from "@/lib/supabase/client";
-
-function describeActivity(actionType: string, entityType: string): string {
-  return `${actionType.replaceAll("_", " ").toLowerCase()} · ${entityType}`;
-}
 
 export function Header() {
   const router = useRouter();
@@ -29,18 +25,15 @@ export function Header() {
     theme,
     toggleTheme,
     sidebarCollapsed,
-    notificationsSeenAt,
-    markNotificationsSeen,
     setCommandPaletteOpen,
     setUser,
   } = useAppStore();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const activityQuery = useRecentActivity();
-  const activity = activityQuery.data ?? [];
-  const unreadNotifications = notificationsSeenAt
-    ? activity.filter((row) => row.created_at > notificationsSeenAt).length
-    : activity.length;
+  // The bell is for things that happened to the user (fired alerts), not a
+  // replay of their own clicks -- that is what the Audit Log page is for.
+  const notifications = useNotifications();
+  const unreadNotifications = notifications.unread;
   const preferredMarket =
     user?.preferences.defaultMarket === "NSE" ||
     user?.preferences.defaultMarket === "BSE"
@@ -54,9 +47,11 @@ export function Header() {
     headlines.length > 0
       ? [...headlines, ...headlines]
       : [
-          headlinesQuery.isError
-            ? "Live market headlines are temporarily unavailable."
-            : "Loading live market headlines...",
+          // A successful fetch with zero articles (no NEWS_API_KEY, or a quiet
+          // feed) used to fall through to "Loading..." and stay there.
+          headlinesQuery.isPending
+            ? "Loading live market headlines..."
+            : "Live market headlines are unavailable right now.",
         ];
 
   // Cmd/Ctrl+K is bound inside CommandPalette, which toggles the same store
@@ -108,14 +103,10 @@ export function Header() {
           : "var(--spacing-sidebar)",
       }}
     >
-      <div className="flex items-center gap-2 px-6">
-        <span
-          className="text-sm font-semibold"
-          style={{ color: "var(--color-text-primary)" }}
-        >
-          Intelligent Financial Advisor
-        </span>
-      </div>
+      {/* No "Intelligent Financial Advisor" label: the sidebar already
+          carries the brand, and an unregistered tool calling itself a
+          financial advisor is a regulatory claim this product cannot make. */}
+      <div className="px-2" />
 
       <div className="flex-1 overflow-hidden px-4">
         <div
@@ -139,6 +130,7 @@ export function Header() {
       <div className="flex items-center gap-1 px-4">
         <button
           onClick={() => setCommandPaletteOpen(true)}
+          aria-label="Search pages and actions (Ctrl+K)"
           className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors hover:bg-white/5"
           style={{ color: "var(--color-text-muted)" }}
         >
@@ -163,8 +155,8 @@ export function Header() {
               event.stopPropagation();
               setShowUserMenu(false);
               setShowNotifications((open) => {
-                if (!open) {
-                  markNotificationsSeen();
+                if (!open && notifications.unread > 0) {
+                  notifications.markAllRead.mutate();
                 }
                 return !open;
               });
@@ -202,33 +194,40 @@ export function Header() {
                   color: "var(--color-text-primary)",
                 }}
               >
-                Recent activity
+                Notifications
               </div>
-              {activityQuery.isLoading ? (
+              {notifications.isLoading ? (
                 <p
                   className="px-3 py-3 text-xs"
                   style={{ color: "var(--color-text-faint)" }}
                 >
                   Loading...
                 </p>
-              ) : activity.length === 0 ? (
+              ) : notifications.rows.length === 0 ? (
                 <p
                   className="px-3 py-3 text-xs"
                   style={{ color: "var(--color-text-faint)" }}
                 >
-                  No recent activity yet.
+                  No alerts yet. Set a price alert on any Watchlist row; it is
+                  checked after each market close.
                 </p>
               ) : (
                 <ul className="max-h-72 overflow-y-auto">
-                  {activity.map((row) => (
+                  {notifications.rows.map((row) => (
                     <li
                       key={row.id}
                       className="px-3 py-2 text-xs"
                       style={{ color: "var(--color-text-muted)" }}
                     >
-                      <p style={{ color: "var(--color-text-primary)" }}>
-                        {describeActivity(row.action_type, row.entity_type)}
+                      <p
+                        style={{
+                          color: "var(--color-text-primary)",
+                          fontWeight: row.read_at ? 400 : 600,
+                        }}
+                      >
+                        {row.title}
                       </p>
+                      {row.body && <p>{row.body}</p>}
                       <p style={{ color: "var(--color-text-faint)" }}>
                         {new Date(row.created_at).toLocaleString()}
                       </p>
@@ -236,6 +235,16 @@ export function Header() {
                   ))}
                 </ul>
               )}
+              <button
+                onClick={() => {
+                  setShowNotifications(false);
+                  router.push("/dashboard/audit-log");
+                }}
+                className="w-full border-t px-3 py-2 text-left text-xs transition-colors hover:bg-white/5"
+                style={{ borderColor: "var(--color-divider)", color: "var(--color-text-faint)" }}
+              >
+                View your activity log
+              </button>
             </div>
           )}
         </div>
@@ -258,6 +267,8 @@ export function Header() {
               event.stopPropagation();
               setShowUserMenu(!showUserMenu);
             }}
+            aria-label="Account menu"
+            aria-expanded={showUserMenu}
             className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-white/5"
           >
             <div

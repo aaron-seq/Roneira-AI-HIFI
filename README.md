@@ -93,17 +93,19 @@ roadmap. See [IDEAS.md](./IDEAS.md) for near-term and speculative extensions
 (backtesting, alerting, options-flow data, etc. are not built yet).
 
 <details>
-<summary><strong>Six-model ensemble, with disagreement surfaced, not hidden</strong></summary>
+<summary><strong>Six models, a four-model ensemble, with disagreement surfaced, not hidden</strong></summary>
 
 - **RandomForest** — refit per prediction request with `TimeSeriesSplit`, on engineered
   price/volume/volatility features (~2.6s per call, real, not cached).
 - **Technical** and **PVD Momentum** — deterministic rule-based signal engines (see below).
 - **LSTM and GAN slots** — gradient-boosted (`xgboost`), trained offline on full available
   history for 9 tickers (~93,000 windows each), artifacts committed to the repo. TensorFlow
-  is not a dependency; see [ARCHITECTURE.md](./ARCHITECTURE.md#ml-service-ml) for why and
-  for the measured skill of these two models (a small but real edge over a naive "no change"
-  baseline at a 30-day horizon: 3.5% and 3.0% — the confidence score reflects that).
-- **Ensemble** — a weighted blend (0.35 / 0.25 / 0.25 / 0.15) that also returns each
+  is not a dependency; see [ARCHITECTURE.md](./ARCHITECTURE.md#ml-service-ml) for why.
+- **Measured honestly.** `ml/backtest.py` walks every model forward through 10 periods
+  (1934–2026). At a 30-session horizon **none beats a "no change" forecast** on the size
+  of a move. Random Forest's BUY/SELL direction is the only signal above the base rate, and
+  not significantly. Numbers and method are in [ml/MODELS.md](./ml/MODELS.md#walk-forward-results-144).
+- **Ensemble** — an equal-weight blend of four members that also returns each
   constituent model's own price target, confidence, and signal, plus an agreement score.
   The Predict page's model-spread view plots these against spot so you can see when models
   disagree instead of only the averaged number.

@@ -25,6 +25,8 @@ type JsonRecord = Record<string, unknown>;
 const QUOTE_TTL_MS = 60_000;
 const SEARCH_TTL_MS = 5 * 60_000;
 const HISTORY_TTL_MS = 5 * 60_000;
+// The private ML endpoint rejects larger requests instead of truncating them.
+const ML_QUOTE_BATCH_SIZE = 20;
 
 export function toNumber(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) {
@@ -33,6 +35,7 @@ export function toNumber(value: unknown): number | null {
 
   if (typeof value === "string") {
     const sanitized = value.replace(/,/g, "");
+    if (!sanitized.trim()) return null;
     const parsed = Number(sanitized);
     return Number.isFinite(parsed) ? parsed : null;
   }
@@ -105,6 +108,55 @@ export function unwrapTwelveQuotePayload(payload: JsonRecord): Map<string, JsonR
   );
 }
 
+function sessionDate(value: unknown): string | null {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value
+    ? value
+    : null;
+}
+
+function quoteProvenance(config: QuoteConfig, raw: JsonRecord) {
+  let timestamp: string | null = null;
+  const value = raw.timestamp;
+  const numeric = toNumber(value);
+  if (numeric !== null) {
+    const parsed = new Date(numeric >= 1e12 ? numeric : numeric * 1000);
+    if (Number.isFinite(parsed.getTime())) timestamp = parsed.toISOString();
+  } else if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}T.+(?:Z|[+-]\d{2}:\d{2})$/.test(value)) {
+    const parsed = new Date(value);
+    if (Number.isFinite(parsed.getTime())) timestamp = parsed.toISOString();
+  }
+
+  const configuredTimezone = config.exchange === "NSE" || config.exchange === "BSE"
+    ? "Asia/Kolkata"
+    : config.exchange === "NASDAQ" || config.exchange === "NYSE"
+      ? "America/New_York"
+      : null;
+  const providerTimezone = raw.session_timezone ?? raw.exchange_timezone;
+  let sessionTimezone = typeof providerTimezone === "string" ? providerTimezone : configuredTimezone;
+  try {
+    if (sessionTimezone) new Intl.DateTimeFormat("en-US", { timeZone: sessionTimezone }).format();
+  } catch {
+    sessionTimezone = null;
+  }
+
+  // Twelve Data's datetime is exchange-local; Yahoo daily bars supply an
+  // explicit session date. A response envelope's receipt time cannot qualify.
+  let date = sessionDate(raw.session_date);
+  if (!date && typeof raw.datetime === "string" && sessionTimezone) {
+    date = sessionDate(raw.datetime.slice(0, 10));
+  }
+  if (!date && timestamp && sessionTimezone) {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: sessionTimezone, year: "numeric", month: "2-digit", day: "2-digit",
+    }).formatToParts(new Date(timestamp));
+    const part = (type: string) => parts.find((entry) => entry.type === type)?.value;
+    date = sessionDate(`${part("year")}-${part("month")}-${part("day")}`);
+  }
+  return { timestamp, sessionDate: date, sessionTimezone };
+}
+
 export function normalizeQuote(
   config: QuoteConfig,
   raw: JsonRecord,
@@ -152,7 +204,7 @@ export function normalizeQuote(
     previousClose,
     volume: toNumber(raw.volume),
     provider,
-    timestamp: new Date().toISOString(),
+    ...quoteProvenance(config, raw),
   };
 }
 
@@ -214,32 +266,29 @@ async function fetchMlQuotes(
     return new Map();
   }
 
-  const fallbackSymbols = configs.map(
+  const fallbackSymbols = Array.from(new Set(configs.map(
     (config) => config.fallbackSymbol ?? config.symbol
-  );
+  )));
 
-  let payload: JsonRecord;
-  try {
-    payload = await fetchMlJson(
-      `${ML_BACKEND_URL}/market-data?symbols=${encodeURIComponent(
-        fallbackSymbols.join(",")
-      )}`
-    );
-  } catch {
-    return new Map();
+  const mlBySymbol = new Map<string, JsonRecord>();
+  // Preserve successful batches if another batch fails. Sequential requests
+  // also bound provider fan-out to the backend's eight-worker pool.
+  for (let offset = 0; offset < fallbackSymbols.length; offset += ML_QUOTE_BATCH_SIZE) {
+    try {
+      const batch = fallbackSymbols.slice(offset, offset + ML_QUOTE_BATCH_SIZE);
+      const payload = await fetchMlJson(
+        `${ML_BACKEND_URL}/market-data?symbols=${encodeURIComponent(batch.join(","))}`
+      );
+      const rows = Array.isArray(payload.data) ? payload.data : [];
+      for (const row of rows) {
+        if (typeof row === "object" && row !== null && typeof row.symbol === "string") {
+          mlBySymbol.set(row.symbol, row as JsonRecord);
+        }
+      }
+    } catch {
+      // Other batches can still supply holdings, FX rates, and alert symbols.
+    }
   }
-
-  const rows = Array.isArray(payload.data)
-    ? (payload.data as JsonRecord[])
-    : [];
-  const mlBySymbol = new Map(
-    rows
-      .map((row) => {
-        const symbol = typeof row.symbol === "string" ? row.symbol : null;
-        return symbol ? [symbol, row] : null;
-      })
-      .filter((row): row is [string, JsonRecord] => Boolean(row))
-  );
 
   const quotes = new Map<string, MarketQuote>();
   for (const config of configs) {
@@ -302,6 +351,19 @@ function mapSectionQuotes(
     .filter((quote): quote is MarketQuote => Boolean(quote));
 }
 
+/**
+ * Biggest risers and fallers, each only among stocks that actually moved that
+ * way. Taking the bottom five of one ranking listed stocks up 1% as "Top
+ * Losers" on any broad up day.
+ */
+export function splitMovers(quotes: MarketQuote[], count = 5) {
+  const ranked = [...quotes].sort((left, right) => right.changePercent - left.changePercent);
+  return {
+    gainers: ranked.filter((quote) => quote.changePercent > 0).slice(0, count),
+    losers: ranked.filter((quote) => quote.changePercent < 0).reverse().slice(0, count),
+  };
+}
+
 export async function getMarketOverviewPayload() {
   const [overviewQuotes, moverQuotes] = await Promise.all([
     getNormalizedQuotes(MARKET_OVERVIEW_SYMBOLS),
@@ -311,10 +373,6 @@ export async function getMarketOverviewPayload() {
   const overviewMap = new Map(
     overviewQuotes.map((quote) => [quote.symbol, quote])
   );
-  const movers = [...moverQuotes].sort(
-    (left, right) => right.changePercent - left.changePercent
-  );
-
   return {
     data: overviewQuotes,
     sections: {
@@ -323,10 +381,7 @@ export async function getMarketOverviewPayload() {
       europe: mapSectionQuotes(MARKET_OVERVIEW_SECTIONS.europe, overviewMap),
       special: mapSectionQuotes(MARKET_OVERVIEW_SECTIONS.special, overviewMap),
     },
-    movers: {
-      gainers: movers.slice(0, 5),
-      losers: [...movers].reverse().slice(0, 5),
-    },
+    movers: splitMovers(moverQuotes),
     timestamp: new Date().toISOString(),
   };
 }

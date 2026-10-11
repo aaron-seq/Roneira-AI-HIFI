@@ -57,7 +57,7 @@ const FEATURES = [
     icon: Layers,
     title: "Fundamentals screener",
     description:
-      "Large, mid, and small-cap screens ranked on ROE, debt-to-equity, PEG, and growth — refreshed on a schedule, not scraped on demand.",
+      "Large, mid, and small-cap screens ranked on ROE, debt-to-equity, PEG, and growth, from live fundamentals for a 42-stock NSE universe, cached for 30 minutes.",
   },
   {
     icon: ShieldCheck,

@@ -217,8 +217,19 @@ export default function WatchlistPage() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         {stock.alert_price ? (
-                          <span className="font-mono text-xs" data-financial style={{ color: "var(--color-warning)" }}>
-                            {formatPrice(stock.alert_price)}
+                          <span className="flex flex-col items-end">
+                            <span
+                              className="font-mono text-xs"
+                              data-financial
+                              style={{ color: stock.alert_triggered_at ? "var(--color-text-faint)" : "var(--color-warning)" }}
+                            >
+                              {formatPrice(stock.alert_price)}
+                            </span>
+                            <span className="text-[10px]" style={{ color: "var(--color-text-faint)" }}>
+                              {stock.alert_triggered_at
+                                ? `Hit ${new Date(stock.alert_triggered_at).toLocaleDateString()}`
+                                : "Armed"}
+                            </span>
                           </span>
                         ) : (
                           <span className="text-xs" style={{ color: "var(--color-text-faint)" }}>—</span>
@@ -232,7 +243,8 @@ export default function WatchlistPage() {
                               setAlertInput(stock.alert_price?.toString() || "");
                             }}
                             className="rounded p-1.5 transition-colors hover:bg-white/5"
-                            title="Set price alert"
+                            title={stock.alert_triggered_at ? "Alert hit -- set a level to re-arm" : "Set price alert"}
+                            aria-label={`Set price alert for ${stock.ticker}`}
                           >
                             {stock.alert_price ? (
                               <Bell className="h-3.5 w-3.5" style={{ color: "var(--color-warning)" }} />
@@ -245,6 +257,7 @@ export default function WatchlistPage() {
                             disabled={predictingTicker === stock.ticker}
                             className="rounded p-1.5 transition-colors hover:bg-white/5 disabled:opacity-50"
                             title="Quick predict"
+                            aria-label={`Predict ${stock.ticker}`}
                           >
                             <Brain
                               className={cn(
@@ -255,9 +268,14 @@ export default function WatchlistPage() {
                             />
                           </button>
                           <button
-                            onClick={() => watchlist.removeMutation.mutate(stock.id)}
+                            onClick={() => {
+                              if (window.confirm(`Remove ${stock.ticker} from your watchlist?`)) {
+                                watchlist.removeMutation.mutate(stock.id);
+                              }
+                            }}
                             className="rounded p-1.5 transition-colors hover:bg-white/5"
                             title="Remove"
+                            aria-label={`Remove ${stock.ticker}`}
                           >
                             <Trash2 className="h-3.5 w-3.5" style={{ color: "var(--color-text-faint)" }} />
                           </button>
@@ -372,14 +390,24 @@ export default function WatchlistPage() {
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="alert-dialog-title"
               className="glass w-full max-w-sm rounded-2xl p-6"
               onClick={(event) => event.stopPropagation()}
             >
-              <h3 className="mb-4 text-lg font-semibold" style={{ color: "var(--color-text-primary)" }}>
+              <h3 id="alert-dialog-title" className="mb-1 text-lg font-semibold" style={{ color: "var(--color-text-primary)" }}>
                 Set Price Alert
               </h3>
+              <p className="mb-4 text-xs" style={{ color: "var(--color-text-faint)" }}>
+                Checked once after the market closes, against the day&apos;s high and low. Fires once,
+                then shows as hit until you set a new level.
+              </p>
               <input
                 type="number"
+                step="any"
+                inputMode="decimal"
+                aria-label="Alert price"
                 value={alertInput}
                 onChange={(event) => setAlertInput(event.target.value)}
                 placeholder="Target price..."

@@ -72,9 +72,6 @@ interface AppState {
   activePredictionTicker: string | null;
   setActivePredictionTicker: (ticker: string | null) => void;
 
-  // Notifications (unread = audit_log rows newer than this)
-  notificationsSeenAt: string | null;
-  markNotificationsSeen: () => void;
 }
 
 export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
@@ -131,7 +128,4 @@ export const useAppStore = create<AppState>((set) => ({
   setActivePredictionTicker: (ticker) =>
     set({ activePredictionTicker: ticker }),
 
-  // Notifications
-  notificationsSeenAt: null,
-  markNotificationsSeen: () => set({ notificationsSeenAt: new Date().toISOString() }),
 }));

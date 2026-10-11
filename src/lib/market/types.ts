@@ -34,7 +34,11 @@ export interface MarketQuote {
   previousClose?: number | null;
   volume?: number | null;
   provider: "twelve-data" | "yfinance";
-  timestamp: string;
+  /** Provider as-of time, not the time this server received the response. */
+  timestamp: string | null;
+  /** Exchange-local session represented by the OHLC values, when known. */
+  sessionDate?: string | null;
+  sessionTimezone?: string | null;
 }
 
 export interface CandlePoint {

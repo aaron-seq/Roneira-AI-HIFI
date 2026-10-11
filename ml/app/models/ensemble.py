@@ -8,6 +8,18 @@ import numpy as np
 
 logger = logging.getLogger("roneira-ml.ensemble")
 
+# What /predict's ENSEMBLE blends, shared with ml/backtest.py so the backtest
+# always scores the weights production actually serves.
+#
+# Equal weights (#145). The previous [0.35, 0.25, 0.25, 0.15] were hand-set and
+# never measured. In the walk-forward backtest (MODELS.md, "Walk-forward
+# results") they scored slightly *worse* out of sample than equal weighting --
+# pooled skill -0.017 vs -0.002 at a 30-session horizon -- and inverse-MAE
+# weights learned from earlier folds did no better than equal. With no member
+# showing out-of-sample skill, there is nothing to justify unequal weights.
+ENSEMBLE_MEMBERS = ("RANDOM_FOREST", "TECHNICAL", "PVD_MOMENTUM", "LSTM")
+ENSEMBLE_WEIGHTS = (0.25, 0.25, 0.25, 0.25)
+
 
 class EnsembleCombiner:
     """Combine multiple model predictions into a single weighted prediction."""

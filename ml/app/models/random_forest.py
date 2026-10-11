@@ -7,7 +7,6 @@ import logging
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import TimeSeriesSplit
 
 logger = logging.getLogger("roneira-ml.random_forest")
@@ -49,9 +48,15 @@ class RandomForestPredictor:
         features["volatility_5d"] = df["Close"].pct_change().rolling(5).std()
         features["volatility_20d"] = df["Close"].pct_change().rolling(20).std()
 
-        # Volume
-        features["volume_ratio"] = df["Volume"] / df["Volume"].rolling(20).mean()
-        features["volume_change"] = df["Volume"].pct_change(1)
+        # Volume. Zero volume means "not reported" (indices such as ^NSEI are
+        # all zeros), not "nobody traded": as raw input it made volume_ratio
+        # 0/0 on every row, so dropna() below emptied the frame and every index
+        # prediction fell through to the fallback; and a single zero day made
+        # volume_change +/-inf, which dropna() does not catch and sklearn
+        # rejects. Missing volume is treated as neutral instead.
+        volume = df["Volume"].replace(0, np.nan)
+        features["volume_ratio"] = (volume / volume.rolling(20, min_periods=1).mean()).fillna(1.0)
+        features["volume_change"] = volume.pct_change(1, fill_method=None).fillna(0.0)
 
         # RSI
         delta = df["Close"].diff()
@@ -78,7 +83,7 @@ class RandomForestPredictor:
         # Day of week
         features["day_of_week"] = df.index.dayofweek
 
-        return features.dropna()
+        return features.replace([np.inf, -np.inf], np.nan).dropna()
 
     def predict(self, df: pd.DataFrame, horizon_days: int = 30) -> dict:
         """Run Random Forest prediction."""
@@ -94,21 +99,26 @@ class RandomForestPredictor:
             valid = ~target.isna()
             X = features.loc[valid]
             y = target.loc[valid]
+            # The target for a row becomes observable h *source sessions*
+            # later, not h feature rows later (feature rows may be dropped).
+            label_ends = pd.Series(df.index, index=df.index).shift(-horizon_days).loc[X.index]
 
             if len(X) < 50:
                 logger.warning("Insufficient data for Random Forest prediction")
                 current_price = float(df["Close"].iloc[-1])
+                # "No change", flagged -- not the +2% this used to invent,
+                # which the Ensemble then blended at weight 0.35.
                 return {
-                    "predicted_price": current_price * 1.02,
+                    "predicted_price": current_price,
                     "confidence": 30.0,
                     "indicators": [],
+                    "fallback": True,
                 }
 
-            # Scale features
-            scaler = StandardScaler()
-            X_scaled = scaler.fit_transform(X)
-
-            # Train with TimeSeriesSplit
+            # Trees do not need scaling. In particular, fitting a scaler on
+            # all rows before splitting would inspect the validation period.
+            # TimeSeriesSplit alone is not enough: forward labels from the
+            # last training rows overlap the validation period unless purged.
             tscv = TimeSeriesSplit(n_splits=3)
             scores = []
 
@@ -119,25 +129,28 @@ class RandomForestPredictor:
                 n_jobs=-1,
             )
 
-            for train_idx, test_idx in tscv.split(X_scaled):
-                model.fit(X_scaled[train_idx], y.iloc[train_idx])
-                score = model.score(X_scaled[test_idx], y.iloc[test_idx])
+            for train_idx, test_idx in tscv.split(X):
+                validation_start = X.index[test_idx[0]]
+                train_idx = train_idx[(label_ends.iloc[train_idx] < validation_start).to_numpy()]
+                if len(train_idx) < 2:
+                    # Long horizons can leave no historical labels resolved
+                    # for an early fold. Do not invent a validation score.
+                    continue
+                model.fit(X.iloc[train_idx], y.iloc[train_idx])
+                score = model.score(X.iloc[test_idx], y.iloc[test_idx])
                 scores.append(max(0, score))
 
             # Final model on all data
-            model.fit(X_scaled, y)
+            model.fit(X, y)
 
             # Predict from latest features
-            # A DataFrame, not `.values`: the scaler was fitted with column
-            # names, so passing them lets it verify order instead of warning.
-            latest_scaled = scaler.transform(features.iloc[-1:])
-            predicted_return = model.predict(latest_scaled)[0]
+            predicted_return = model.predict(features.iloc[-1:])[0]
 
             current_price = float(df["Close"].iloc[-1])
             predicted_price = current_price * (1 + predicted_return)
 
             # Confidence from cross-val score
-            avg_score = np.mean(scores) if scores else 0.3
+            avg_score = np.mean(scores) if scores else 0.0
             confidence = min(95, max(25, avg_score * 100 + 30))
 
             # Feature importances
@@ -186,4 +199,5 @@ class RandomForestPredictor:
                 "confidence": 20.0,
                 "indicators": [],
                 "error": str(e),
+                "fallback": True,
             }
