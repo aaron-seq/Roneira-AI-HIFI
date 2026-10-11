@@ -1,9 +1,8 @@
 # Roneira AI HIFI — Deployment Guide
 
-Three deployment targets, one for each canonical surface. There is no Docker
-path and no self-hosted database — the previous version of this guide described
-a Docker Compose / multi-service Railway setup that has not existed since the
-`src/` + `ml/` split, and has been rewritten.
+Three deployment targets, one for each canonical surface. Development can use
+Docker through the Supabase CLI; production uses the targets below rather than
+the deleted legacy Docker Compose services.
 
 | Surface | Target | What it runs |
 |---|---|---|
@@ -19,11 +18,16 @@ the Next.js route handlers, never directly by the client.
 ## 1. Supabase
 
 1. Create a project at https://supabase.com.
-2. Apply `supabase/migrations/*.sql` **in filename order** (there is no `004`).
+2. Apply `supabase/migrations/*.sql` **in filename order**, 001 through 012
+   (`004` is absent). For CLI deployment, link the intended project with
+   `npx supabase link --project-ref <project-ref>` before `npx supabase db push`.
    Migrations 007–009 fix bugs found after `001` was already live — 007 RLS
    admin-policy recursion, 008 anon username lookup (login breaks without it),
    009 makes `audit_log` append-only via triggers, which hold even against a
-   `service_role` connection.
+   `service_role` connection. Migration 010 locks self-edits of the user role;
+   011 adds price-alert state; 012 delivers an armed alert and notification
+   atomically, with retry and privilege checks. Never apply `supabase/seed.sql`
+   or the disposable `supabase/tests/bootstrap.sql` to a hosted project.
 3. From Settings → API, copy the project URL, the `anon` key, and the
    `service_role` key.
 
@@ -61,6 +65,9 @@ Optional: `ML_MODEL_DIR` (defaults to `artifacts/generated`).
 Import the repository; Vercel detects Next.js. Set these in
 Settings → Environment Variables:
 
+Use Node >=22.12 as required by `package.json`. Local checks use `npm ci` and
+the committed lockfile; verify the selected Vercel runtime before deploying.
+
 | Variable | Notes |
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | From step 1 |
@@ -68,6 +75,7 @@ Settings → Environment Variables:
 | `SUPABASE_SERVICE_ROLE_KEY` | From step 1. Server-side only — never expose it |
 | `ML_BACKEND_URL` | The deployed ML service URL from step 2 |
 | `ML_SERVICE_TOKEN` | **Must be byte-identical to step 2's value** |
+| `CRON_SECRET` | Required for the scheduled in-app price alerts; generate a separate secret |
 
 Note `ML_BACKEND_URL` is deliberately **not** `NEXT_PUBLIC_`-prefixed. It is read
 only by server-side route handlers; the prefix would make the internal hostname
@@ -75,9 +83,17 @@ eligible for inlining into a client bundle.
 
 Optional provider keys (each missing one degrades a single feature rather than
 breaking the app): `ALPHA_VANTAGE_API_KEY`, `FINNHUB_API_KEY`, `NEWS_API_KEY`,
-`TWELVE_DATA_API_KEY`, `HUGGING_FACE_API_KEY`, and
+`TWELVE_DATA_API_KEY`, and
 `UPSTASH_REDIS_URL` / `UPSTASH_REDIS_TOKEN` for rate limiting shared across
 serverless instances rather than per warm instance.
+
+`HUGGING_FACE_API_KEY` remains in the template but the current news route uses
+local keyword sentiment; no active application code consumes that key.
+
+The two schedules in `vercel.json` call `/api/cron/alerts` after market close.
+They require migration 012 and `CRON_SECRET`. Check the hosting plan's cron
+limits and execution logs; local `npm run dev` does not run the schedule. See
+[ADR 0001](docs/adr/0001-alerts-on-vercel-cron.md) for session/re-arm semantics.
 
 See `.env.example` for the full annotated list.
 

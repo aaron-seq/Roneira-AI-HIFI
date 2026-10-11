@@ -3,9 +3,21 @@ import {
   getPeerConfigs,
   inferAssetType,
   inferCurrency,
+  inferExchange,
 } from "@/lib/market/constants";
 
 describe("market symbol helpers", () => {
+  it.each([
+    ["RELIANCE.NS", "NSE"],
+    ["TCS.BO", "BSE"],
+    ["^NSEI", "INDEX"],
+    ["BTC-USD", "CRYPTO"],
+    ["EURUSD=X", "FX"],
+    ["GC=F", "FUTURES"],
+    ["AAPL", "NASDAQ"],
+  ])("classifies %s as %s for provider configuration", (symbol, exchange) => {
+    expect(inferExchange(symbol)).toBe(exchange);
+  });
   it("normalizes common US equity symbols for provider usage", () => {
     const config = createSymbolConfig("AAPL");
     expect(config.assetType).toBe("equity");

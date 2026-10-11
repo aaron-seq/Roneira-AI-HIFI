@@ -338,14 +338,16 @@ empty feed; no Upstash means per-instance rate limiting.
 ## Commands
 
 ```bash
-npm install            # required first: the checked-in node_modules is incomplete
+npm ci                 # install the committed lockfile; node_modules is untracked
 npm run dev            # next dev
 npm run build          # next build
 npm run lint           # eslint (ignores ml/)
 npm run type-check     # tsc --noEmit -p tsconfig.typecheck.json
 npm run test:web       # vitest, src/**/*.test.{ts,tsx}
 
-pip install -r ml/requirements.txt
+python3.11 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r ml/requirements.txt
 npm run ml:dev         # uvicorn app.main:app --reload --port 8000
 npm run test:ml        # pytest
 npm run train:ml       # train the gradient-boosted artifacts

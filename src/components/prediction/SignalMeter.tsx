@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 
 interface SignalMeterProps {
   signal: string;
@@ -8,9 +8,10 @@ interface SignalMeterProps {
 }
 
 const SIGNAL_LABELS = ["STRONG SELL", "SELL", "HOLD", "BUY", "STRONG BUY"];
-const SIGNAL_COLORS = ["#E74C3C", "#E67E22", "#F39C12", "#27AE60", "#2ECC71"];
+const SIGNAL_COLORS = ["var(--color-strong-sell)", "var(--color-sell)", "var(--color-hold)", "var(--color-buy)", "var(--color-strong-buy)"];
 
 export function SignalMeter({ signal, score }: SignalMeterProps) {
+  const reduceMotion = useReducedMotion();
   // Clamp score to 0-10
   const clampedScore = Math.min(10, Math.max(0, score));
   // Map to 0-180 degrees (left to right semicircle)
@@ -32,7 +33,7 @@ export function SignalMeter({ signal, score }: SignalMeterProps) {
 
   return (
     <div className="flex flex-col items-center">
-      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+      <svg aria-hidden="true" width={width} height={height} className="h-auto max-w-full" viewBox={`0 0 ${width} ${height}`}>
         {/* Background arcs — 5 segments */}
         {SIGNAL_COLORS.map((c, i) => {
           const startAngle = 180 - i * 36;
@@ -74,9 +75,9 @@ export function SignalMeter({ signal, score }: SignalMeterProps) {
             stroke={color}
             strokeWidth="14"
             strokeLinecap="round"
-            initial={{ pathLength: 0 }}
+            initial={reduceMotion ? false : { pathLength: 0 }}
             animate={{ pathLength: 1 }}
-            transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
+            transition={{ duration: reduceMotion ? 0 : 1.2, ease: [0.16, 1, 0.3, 1], delay: reduceMotion ? 0 : 0.2 }}
           />
         )}
 
@@ -89,9 +90,9 @@ export function SignalMeter({ signal, score }: SignalMeterProps) {
           stroke={color}
           strokeWidth="2.5"
           strokeLinecap="round"
-          initial={{ x2: centerX - radius * 0.82, y2: centerY }}
+          initial={reduceMotion ? false : { x2: centerX - radius * 0.82, y2: centerY }}
           animate={{ x2: needleX, y2: needleY }}
-          transition={{ duration: 1, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}
+          transition={{ duration: reduceMotion ? 0 : 1, ease: [0.16, 1, 0.3, 1], delay: reduceMotion ? 0 : 0.3 }}
         />
 
         {/* Center dot */}
@@ -129,7 +130,7 @@ export function SignalMeter({ signal, score }: SignalMeterProps) {
           </span>
         </div>
         <p className="mt-0.5 font-mono text-xs" data-financial style={{ color: "var(--color-text-faint)" }}>
-          Score: {clampedScore.toFixed(1)} / 10
+          Heuristic signal score: {clampedScore.toFixed(1)} / 10
         </p>
       </div>
     </div>

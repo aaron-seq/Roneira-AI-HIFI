@@ -109,6 +109,13 @@ describe("private account query isolation", () => {
   };
   const createHolding = { ticker: "TCS.NS", company_name: "TCS", exchange: "NSE", quantity: 2, avg_buy_price: 10 };
 
+  it("retains missing watchlist quotes as unknown values", () => {
+    seedAlice();
+    const { result } = renderHook(() => useWatchlist(), { wrapper });
+    expect(result.current.rows[0].price).toBeNull();
+    expect(result.current.rows[0].changePercent).toBeNull();
+  });
+
   it("does not fetch any private view while the account is unknown", () => {
     client.setQueryData(["watchlist", "alice"], [watchlist("alice")]);
     const { result } = renderHook(usePrivateViews, { wrapper });

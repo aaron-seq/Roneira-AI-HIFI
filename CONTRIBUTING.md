@@ -47,9 +47,10 @@
    ```
 4. **Set up development environment**:
    ```bash
-   chmod +x scripts/setup.sh
-   ./scripts/setup.sh
+   npm ci
+   cp .env.example .env.local
    ```
+   Follow [Development Setup](#development-setup) for Supabase and the ML service.
 5. **Create a feature branch**:
    ```bash
    git checkout -b feature/your-feature-name
@@ -75,7 +76,7 @@ Look for issues labeled with:
 <td width="50%">
 
 **Required Software**
-- Node.js >= 18.0.0
+- Node.js >= 22.12.0 and npm >= 9.0.0 (see `package.json` engines)
 - Python 3.11 — exactly, to match `ml/runtime.txt` and CI. Not "3.11 or newer": `numpy<2.1` has no 3.13 wheels, so a newer interpreter silently resolves a different numpy than the one tested (#140)
 - Git >= 2.30
 
@@ -96,20 +97,20 @@ Look for issues labeled with:
 ### Environment Setup
 
 <details>
-<summary><strong>Automated Setup (Recommended)</strong></summary>
+<summary><strong>Setup overview</strong></summary>
 
 ```bash
-# Run the setup script
-chmod +x scripts/setup.sh
-./scripts/setup.sh
-
-# This script will:
-# 1. Install all dependencies
-# 2. Set up environment files
-# 3. Initialize the database
-# 4. Run initial tests
-# 5. Start development servers
+# From the repository root
+npm ci
+cp .env.example .env.local
+python3.11 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r ml/requirements.txt
+cp ml/.env.example ml/.env
 ```
+
+Configure the files, choose a database path, run checks and start the services
+as described below. There is no combined setup/start script in this repository.
 
 </details>
 
@@ -135,18 +136,23 @@ are optional — the app degrades gracefully without them.
 npm ci
 
 # ML service (requirements.txt is the single source of truth)
-cd ml
-python3.11 -m venv venv   # Windows: py -3.11 -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-cd ..
+python3.11 -m venv .venv  # Windows: py -3.11 -m venv .venv
+source .venv/bin/activate # Windows PowerShell: .venv\Scripts\Activate.ps1
+python -m pip install -r ml/requirements.txt
+cp ml/.env.example ml/.env
 ```
+
+Set the same `ML_SERVICE_TOKEN` in `.env.local` and `ml/.env` (generate one with
+`openssl rand -hex 32`). Keep `ML_BACKEND_URL=http://localhost:8000` server-side.
+An unset ML token returns 503 on protected endpoints; mismatched tokens return
+401. The ML service supplies predictions, the screener and Yahoo data fallbacks.
 
 **3. Database Setup**
 
-Schema lives in `supabase/migrations/`. Pick one:
+Schema lives in `supabase/migrations/`: apply 001 through 012 in filename order;
+004 is absent. Migration 012 is required for atomic price-alert delivery. Pick one:
 
-*Local stack (recommended for development, needs Docker):*
+*Local stack (recommended for development, needs Docker and disk space for images):*
 
 ```bash
 npx supabase start        # first run pulls the images; applies migrations + supabase/seed.sql
@@ -167,8 +173,10 @@ history and watchlist. Their usernames and passwords are at the top of
 username. `npx supabase db reset` rebuilds the database from scratch;
 `npx supabase stop` shuts the stack down. Studio runs at http://127.0.0.1:54323.
 
-*Hosted project:* apply the migrations with `npx supabase db push`, or run the
-SQL files in order in the dashboard's SQL editor. Never run `seed.sql` there.
+*Hosted project:* link the intended project with `npx supabase link --project-ref
+<project-ref>`, then apply pending migrations with `npx supabase db push`, or run
+the SQL files in order in the dashboard's SQL editor. Verify the target before
+making schema changes. Never run `seed.sql` there.
 
 **4. Start Development Servers**
 ```bash
@@ -176,8 +184,12 @@ SQL files in order in the dashboard's SQL editor. Never run `seed.sql` there.
 npm run dev
 
 # Terminal 2: ML service, optional (http://localhost:8000)
-cd ml && source venv/bin/activate && uvicorn app.main:app --reload --port 8000
+source .venv/bin/activate && npm run ml:dev
 ```
+
+The second terminal starts at the repository root. For deployment, set
+`CRON_SECRET` and use the schedules in `vercel.json` to evaluate in-app price
+alerts; a local development server does not run those schedules automatically.
 
 </details>
 
@@ -281,8 +293,7 @@ We follow the [Conventional Commits](https://www.conventionalcommits.org/) speci
 
 Use these scopes to indicate which part of the codebase is affected:
 
-- `frontend` - React/TypeScript frontend changes
-- `backend` - Node.js/Express backend changes
+- `web` - Next.js/React/TypeScript changes in `src/`
 - `ml` - Python ML service changes
 - `api` - API-related changes
 - `db` - Database schema or query changes
@@ -632,12 +643,16 @@ Most contributions here start from a GitHub issue. The expected workflow:
 | Component | Unit Tests | Integration Tests | E2E Tests |
 |-----------|------------|-------------------|----------|
 | Web (`src/`) | >85% | >70% | Critical paths |
-| ML service (`ml/`) | >85% | >75% | Model accuracy |
+| ML service (`ml/`) | >85% | >75% | Inference and validation behavior |
+
+These are goals, not enforced coverage thresholds or promises of forecast
+accuracy. CI currently runs the commands below; hosted database/provider checks
+need their own configured environment.
 
 ### Testing Commands
 
-Run these from the repository root. They are exactly what CI runs, so a clean
-local run means a clean pipeline.
+Run these from the repository root with the Python 3.11 environment activated.
+They cover the web/ML CI checks; inspect the actual PR checks before merging.
 
 ```bash
 # Web (Next.js) — src/
@@ -650,7 +665,7 @@ npm run build             # Production build
 # ML service — ml/
 npm run test:ml           # pytest, from the repo root
 # ...or directly:
-cd ml && source venv/bin/activate
+cd ml
 python -m pytest tests -q          # All tests
 python -m pytest tests --cov=app   # With coverage
 python -m pytest -k "rsi"          # Specific test pattern
@@ -658,218 +673,24 @@ python -m pytest -k "rsi"          # Specific test pattern
 
 ### Test Structure
 
-<details>
-<summary><strong>Frontend Test Example (Vitest + React Testing Library)</strong></summary>
+Use the existing executable suites as examples rather than the deleted Express,
+Flask or Vite implementations:
 
-```typescript
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { vi } from 'vitest';
-import { PredictionPanel } from '../PredictionPanel';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+- [`src/lib/utils.test.ts`](src/lib/utils.test.ts): currency formatting and display helpers.
+- [`src/lib/server/cache.test.ts`](src/lib/server/cache.test.ts): cache expiry,
+  concurrent misses and invalidation.
+- [`src/app/api/cron/alerts/route.test.ts`](src/app/api/cron/alerts/route.test.ts):
+  Next.js route authentication, current-session quotes and retry behavior.
+- [`ml/tests/test_app_entrypoint.py`](ml/tests/test_app_entrypoint.py): the real
+  FastAPI entrypoint, shared-token boundary and market-data batches.
+- [`ml/tests/test_models.py`](ml/tests/test_models.py): deterministic model fixtures.
+- [`supabase/tests/README.md`](supabase/tests/README.md): disposable PostgreSQL
+  migration and atomic alert-delivery regressions, not a hosted Auth HTTP test.
 
-// Mock API service
-vi.mock('@/services/prediction', () => ({
-  PredictionService: {
-    predict: vi.fn()
-  }
-}));
-
-const renderWithQueryClient = (component: React.ReactElement) => {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } }
-  });
-  
-  return render(
-    <QueryClientProvider client={queryClient}>
-      {component}
-    </QueryClientProvider>
-  );
-};
-
-describe('PredictionPanel', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-  
-  it('should render prediction form', () => {
-    renderWithQueryClient(<PredictionPanel />);
-    
-    expect(screen.getByLabelText(/ticker symbol/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/prediction days/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /predict/i })).toBeInTheDocument();
-  });
-  
-  it('should submit prediction request', async () => {
-    const mockPredict = vi.mocked(PredictionService.predict);
-    mockPredict.mockResolvedValue({
-      ticker: 'AAPL',
-      predictions: [{ date: '2024-01-15', price: 185.42 }]
-    });
-    
-    renderWithQueryClient(<PredictionPanel />);
-    
-    fireEvent.change(screen.getByLabelText(/ticker symbol/i), {
-      target: { value: 'AAPL' }
-    });
-    
-    fireEvent.click(screen.getByRole('button', { name: /predict/i }));
-    
-    await waitFor(() => {
-      expect(mockPredict).toHaveBeenCalledWith({
-        ticker: 'AAPL',
-        days: 1
-      });
-    });
-  });
-});
-```
-
-</details>
-
-<details>
-<summary><strong>Backend Test Example (Jest + Supertest)</strong></summary>
-
-```typescript
-import request from 'supertest';
-import { app } from '../app';
-import { db } from '../database';
-
-describe('POST /api/v1/predictions', () => {
-  beforeAll(async () => {
-    await db.migrate.latest();
-  });
-  
-  afterAll(async () => {
-    await db.destroy();
-  });
-  
-  beforeEach(async () => {
-    await db.seed.run();
-  });
-  
-  it('should return prediction for valid ticker', async () => {
-    const response = await request(app)
-      .post('/api/v1/predictions')
-      .send({
-        ticker: 'AAPL',
-        days: 1
-      })
-      .expect(200);
-    
-    expect(response.body).toMatchObject({
-      ticker: 'AAPL',
-      predictions: expect.arrayContaining([
-        expect.objectContaining({
-          date: expect.any(String),
-          price: expect.any(Number)
-        })
-      ])
-    });
-  });
-  
-  it('should validate request body', async () => {
-    await request(app)
-      .post('/api/v1/predictions')
-      .send({
-        ticker: '',  // Invalid empty ticker
-        days: 0      // Invalid days
-      })
-      .expect(400);
-  });
-});
-```
-
-</details>
-
-<details>
-<summary><strong>ML Service Test Example (pytest)</strong></summary>
-
-```python
-import pytest
-import pandas as pd
-import numpy as np
-from unittest.mock import Mock, patch
-
-from src.indicators import TechnicalIndicators
-from src.models import PredictionModel
-from src.exceptions import ValidationError
-
-class TestTechnicalIndicators:
-    """Test suite for technical indicators."""
-    
-    def setup_method(self):
-        """Set up test data before each test."""
-        # Create sample price data
-        dates = pd.date_range('2024-01-01', periods=50, freq='D')
-        prices = 100 + np.cumsum(np.random.randn(50) * 0.02)  # Random walk
-        self.price_series = pd.Series(prices, index=dates)
-    
-    def test_calculate_rsi_valid_input(self):
-        """Test RSI calculation with valid input."""
-        rsi = TechnicalIndicators.calculate_rsi(self.price_series, period=14)
-        
-        # Check output properties
-        assert isinstance(rsi, pd.Series)
-        assert len(rsi) == len(self.price_series)
-        assert rsi.min() >= 0
-        assert rsi.max() <= 100
-        assert not rsi.isna().any()  # Should fill NaN values
-    
-    def test_calculate_rsi_invalid_period(self):
-        """Test RSI calculation with invalid period."""
-        with pytest.raises(ValueError, match="Period must be greater than 0"):
-            TechnicalIndicators.calculate_rsi(self.price_series, period=0)
-    
-    def test_calculate_rsi_empty_series(self):
-        """Test RSI calculation with empty price series."""
-        empty_series = pd.Series([], dtype=float)
-        
-        with pytest.raises(ValueError, match="Prices series cannot be empty"):
-            TechnicalIndicators.calculate_rsi(empty_series)
-    
-    @pytest.mark.benchmark
-    def test_rsi_performance(self, benchmark):
-        """Benchmark RSI calculation performance."""
-        large_series = pd.Series(np.random.randn(10000))
-        
-        result = benchmark(TechnicalIndicators.calculate_rsi, large_series)
-        
-        # Performance assertions
-        assert len(result) == 10000
-
-class TestPredictionModel:
-    """Test suite for ML prediction model."""
-    
-    @patch('src.models.yfinance.download')
-    def test_predict_valid_ticker(self, mock_download):
-        """Test prediction with valid ticker symbol."""
-        # Mock market data
-        mock_data = pd.DataFrame({
-            'Open': [100, 101, 102],
-            'High': [101, 102, 103],
-            'Low': [99, 100, 101],
-            'Close': [100.5, 101.5, 102.5],
-            'Volume': [1000000, 1100000, 1200000]
-        })
-        mock_download.return_value = mock_data
-        
-        model = PredictionModel()
-        result = model.predict('AAPL', days=1)
-        
-        assert result.ticker == 'AAPL'
-        assert len(result.predictions) == 1
-        assert isinstance(result.predictions[0].price, float)
-        assert result.confidence > 0
-    
-    def test_predict_invalid_ticker(self):
-        """Test prediction with invalid ticker symbol."""
-        model = PredictionModel()
-        
-        with pytest.raises(ValidationError, match="Invalid ticker symbol"):
-            model.predict('', days=1)
-```
-
-</details>
+Use `// @vitest-environment jsdom` only in tests that need a DOM; server tests
+keep the default Node environment. Mock metered data providers and auth fixtures
+for deterministic checks. Never run destructive database fixtures against a
+hosted project or use production credentials in tests.
 
 ## Pull Request Workflow
 

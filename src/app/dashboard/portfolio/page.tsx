@@ -1,7 +1,7 @@
 "use client";
 
-import { useDeferredValue, useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useDeferredValue, useState } from "react";
+import { motion } from "framer-motion";
 import {
   AlertTriangle,
   BarChart3,
@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { CardGridSkeleton, TableSkeleton } from "@/components/ui/Skeletons";
+import { Dialog } from "@/components/ui/Dialog";
 import { usePortfolio } from "@/lib/hooks/use-portfolio";
 import { useStockSearch } from "@/lib/hooks/use-prediction";
 import { cn, formatCurrency, formatPercent, getPriceColor } from "@/lib/utils";
@@ -84,6 +85,7 @@ export default function PortfolioPage() {
   const [search, setSearch] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const deferredSearch = useDeferredValue(search);
   const searchQuery = useStockSearch(deferredSearch);
 
@@ -91,16 +93,6 @@ export default function PortfolioPage() {
   const base = summary.base;
   const money = (value: number) => formatCurrency(value, base, { compact: true });
   const topSector = summary.sectors[0];
-
-  // Escape closes the modal, as it does every other dialog in the app.
-  useEffect(() => {
-    if (!showModal) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setShowModal(false);
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [showModal]);
 
   function openAddModal() {
     setFormState(emptyFormState());
@@ -126,16 +118,24 @@ export default function PortfolioPage() {
   }
 
   async function handleSubmit() {
+    if (submitting) return;
     setFormError(null);
+    const quantity = Number(formState.quantity);
+    const price = Number(formState.avg_buy_price);
+    if (!formState.ticker.trim() || !formState.company_name.trim() || !Number.isFinite(quantity)
+      || quantity <= 0 || !Number.isFinite(price) || price < 0) {
+      setFormError("Enter a ticker, company name, quantity above zero, and a non-negative buy price.");
+      return;
+    }
     setSubmitting(true);
     try {
       await portfolio.upsertMutation.mutateAsync({
         id: formState.id,
-        ticker: formState.ticker,
-        company_name: formState.company_name,
+        ticker: formState.ticker.trim(),
+        company_name: formState.company_name.trim(),
         exchange: formState.exchange,
-        quantity: Number(formState.quantity),
-        avg_buy_price: Number(formState.avg_buy_price),
+        quantity,
+        avg_buy_price: price,
         buy_date: formState.buy_date || null,
         sector: formState.sector || null,
         tags: [],
@@ -152,9 +152,19 @@ export default function PortfolioPage() {
     }
   }
 
+  async function handleRemoveHolding(id: string, ticker: string) {
+    if (!window.confirm(`Remove ${ticker} from your portfolio?`)) return;
+    setActionError(null);
+    try {
+      await portfolio.removeMutation.mutateAsync(id);
+    } catch {
+      setActionError("Could not remove this holding. Your portfolio has not been changed. Please try again.");
+    }
+  }
+
   return (
     <div className="mx-auto max-w-7xl">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: "var(--color-text-primary)" }}>
             Portfolio
@@ -177,15 +187,18 @@ export default function PortfolioPage() {
       </div>
 
       {portfolio.isLoading ? (
-        <div className="space-y-6">
+        <div className="space-y-6" role="status" aria-label="Loading portfolio" aria-busy="true">
           <CardGridSkeleton count={4} />
           <TableSkeleton rows={6} columns={9} />
         </div>
       ) : portfolio.isError ? (
-        <div className="card p-6">
+        <div className="card p-6" role="alert">
           <p style={{ color: "var(--color-text-muted)" }}>
-            Your portfolio could not be loaded. Confirm the Supabase schema is in place.
+            Your portfolio could not be loaded. Check your connection and try again.
           </p>
+          <button onClick={() => portfolio.refetch()} className="mt-3 rounded-lg border px-3 py-2 text-sm" disabled={portfolio.isFetching}>
+            {portfolio.isFetching ? "Retrying..." : "Retry portfolio"}
+          </button>
         </div>
       ) : (
         <>
@@ -396,12 +409,8 @@ export default function PortfolioPage() {
                             <Edit2 className="h-3.5 w-3.5" style={{ color: "var(--color-text-faint)" }} />
                           </button>
                           <button
-                            onClick={() => {
-                              // Deleting a holding cannot be undone from the UI.
-                              if (window.confirm(`Remove ${holding.ticker} from your portfolio?`)) {
-                                portfolio.removeMutation.mutate(holding.id);
-                              }
-                            }}
+                            onClick={() => handleRemoveHolding(holding.id, holding.ticker)}
+                            disabled={portfolio.removeMutation.isPending}
                             aria-label={`Remove ${holding.ticker}`}
                             title="Remove"
                             className="rounded p-1.5 transition-colors hover:bg-white/5"
@@ -428,30 +437,14 @@ export default function PortfolioPage() {
         </>
       )}
 
-      <AnimatePresence>
-        {showModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-            onClick={() => setShowModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 20 }}
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="holding-dialog-title"
-              className="glass w-full max-w-xl rounded-2xl p-6"
-              onClick={(event) => event.stopPropagation()}
-            >
+      {actionError && <p role="alert" className="mt-4 rounded-lg border border-red-500 px-4 py-3 text-sm">{actionError}</p>}
+      <Dialog open={showModal} onClose={() => setShowModal(false)} labelledBy="holding-dialog-title" className="max-w-xl" dismissible={!submitting}>
+            <form onSubmit={(event) => { event.preventDefault(); void handleSubmit(); }} aria-busy={submitting}>
               <div className="mb-4 flex items-center justify-between">
                 <h3 id="holding-dialog-title" className="text-lg font-semibold" style={{ color: "var(--color-text-primary)" }}>
                   {formState.id ? "Edit Holding" : "Add Holding"}
                 </h3>
-                <button onClick={() => setShowModal(false)} aria-label="Close" className="rounded-lg p-1.5 transition-colors hover:bg-white/5">
+                <button type="button" disabled={submitting} onClick={() => setShowModal(false)} aria-label="Close holding editor" className="rounded-lg p-1.5 transition-colors hover:bg-white/5">
                   <X className="h-4 w-4" style={{ color: "var(--color-text-muted)" }} />
                 </button>
               </div>
@@ -463,7 +456,8 @@ export default function PortfolioPage() {
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   aria-label="Search for a stock"
-                  autoFocus
+                  data-dialog-autofocus
+                  disabled={submitting}
                   placeholder="Search AAPL, RELIANCE..."
                   className="w-full rounded-lg py-3 pl-10 pr-4 text-sm outline-none"
                   style={{
@@ -474,10 +468,18 @@ export default function PortfolioPage() {
                 />
               </div>
 
+              {search.trim() && searchQuery.isLoading && <p role="status" className="mb-4 text-xs">Searching stocks...</p>}
+              {searchQuery.isError && search.trim() && <p role="alert" className="mb-4 text-xs">
+                Stock search is unavailable. Enter the holding details below or <button type="button" onClick={() => searchQuery.refetch()} className="underline">retry search</button>.
+              </p>}
+              {search.trim() && searchQuery.data?.results.length === 0 && !searchQuery.isLoading && !searchQuery.isError && <p role="status" className="mb-4 text-xs">No stocks match this search. You can enter the holding details below.</p>}
+
               {searchQuery.data?.results.length ? (
                 <div className="mb-4 max-h-40 overflow-y-auto rounded-lg border" style={{ borderColor: "var(--color-border)" }}>
                   {searchQuery.data.results.slice(0, 5).map((result) => (
                     <button
+                      type="button"
+                      disabled={submitting}
                       key={result.symbol}
                       onClick={() => {
                         setFormState((current) => ({
@@ -504,11 +506,12 @@ export default function PortfolioPage() {
                 </div>
               ) : null}
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <fieldset disabled={submitting} className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <label htmlFor="holding-ticker" className="mb-1 block text-xs font-medium" style={{ color: "var(--color-text-muted)" }}>Ticker</label>
                   <input
                     id="holding-ticker"
+                    required
                     value={formState.ticker}
                     onChange={(event) => setFormState((current) => ({ ...current, ticker: event.target.value.toUpperCase() }))}
                     placeholder="e.g. TCS.NS or AAPL"
@@ -520,6 +523,7 @@ export default function PortfolioPage() {
                   <label htmlFor="holding-company_name" className="mb-1 block text-xs font-medium" style={{ color: "var(--color-text-muted)" }}>Company name</label>
                   <input
                     id="holding-company_name"
+                    required
                     value={formState.company_name}
                     onChange={(event) => setFormState((current) => ({ ...current, company_name: event.target.value }))}
                     className="w-full rounded-lg px-4 py-3 text-sm outline-none"
@@ -557,6 +561,7 @@ export default function PortfolioPage() {
                   <label htmlFor="holding-quantity" className="mb-1 block text-xs font-medium" style={{ color: "var(--color-text-muted)" }}>Quantity</label>
                   <input
                     id="holding-quantity"
+                    required
                     type="number"
                     min="0"
                     step="any"
@@ -571,6 +576,7 @@ export default function PortfolioPage() {
                   <label htmlFor="holding-avg_buy_price" className="mb-1 block text-xs font-medium" style={{ color: "var(--color-text-muted)" }}>Average buy price</label>
                   <input
                     id="holding-avg_buy_price"
+                    required
                     type="number"
                     min="0"
                     step="any"
@@ -592,10 +598,11 @@ export default function PortfolioPage() {
                     style={fieldStyle}
                   />
                 </div>
-              </div>
+              </fieldset>
 
               {formError && (
                 <p
+                  role="alert"
                   className="mt-4 rounded-lg border px-3 py-2 text-xs"
                   style={{ borderColor: "#E74C3C", color: "#E74C3C" }}
                 >
@@ -605,7 +612,7 @@ export default function PortfolioPage() {
 
               <div className="mt-5 flex gap-2">
                 <button
-                  onClick={handleSubmit}
+                  type="submit"
                   disabled={
                     submitting ||
                     !formState.ticker ||
@@ -615,11 +622,13 @@ export default function PortfolioPage() {
                     !formState.avg_buy_price
                   }
                   className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white disabled:opacity-50"
-                  style={{ background: "linear-gradient(135deg, #2ECC71, #27AE60)" }}
+                  style={{ background: "linear-gradient(135deg, #2ECC71, #27AE60)", color: "#07120C" }}
                 >
                   {submitting ? "Saving..." : formState.id ? "Save Changes" : "Add Holding"}
                 </button>
                 <button
+                  type="button"
+                  disabled={submitting}
                   onClick={() => setShowModal(false)}
                   className="rounded-lg px-4 py-2.5 text-sm font-medium transition-colors hover:bg-white/5"
                   style={{ color: "var(--color-text-muted)" }}
@@ -627,10 +636,8 @@ export default function PortfolioPage() {
                   Cancel
                 </button>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </form>
+      </Dialog>
     </div>
   );
 }

@@ -692,6 +692,22 @@ class TestEnsemble:
         assert result["predicted_price"] == 0
         assert result["confidence"] == 0
 
+    def test_optional_signal_fields_default_to_hold_without_altering_price_weights(self, ensemble):
+        """Recover PR98's useful default-field coverage with valid price inputs.
+
+        A missing price must not be described as a safe forecast: the old PR
+        supplied missing prices and froze their zero-imputation behavior. Here
+        only optional signal/indicator/confidence fields are absent.
+        """
+        result = ensemble.combine([
+            {"predicted_price": 100},
+            {"predicted_price": 110, "confidence": 80},
+        ])
+        assert result["predicted_price"] == pytest.approx(round((100 * 50 + 110 * 80) / 130, 2))
+        assert result["short_term_signal"] == {"signal": "HOLD", "score": 5.0}
+        assert result["long_term_signal"] == {"signal": "HOLD", "score": 5.0}
+        assert result["indicators"] == []
+
     def test_single_model(self, ensemble):
         preds = [
             {"predicted_price": 150, "confidence": 70, "indicators": [{"name": "RSI", "value": 55, "signal": "Buy"}], "short_term_signal": {"signal": "BUY", "score": 7}, "long_term_signal": {"signal": "BUY", "score": 6}},
