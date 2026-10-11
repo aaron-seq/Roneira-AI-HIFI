@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search,
@@ -11,6 +11,7 @@ import {
   Settings,
   User,
   Command,
+  Menu,
 } from "lucide-react";
 import { logAuditEvent } from "@/lib/client/audit";
 import { useNewsFeed } from "@/lib/hooks/use-news-feed";
@@ -24,12 +25,22 @@ export function Header() {
     user,
     theme,
     toggleTheme,
-    sidebarCollapsed,
+    mobileSidebarOpen,
+    setMobileSidebarOpen,
     setCommandPaletteOpen,
     setUser,
   } = useAppStore();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
+  const accountButtonRef = useRef<HTMLButtonElement>(null);
+  const notificationButtonRef = useRef<HTMLButtonElement>(null);
+  const accountContainerRef = useRef<HTMLDivElement>(null);
+  const notificationContainerRef = useRef<HTMLDivElement>(null);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
+  const notificationPanelRef = useRef<HTMLDivElement>(null);
+  const initialMenuFocus = useRef("first");
   // The bell is for things that happened to the user (fired alerts), not a
   // replay of their own clicks -- that is what the Audit Log page is for.
   const notifications = useNotifications();
@@ -62,29 +73,83 @@ export function Header() {
       return;
     }
 
-    function handleClick() {
-      setShowUserMenu(false);
-      setShowNotifications(false);
+    function handlePointerDown(event: PointerEvent) {
+      if (!(event.target instanceof Node)) return;
+      if (!accountContainerRef.current?.contains(event.target)) setShowUserMenu(false);
+      if (!notificationContainerRef.current?.contains(event.target)) setShowNotifications(false);
     }
-
-    window.addEventListener("click", handleClick);
-    return () => window.removeEventListener("click", handleClick);
+    function handleEscape(event: globalThis.KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      if (showUserMenu) {
+        setShowUserMenu(false);
+        accountButtonRef.current?.focus();
+      } else if (showNotifications) {
+        setShowNotifications(false);
+        notificationButtonRef.current?.focus();
+      }
+    }
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
   }, [showUserMenu, showNotifications]);
 
-  async function handleLogout() {
-    await logAuditEvent({
-      actionType: "LOGOUT",
-      entityType: "auth",
-      newValues: {
-        at: new Date().toISOString(),
-      },
-    }).catch(() => undefined);
+  useEffect(() => {
+    if (!showUserMenu) return;
+    const items = accountMenuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]');
+    const item = initialMenuFocus.current === "last" ? items?.[items.length - 1] : items?.[0];
+    item?.focus();
+  }, [showUserMenu]);
 
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    setUser(null);
-    router.push("/login");
-    router.refresh();
+  useEffect(() => {
+    if (showNotifications) notificationPanelRef.current?.focus();
+  }, [showNotifications]);
+
+  function handleMenuKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    const items = Array.from(accountMenuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)') ?? []);
+    const index = items.indexOf(document.activeElement as HTMLButtonElement);
+    let next: number | undefined;
+    if (event.key === "ArrowDown") next = (index + 1) % items.length;
+    if (event.key === "ArrowUp") next = (index - 1 + items.length) % items.length;
+    if (event.key === "Home") next = 0;
+    if (event.key === "End") next = items.length - 1;
+    if (next !== undefined && items[next]) {
+      event.preventDefault();
+      items[next].focus();
+    }
+    if (event.key === "Tab") {
+      setShowUserMenu(false);
+      accountButtonRef.current?.focus();
+    }
+  }
+
+  async function handleLogout() {
+    if (signingOut) return;
+    setSigningOut(true);
+    setLogoutError(null);
+    try {
+      await logAuditEvent({
+        actionType: "LOGOUT",
+        entityType: "auth",
+        newValues: {
+          at: new Date().toISOString(),
+        },
+      }).catch(() => undefined);
+
+      const supabase = createClient();
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      setShowUserMenu(false);
+      setUser(null);
+      router.push("/login");
+      router.refresh();
+    } catch {
+      setLogoutError("Could not sign out. Please try again.");
+    } finally {
+      setSigningOut(false);
+    }
   }
 
   function openSettings() {
@@ -94,21 +159,28 @@ export function Header() {
 
   return (
     <header
-      className="fixed right-0 top-0 z-30 flex h-16 items-center border-b transition-all duration-300"
+      className="dashboard-header fixed right-0 top-0 z-30 flex h-16 min-w-0 items-center border-b"
       style={{
         background: "var(--color-surface)",
         borderColor: "var(--color-border)",
-        left: sidebarCollapsed
-          ? "var(--spacing-sidebar-collapsed)"
-          : "var(--spacing-sidebar)",
       }}
     >
       {/* No "Intelligent Financial Advisor" label: the sidebar already
           carries the brand, and an unregistered tool calling itself a
           financial advisor is a regulatory claim this product cannot make. */}
-      <div className="px-2" />
+      <button
+        type="button"
+        onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+        aria-label="Open navigation"
+        aria-expanded={mobileSidebarOpen}
+        aria-controls="mobile-navigation"
+        className="dashboard-mobile-toggle dashboard-header-action ml-2 flex items-center justify-center rounded-lg hover:bg-white/5"
+      >
+        <Menu aria-hidden="true" className="h-5 w-5" />
+      </button>
+      <span className="dashboard-mobile-brand min-w-0 flex-1 truncate px-2 text-sm font-semibold">Roneira AI</span>
 
-      <div className="flex-1 overflow-hidden px-4">
+      <div className="dashboard-headlines min-w-0 flex-1 overflow-hidden px-4" aria-label="Market headlines">
         <div
           className="relative overflow-hidden rounded-md"
           style={{ background: "var(--color-bg)" }}
@@ -127,11 +199,11 @@ export function Header() {
         </div>
       </div>
 
-      <div className="flex items-center gap-1 px-4">
+      <div className="flex shrink-0 items-center gap-1 px-2 sm:px-4">
         <button
           onClick={() => setCommandPaletteOpen(true)}
           aria-label="Search pages and actions (Ctrl+K)"
-          className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors hover:bg-white/5"
+          className="dashboard-header-action flex items-center justify-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-white/5 md:px-3"
           style={{ color: "var(--color-text-muted)" }}
         >
           <Search className="h-4 w-4" />
@@ -149,20 +221,22 @@ export function Header() {
           </kbd>
         </button>
 
-        <div className="relative">
+        <div className="relative" ref={notificationContainerRef} onBlur={(event) => {
+          if (event.relatedTarget instanceof Node && !event.currentTarget.contains(event.relatedTarget)) setShowNotifications(false);
+        }}>
           <button
+            ref={notificationButtonRef}
             onClick={(event) => {
               event.stopPropagation();
               setShowUserMenu(false);
-              setShowNotifications((open) => {
-                if (!open && notifications.unread > 0) {
-                  notifications.markAllRead.mutate();
-                }
-                return !open;
-              });
+              if (!showNotifications && notifications.unread > 0) notifications.markAllRead.mutate();
+              setShowNotifications(!showNotifications);
             }}
-            className="relative rounded-lg p-2 transition-colors hover:bg-white/5"
+            className="dashboard-header-action relative rounded-lg p-2 transition-colors hover:bg-white/5"
             aria-label="Notifications"
+            aria-expanded={showNotifications}
+            aria-controls={showNotifications ? "header-notifications" : undefined}
+            aria-haspopup="dialog"
           >
             <Bell
               className="h-4 w-4"
@@ -180,7 +254,12 @@ export function Header() {
 
           {showNotifications && (
             <div
-              className="absolute right-0 top-12 z-50 w-72 rounded-xl border py-1 shadow-xl"
+              id="header-notifications"
+              ref={notificationPanelRef}
+              role="dialog"
+              aria-labelledby="header-notifications-title"
+              tabIndex={-1}
+              className="dashboard-notification-panel absolute right-0 top-12 z-50 w-72 rounded-xl border py-1 shadow-xl"
               style={{
                 background: "var(--color-surface-2)",
                 borderColor: "var(--color-border)",
@@ -188,6 +267,7 @@ export function Header() {
               onClick={(event) => event.stopPropagation()}
             >
               <div
+                id="header-notifications-title"
                 className="border-b px-3 py-2 text-sm font-medium"
                 style={{
                   borderColor: "var(--color-divider)",
@@ -196,7 +276,12 @@ export function Header() {
               >
                 Notifications
               </div>
-              {notifications.isLoading ? (
+              {notifications.isError ? (
+                <div className="px-3 py-3 text-xs">
+                  <p role="alert">Could not load notifications.</p>
+                  <button type="button" onClick={() => notifications.refetch()} className="mt-2 rounded px-2 py-1 text-info">Try again</button>
+                </div>
+              ) : notifications.isLoading ? (
                 <p
                   className="px-3 py-3 text-xs"
                   style={{ color: "var(--color-text-faint)" }}
@@ -251,7 +336,7 @@ export function Header() {
 
         <button
           onClick={toggleTheme}
-          className="rounded-lg p-2 transition-colors hover:bg-white/5"
+          className="dashboard-header-action rounded-lg p-2 transition-colors hover:bg-white/5"
           aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
         >
           {theme === "dark" ? (
@@ -261,15 +346,28 @@ export function Header() {
           )}
         </button>
 
-        <div className="relative">
+        <div className="relative" ref={accountContainerRef}>
           <button
+            id="header-account-button"
+            ref={accountButtonRef}
             onClick={(event) => {
               event.stopPropagation();
+              setShowNotifications(false);
+              initialMenuFocus.current = "first";
               setShowUserMenu(!showUserMenu);
+            }}
+            onKeyDown={(event) => {
+              if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+              event.preventDefault();
+              initialMenuFocus.current = event.key === "ArrowUp" ? "last" : "first";
+              setShowNotifications(false);
+              setShowUserMenu(true);
             }}
             aria-label="Account menu"
             aria-expanded={showUserMenu}
-            className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-white/5"
+            aria-controls={showUserMenu ? "header-account-menu" : undefined}
+            aria-haspopup="menu"
+            className="dashboard-header-action flex items-center justify-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-white/5"
           >
             <div
               className="flex h-7 w-7 items-center justify-center rounded-full border text-xs font-semibold"
@@ -293,6 +391,11 @@ export function Header() {
 
           {showUserMenu && (
             <div
+              id="header-account-menu"
+              ref={accountMenuRef}
+              role="menu"
+              aria-labelledby="header-account-button"
+              onKeyDown={handleMenuKeyDown}
               className="absolute right-0 top-12 z-50 w-48 rounded-xl border py-1 shadow-xl"
               style={{
                 background: "var(--color-surface-2)",
@@ -318,6 +421,9 @@ export function Header() {
                 </p>
               </div>
               <button
+                role="menuitem"
+                tabIndex={-1}
+                disabled={signingOut}
                 onClick={openSettings}
                 className="flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors hover:bg-white/5"
                 style={{ color: "var(--color-text-muted)" }}
@@ -325,6 +431,9 @@ export function Header() {
                 <User className="h-4 w-4" /> Profile
               </button>
               <button
+                role="menuitem"
+                tabIndex={-1}
+                disabled={signingOut}
                 onClick={openSettings}
                 className="flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors hover:bg-white/5"
                 style={{ color: "var(--color-text-muted)" }}
@@ -336,12 +445,16 @@ export function Header() {
                 style={{ borderColor: "var(--color-divider)" }}
               />
               <button
+                role="menuitem"
+                tabIndex={-1}
+                disabled={signingOut}
                 onClick={handleLogout}
                 className="flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors hover:bg-white/5"
                 style={{ color: "#E74C3C" }}
               >
-                <LogOut className="h-4 w-4" /> Sign out
+                <LogOut className="h-4 w-4" /> {signingOut ? "Signing out..." : "Sign out"}
               </button>
+              {logoutError && <p role="alert" className="px-3 py-2 text-xs text-loss">{logoutError}</p>}
             </div>
           )}
         </div>

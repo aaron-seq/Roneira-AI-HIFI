@@ -44,7 +44,7 @@ export function CompetitorTable({ ticker, sector }: CompetitorTableProps) {
         </span>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Peer company prices">
         <table className="w-full text-sm">
           <thead>
             <tr style={{ borderBottom: "1px solid var(--color-divider)" }}>

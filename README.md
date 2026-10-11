@@ -14,7 +14,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/aaron-seq/Roneira-AI-HIFI/ci.yml?branch=main)](https://github.com/aaron-seq/Roneira-AI-HIFI/actions)
 
-*A production-grade financial analytics framework engineered for robust machine learning forecasting, advanced price-volume momentum analytics, and comprehensive portfolio intelligence in institutional or retail trading environments.*
+*A financial research dashboard for market data, model forecasts, and portfolio tracking. Model scores are heuristics, not calibrated probabilities or evidence of a trading edge.*
 
 [**Live Demo**](https://roneira-ai-hifi.vercel.app) • [**Architecture**](ARCHITECTURE.md) • [**Deployment**](DEPLOYMENT.md) • [**Contributing**](CONTRIBUTING.md)
 
@@ -49,8 +49,8 @@
 Roneira AI HIFI represents the convergence of advanced machine learning, real-time financial data processing, and institutional-grade analytics in a comprehensive financial intelligence platform. Built with modern microservices architecture, the platform delivers:
 
 - **Precision ML Forecasting**: RandomForest-based regression models with engineered technical features
-- **Real-time Analytics**: Live market data processing with sub-second latency
-- **Portfolio Intelligence**: Advanced risk assessment and correlation analysis
+- **Market Data**: Provider quotes and historical daily bars with explicit session provenance
+- **Portfolio Tracking**: Currency-aware valuation, P&L, allocation and concentration
 - **Scalable Infrastructure**: Container-native architecture for seamless scaling
 
 ### Core Objectives
@@ -68,17 +68,17 @@ Roneira AI HIFI represents the convergence of advanced machine learning, real-ti
 <td>
 
 **Scalability** 
-- Microservices architecture
-- Container orchestration
-- Auto-scaling capabilities
+- Next.js web and Python ML services
+- Container deployment configuration
+- Scaling depends on the hosting platform
 
 </td>
 <td>
 
 **Performance**
-- Sub-second API responses
-- Optimized data pipelines
-- Intelligent caching layers
+- Provider results cached in process
+- Bounded parallel quote fetching
+- Production latency requires measurement
 
 </td>
 </tr>
@@ -90,7 +90,7 @@ Roneira AI HIFI represents the convergence of advanced machine learning, real-ti
 
 The lists below describe what's actually implemented and verified working — not a
 roadmap. See [IDEAS.md](./IDEAS.md) for near-term and speculative extensions
-(backtesting, alerting, options-flow data, etc. are not built yet).
+(risk planning, trade journals and options-flow data remain follow-up work).
 
 <details>
 <summary><strong>Six models, a four-model ensemble, with disagreement surfaced, not hidden</strong></summary>
@@ -101,10 +101,10 @@ roadmap. See [IDEAS.md](./IDEAS.md) for near-term and speculative extensions
 - **LSTM and GAN slots** — gradient-boosted (`xgboost`), trained offline on full available
   history for 9 tickers (~93,000 windows each), artifacts committed to the repo. TensorFlow
   is not a dependency; see [ARCHITECTURE.md](./ARCHITECTURE.md#ml-service-ml) for why.
-- **Measured honestly.** `ml/backtest.py` walks every model forward through 10 periods
-  (1934–2026). At a 30-session horizon **none beats a "no change" forecast** on the size
-  of a move. Random Forest's BUY/SELL direction is the only signal above the base rate, and
-  not significantly. Numbers and method are in [ml/MODELS.md](./ml/MODELS.md#walk-forward-results-144).
+- **Evaluation harness.** `ml/backtest.py` walks models forward through historical periods.
+  Recorded results predate the validation corrections in PR #165 and need rerunning;
+  they do not establish current out-of-sample skill or a trading edge. Method and limits
+  are in [ml/MODELS.md](./ml/MODELS.md#walk-forward-results-144).
 - **Ensemble** — an equal-weight blend of four members that also returns each
   constituent model's own price target, confidence, and signal, plus an agreement score.
   The Predict page's model-spread view plots these against spot so you can see when models
@@ -147,9 +147,10 @@ wrong.
 
 - **Live valuation**: holdings priced against the same quote pipeline as Market Overview,
   with total value, invested capital, today's change, and per-holding P&L
-- **Sector allocation** breakdown and a concentration-based risk score
-- **Buy/sell as an atomic upsert**: `portfolio_holdings` has a unique `(user, ticker)`
-  constraint, so a transaction can't race a read-then-write on the same position
+- **Sector allocation** and largest-position concentration, with unavailable quotes
+  or FX conversions shown as excluded from totals
+- **Holdings management**: add, edit and remove positions. `portfolio_holdings` has a
+  unique `(user, ticker)` constraint; this is tracking, not broker order execution
 - **Every change is audited**: DB triggers write `audit_log` rows for portfolio and
   watchlist changes, so the trail doesn't depend on the client remembering to log it —
   see the Audit Log page and [ARCHITECTURE.md](./ARCHITECTURE.md#auth)
@@ -328,13 +329,12 @@ concept. Git history preserves them in full.
 
 ### Prerequisites Checklist
 
-- [ ] **Node.js** >= 18.0.0 ([Download](https://nodejs.org/))
-- [ ] **Python** 3.11 exactly — matches `ml/runtime.txt` and CI ([Download](https://www.python.org/downloads/release/python-3119/))
+- [ ] **Node.js** >= 22.12.0 and **npm** >= 9.0.0 ([Download](https://nodejs.org/))
+- [ ] **Python** 3.11 (runtime pin: 3.11.9) — matches `ml/runtime.txt` and CI ([Download](https://www.python.org/downloads/release/python-3119/))
 - [ ] **Git** for version control
-- [ ] **PostgreSQL** 15+ (optional for local development)
-- [ ] **Redis** 7+ (optional for local development)
+- [ ] **Docker** if using the local Supabase stack (PostgreSQL 17); allow space for its images
 
-### Quick Start (5 minutes)
+### Quick Start
 
 <details>
 <summary><strong>1. Clone and Setup</strong></summary>
@@ -366,8 +366,9 @@ npm run dev        # http://localhost:3000
 
 The Next.js app serves both the UI and its API route handlers
 (`/api/predict`, `/api/market-data`, `/api/news`, `/api/stocks/search`, ...).
-It is fully usable on its own — the ML service is only required for live
-model-backed predictions.
+The ML service is needed for predictions, the screener, and Yahoo market-data
+fallbacks. Without it, available primary-provider features can still run; auth
+and persistence require a configured Supabase project.
 
 </details>
 
@@ -375,12 +376,14 @@ model-backed predictions.
 <summary><strong>3. Run the ML service (optional)</strong></summary>
 
 ```bash
-cd ml
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
+# From the repository root (Windows: py -3.11 -m venv .venv)
+python3.11 -m venv .venv
+source .venv/bin/activate  # Windows PowerShell: .venv\Scripts\Activate.ps1
+python -m pip install -r ml/requirements.txt
+cp ml/.env.example ml/.env
 
-uvicorn app.main:app --reload --port 8000   # or: npm run ml:dev
+# Set the matching ML_SERVICE_TOKEN in .env.local and ml/.env before starting.
+npm run ml:dev
 ```
 
 Point the web app at it with `ML_BACKEND_URL=http://localhost:8000`.
@@ -395,9 +398,9 @@ If `ML_SERVICE_TOKEN` is unset on the ML side, those endpoints return 503 —
 they fail closed rather than running unauthenticated. `/` and `/health` stay
 open so platform health checks keep working.
 
-**Model artifacts:** LSTM and GAN load bundled artifacts from
-`ml/artifacts/generated` at startup and degrade gracefully when the artifacts
-(or TensorFlow) are unavailable. Generate them with `npm run train:ml`.
+**Model artifacts:** the LSTM and GAN slots load bundled gradient-boosted
+artifacts from `ml/artifacts/generated`; TensorFlow is not required. Training is
+an explicit maintenance task (`npm run train:ml`), not a setup prerequisite.
 
 </details>
 
@@ -413,7 +416,14 @@ npm run build
 cd ml && python -m pytest tests -q
 ```
 
-These are exactly the checks CI runs.
+Activate `.venv` before the ML check. These are the web/ML CI commands; local
+success does not verify hosted authentication, provider uptime or deployment.
+
+For a local database, follow the [Supabase setup](CONTRIBUTING.md#development-setup).
+Apply every migration in filename order (001 through 012; 004 is absent).
+Local seeded accounts live in `supabase/seed.sql`; never apply that seed to a
+hosted project. Price alerts require migration 012, `CRON_SECRET` and a scheduled
+caller; see [the alert ADR](docs/adr/0001-alerts-on-vercel-cron.md).
 
 </details>
 
@@ -436,49 +446,32 @@ gitGraph
 
 ### Environment Variables Reference
 
-<details open>
-<summary><strong>Frontend Configuration</strong></summary>
+The templates are [`.env.example`](.env.example) for Next.js and
+[`ml/.env.example`](ml/.env.example) for FastAPI. Copy them to `.env.local` and
+`ml/.env`; keep credentials out of Git. Only the two `NEXT_PUBLIC_SUPABASE_*`
+values below are needed by the browser. Privileged keys and provider tokens stay
+in server environments.
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `VITE_API_BASE_URL` | `http://localhost:3001` | Backend API endpoint |
-| `VITE_WS_URL` | `ws://localhost:3001` | WebSocket server URL |
-| `VITE_APP_NAME` | `Roneira AI HIFI` | Application display name |
-| `VITE_APP_VERSION` | `3.0.0` | Version identifier |
-| `VITE_SENTRY_DSN` | - | Error tracking DSN |
-| `VITE_ANALYTICS_ID` | - | Google Analytics ID |
+| Variable | Used by | Purpose |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Web/client | Supabase project API URL; required for auth and persistence |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Web/client | Public Supabase key; data access remains governed by RLS |
+| `SUPABASE_SERVICE_ROLE_KEY` | Web server | Privileged server-only client for admin/login/alert operations |
+| `ML_BACKEND_URL` | Web server | FastAPI URL; defaults to `http://localhost:8000` |
+| `ML_SERVICE_TOKEN` | Both servers | Matching private token for all ML data endpoints |
+| `CRON_SECRET` | Web server | Authenticate the scheduled price-alert route |
+| `TWELVE_DATA_API_KEY` | Web server | Primary quotes/history; missing symbols fall back to ML/Yahoo |
+| `FINNHUB_API_KEY` | Web server | Stock search and company data |
+| `ALPHA_VANTAGE_API_KEY` | Web server | Alternate stock search |
+| `NEWS_API_KEY` | Web server | News articles; unavailable news is not replaced with invented stories |
+| `UPSTASH_REDIS_URL`, `UPSTASH_REDIS_TOKEN` | Web server | Shared rate limiting; otherwise enforced per warm instance |
+| `ML_MODEL_DIR` | ML server | Optional artifact directory; default `ml/artifacts/generated` |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_FULL_NAME`, `ADMIN_USERNAME` | Admin seed script | Inputs to `npm run seed:admin`; use only for an intended project |
 
-</details>
-
-<details>
-<summary><strong>Backend Configuration</strong></summary>
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | `3001` | Server listening port |
-| `NODE_ENV` | `development` | Runtime environment |
-| `DATABASE_URL` | - | PostgreSQL connection string |
-| `REDIS_URL` | - | Redis connection string |
-| `JWT_SECRET` | - | JWT signing secret |
-| `ML_SERVICE_URL` | `http://localhost:5000` | ML service endpoint |
-| `RATE_LIMIT_WINDOW` | `900000` | Rate limit window (15min) |
-| `RATE_LIMIT_MAX` | `100` | Max requests per window |
-
-</details>
-
-<details>
-<summary><strong>ML Service Configuration</strong></summary>
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `FLASK_ENV` | `development` | Flask environment |
-| `MODEL_CACHE_TTL` | `3600` | Model cache TTL (seconds) |
-| `FEATURE_CACHE_SIZE` | `1000` | Feature cache size |
-| `HUGGING_FACE_API_KEY` | - | HF API key for sentiment |
-| `ALPHA_VANTAGE_API_KEY` | - | Market data API key |
-| `GUNICORN_WORKERS` | `4` | Production worker count |
-
-</details>
+`NEXT_PUBLIC_APP_URL` and `HUGGING_FACE_API_KEY` are retained in the template but
+are not read by the current application. The news route uses keyword sentiment.
+Quote caching is in-process, not Redis-backed. The internal ML URL is deliberately
+`ML_BACKEND_URL`, without a `NEXT_PUBLIC_` prefix.
 
 ## API Documentation
 
@@ -612,13 +605,14 @@ the ML service is actually closed to direct traffic.
 
 ### Pre-deploy checklist
 
-- [ ] Supabase migrations applied **009 through the latest**, in filename order (there is no
+- [ ] Supabase migrations applied **001 through 012**, in filename order (there is no
       `004`). Migrations 007–009 specifically fix bugs found by hand after `001` was
       already live: 007 fixes RLS admin-policy recursion, 008 restores anon username
       lookup (needed for login), 009 makes `audit_log` append-only against a
-      `service_role`/superuser connection too, not just the roles RLS restricts.
+      `service_role` connection too. Migration 010 locks user roles; migration 012
+      is required for atomic in-app price-alert delivery.
 - [ ] Vercel env vars set: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
-      `SUPABASE_SERVICE_ROLE_KEY`, `ML_BACKEND_URL`, `ML_SERVICE_TOKEN`
+      `SUPABASE_SERVICE_ROLE_KEY`, `ML_BACKEND_URL`, `ML_SERVICE_TOKEN`, `CRON_SECRET`
 - [ ] `ML_SERVICE_TOKEN` set to the **same** value in the Railway/Render env for `ml/`.
       Without it the ML data endpoints return 503; mismatched, they return 401
 - [ ] `ml/` deployed and reachable from Vercel at the URL above — no training step needed at

@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Sidebar } from "@/components/shared/Sidebar";
 import { Header } from "@/components/shared/Header";
 import { CommandPalette } from "@/components/ui/CommandPalette";
@@ -30,9 +30,11 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
+  const reducedMotion = useReducedMotion();
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: "var(--color-bg)" }}>
+    <div className="dashboard-shell flex h-dvh overflow-hidden" data-sidebar-collapsed={sidebarCollapsed} style={{ background: "var(--color-bg)" }}>
+      <a href="#dashboard-content" className="dashboard-skip-link">Skip to content</a>
       {/* Command Palette (Cmd+K) */}
       <CommandPalette />
 
@@ -41,19 +43,16 @@ export default function DashboardLayout({
 
       {/* Main Content */}
       <div
-        className="flex flex-1 flex-col overflow-hidden transition-all duration-300"
-        style={{
-          marginLeft: sidebarCollapsed
-            ? "var(--spacing-sidebar-collapsed)"
-            : "var(--spacing-sidebar)",
-        }}
+        className="dashboard-main flex min-w-0 flex-1 flex-col overflow-hidden"
       >
         {/* Header */}
         <Header />
 
         {/* Page Content */}
         <main
-          className="flex-1 overflow-y-auto overflow-x-hidden"
+          id="dashboard-content"
+          tabIndex={-1}
+          className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden"
           style={{ paddingTop: "var(--spacing-header)" }}
         >
           <ErrorBoundary>
@@ -61,10 +60,10 @@ export default function DashboardLayout({
               <motion.div
                 key={pathname}
                 variants={pageTransition}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                className="p-6"
+                initial={reducedMotion ? false : "initial"}
+                animate={reducedMotion ? { opacity: 1, x: 0, transition: { duration: 0 } } : "animate"}
+                exit={reducedMotion ? { opacity: 1, x: 0, transition: { duration: 0 } } : "exit"}
+                className="min-w-0 p-4 sm:p-6"
               >
                 {children}
               </motion.div>

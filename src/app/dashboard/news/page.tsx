@@ -25,21 +25,21 @@ function getSentimentStyle(sentiment: "positive" | "negative" | "neutral") {
     case "positive":
       return {
         icon: TrendingUp,
-        color: "#2ECC71",
+        color: "var(--color-profit)",
         bg: "rgba(46,204,113,0.1)",
-        label: "Bullish",
+        label: "Positive",
       };
     case "negative":
       return {
         icon: TrendingDown,
-        color: "#E74C3C",
+        color: "var(--color-loss)",
         bg: "rgba(231,76,60,0.1)",
-        label: "Bearish",
+        label: "Negative",
       };
     default:
       return {
         icon: Minus,
-        color: "#F39C12",
+        color: "var(--color-warning)",
         bg: "rgba(243,156,18,0.1)",
         label: "Neutral",
       };
@@ -54,11 +54,13 @@ const tabs = [
 export default function NewsPage() {
   const [activeTab, setActiveTab] = useState<"global" | "india">("global");
   const [searchQuery, setSearchQuery] = useState("");
-  const newsQuery = useNewsFeed(activeTab, searchQuery);
+  const [appliedSearch, setAppliedSearch] = useState("");
+  const newsQuery = useNewsFeed(activeTab, appliedSearch);
+  function clearSearch() { setSearchQuery(""); setAppliedSearch(""); }
 
   return (
     <div className="mx-auto max-w-5xl">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: "var(--color-text-primary)" }}>
             News Feed
@@ -69,19 +71,21 @@ export default function NewsPage() {
         </div>
         <button
           onClick={() => newsQuery.refetch()}
+          disabled={newsQuery.isFetching}
           className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-white/5"
           style={{ color: "var(--color-text-muted)" }}
         >
-          <RefreshCw className="h-4 w-4" /> Refresh
+          <RefreshCw className="h-4 w-4" /> {newsQuery.isFetching ? "Refreshing..." : "Refresh"}
         </button>
       </div>
 
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-1 rounded-lg p-1" style={{ background: "var(--color-surface)" }}>
+        <div role="group" aria-label="News market" className="flex items-center gap-1 rounded-lg p-1" style={{ background: "var(--color-surface)" }}>
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
+              aria-pressed={activeTab === tab.id}
               className="flex items-center gap-1.5 rounded-md px-4 py-2 text-xs font-medium transition-colors"
               style={{
                 background: activeTab === tab.id ? "var(--color-surface-offset)" : "transparent",
@@ -96,14 +100,16 @@ export default function NewsPage() {
             </button>
           ))}
         </div>
-        <div className="relative">
+        <form role="search" onSubmit={(event) => { event.preventDefault(); setAppliedSearch(searchQuery.trim()); }} className="flex items-center gap-2">
+        <div className="relative min-w-0 flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: "var(--color-text-faint)" }} />
           <input
             type="text"
+            aria-label="Search market news"
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
             placeholder="Search news..."
-            className="w-full rounded-lg py-2 pl-10 pr-4 text-sm outline-none sm:w-64"
+            className="w-full rounded-lg py-2 pl-10 pr-4 text-sm outline-none sm:w-56"
             style={{
               background: "var(--color-surface)",
               border: "1px solid var(--color-border)",
@@ -111,16 +117,23 @@ export default function NewsPage() {
             }}
           />
         </div>
+        <button type="submit" className="rounded-lg border px-3 py-2 text-sm">Search</button>
+        </form>
       </div>
+      {appliedSearch && <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
+        <p>Results for &ldquo;{appliedSearch}&rdquo;</p>
+        <button onClick={clearSearch} className="rounded-lg px-2 py-1 underline">Clear search</button>
+      </div>}
 
       {newsQuery.isLoading ? (
-        <NewsSkeleton />
+        <div role="status" aria-label="Loading market headlines" aria-busy="true"><NewsSkeleton /></div>
       ) : newsQuery.isError ? (
-        <div className="card flex flex-col items-center py-16">
+        <div className="card flex flex-col items-center px-4 py-16" role="alert">
           <Newspaper className="mb-3 h-10 w-10" style={{ color: "var(--color-text-faint)" }} />
           <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
             Live news is temporarily unavailable.
           </p>
+          <button onClick={() => newsQuery.refetch()} disabled={newsQuery.isFetching} className="mt-3 rounded-lg border px-3 py-2 text-sm">Retry news</button>
         </div>
       ) : (
         <div className="space-y-4">
@@ -128,10 +141,9 @@ export default function NewsPage() {
             {newsQuery.data?.articles.map((article, index) => {
               const sentiment = getSentimentStyle(article.sentiment);
               const SentimentIcon = sentiment.icon;
-              const publishedLabel = formatDistanceToNow(
-                new Date(article.publishedAt),
-                { addSuffix: true }
-              );
+              const published = new Date(article.publishedAt);
+              const publishedLabel = Number.isFinite(published.getTime())
+                ? formatDistanceToNow(published, { addSuffix: true }) : "Publication time unavailable";
               // Deliberately not article.relatedTickers here -- that's a
               // loose regex match (matches "FCC", a regulator, as if it were
               // a ticker) fine for a small text hint but not sturdy enough to
@@ -153,7 +165,7 @@ export default function NewsPage() {
                 >
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
-                      <div className="mb-2 flex items-center gap-3">
+                      <div className="mb-2 flex flex-wrap items-center gap-3">
                         <span className="text-xs font-semibold" style={{ color: "var(--color-info)" }}>
                           {article.source}
                         </span>
@@ -185,7 +197,7 @@ export default function NewsPage() {
                         href={article.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex w-fit items-center gap-1 text-xs opacity-0 transition-opacity group-hover:opacity-100"
+                        className="flex w-fit items-center gap-1 text-xs underline-offset-2 hover:underline focus-visible:underline"
                         style={{ color: "var(--color-info)" }}
                       >
                         Read more <ExternalLink className="h-3 w-3" />
@@ -207,10 +219,12 @@ export default function NewsPage() {
           </AnimatePresence>
 
           {newsQuery.data?.articles.length === 0 && (
-            <div className="card flex flex-col items-center py-16">
+            <div className="card flex flex-col items-center px-4 py-16 text-center" role="status">
               <Newspaper className="mb-3 h-10 w-10" style={{ color: "var(--color-text-faint)" }} />
               <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
-                No headlines available right now. The news provider returned nothing for this market.
+                {appliedSearch
+                  ? `No headlines match “${appliedSearch}” in this market. Try another search or clear it.`
+                  : "No headlines are available for this market right now. Try refreshing or selecting another market."}
               </p>
             </div>
           )}

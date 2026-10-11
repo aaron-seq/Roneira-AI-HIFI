@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
   BarChart2,
@@ -14,9 +13,11 @@ import {
   FileText,
   Settings,
   ArrowRight,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/lib/stores/app-store";
+import { Dialog } from "@/components/ui/Dialog";
 
 interface SearchItem {
   id: string;
@@ -42,18 +43,13 @@ export function CommandPalette() {
         e.preventDefault();
         setOpen(!useAppStore.getState().commandPaletteOpen);
       }
-      if (e.key === "Escape") {
-        setOpen(false);
-      }
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [setOpen]);
 
   return (
-    <AnimatePresence>
-      {open && <Palette key="palette" onClose={() => setOpen(false)} />}
-    </AnimatePresence>
+    open ? <Palette onClose={() => setOpen(false)} /> : null
   );
 }
 
@@ -64,6 +60,8 @@ function Palette({ onClose }: { onClose: () => void }) {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(0);
   const router = useRouter();
+  const titleId = useId();
+  const resultsId = useId();
 
   const items: SearchItem[] = [
     { id: "market", label: "Market Overview", description: "View global indices & top movers", icon: BarChart2, action: () => router.push("/dashboard/market-overview"), category: "Navigation" },
@@ -100,50 +98,39 @@ function Palette({ onClose }: { onClose: () => void }) {
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setSelected((prev) => Math.min(prev + 1, filtered.length - 1));
+      setSelected((prev) => Math.max(0, Math.min(prev + 1, filtered.length - 1)));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setSelected((prev) => Math.max(prev - 1, 0));
     } else if (e.key === "Enter" && filtered[selected]) {
+      e.preventDefault();
       filtered[selected].action();
       onClose();
     }
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.15 }}
-      className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh] bg-black/60 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ scale: 0.96, y: -10 }}
-        animate={{ scale: 1, y: 0 }}
-        exit={{ scale: 0.96, y: -10 }}
-        transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Command palette"
-        className="glass w-full max-w-lg overflow-hidden rounded-2xl shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Dialog open onClose={onClose} labelledBy={titleId} className="max-w-lg p-0">
+        <h2 id={titleId} className="sr-only">Search pages and actions</h2>
         {/* Search Input */}
         <div className="flex items-center gap-3 px-5 py-4" style={{ borderBottom: "1px solid var(--color-divider)" }}>
           <Search className="h-5 w-5 shrink-0" style={{ color: "var(--color-text-faint)" }} />
           {/* autoFocus replaces a focus-on-open effect: the palette is a modal
               search box, so mount is exactly when it should take focus. */}
           <input
-            autoFocus
+            data-dialog-autofocus
             type="text"
+            role="combobox"
             aria-label="Search pages and actions"
+            aria-autocomplete="list"
+            aria-expanded={filtered.length > 0}
+            aria-controls={resultsId}
+            aria-activedescendant={filtered[selected] ? `${resultsId}-${filtered[selected].id}` : undefined}
             value={query}
             onChange={(e) => { setQuery(e.target.value); setSelected(0); }}
             onKeyDown={handleKeyDown}
             placeholder="Search pages, actions, stocks..."
-            className="flex-1 bg-transparent text-sm outline-none"
+            className="min-w-0 flex-1 bg-transparent text-sm outline-none"
             style={{ color: "var(--color-text-primary)" }}
           />
           <kbd
@@ -152,10 +139,13 @@ function Palette({ onClose }: { onClose: () => void }) {
           >
             ESC
           </kbd>
+          <button type="button" onClick={onClose} aria-label="Close search" className="rounded-lg p-2 hover:bg-white/5">
+            <X className="h-4 w-4" aria-hidden="true" />
+          </button>
         </div>
 
         {/* Results */}
-        <div className="max-h-80 overflow-y-auto p-2">
+        <div id={resultsId} role="listbox" aria-label="Pages and actions" className="max-h-80 overflow-y-auto p-2">
           {Object.entries(grouped).map(([category, categoryItems]) => (
             <div key={category} className="mb-2">
               <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--color-text-faint)" }}>
@@ -168,6 +158,11 @@ function Palette({ onClose }: { onClose: () => void }) {
                 return (
                   <button
                     key={item.id}
+                    id={`${resultsId}-${item.id}`}
+                    type="button"
+                    role="option"
+                    aria-selected={isActive}
+                    tabIndex={-1}
                     className={cn(
                       "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors",
                       isActive ? "bg-white/[0.06]" : "hover:bg-white/[0.03]"
@@ -223,7 +218,6 @@ function Palette({ onClose }: { onClose: () => void }) {
             Close
           </span>
         </div>
-      </motion.div>
-    </motion.div>
+    </Dialog>
   );
 }

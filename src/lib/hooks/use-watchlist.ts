@@ -21,8 +21,8 @@ type WatchlistItem = {
 
 export type WatchlistRow = WatchlistItem & {
   name: string;
-  price: number;
-  changePercent: number;
+  price: number | null;
+  changePercent: number | null;
 };
 
 async function fetchWatchlist(userId: string) {
@@ -87,8 +87,8 @@ export function useWatchlist() {
     return {
       ...item,
       name: quote?.name ?? item.ticker,
-      price: quote?.price ?? 0,
-      changePercent: quote?.changePercent ?? 0,
+      price: quote?.price ?? null,
+      changePercent: quote?.changePercent ?? null,
     };
   });
 

@@ -46,6 +46,20 @@ describe("formatCurrency", () => {
     expect(formatCurrency(1234567, "INR", { compact: true })).toBe("₹12.35L");
     expect(formatCurrency(1234567, "USD", { compact: true })).toBe("$1.23M");
   });
+
+  it.each([
+    ["USD", "-$1,234.56", "$0.00"],
+    ["INR", "-₹1,234.56", "₹0.00"],
+  ] as const)("keeps losses and zero amounts distinct in %s", (currency, loss, zero) => {
+    expect(formatCurrency(-1234.56, currency)).toBe(loss);
+    expect(formatCurrency(0, currency)).toBe(zero);
+  });
+
+  it("groups a crore in INR and retains losses in compact currency displays", () => {
+    expect(formatCurrency(10_000_000, "INR")).toBe("₹1,00,00,000.00");
+    expect(formatCurrency(-1_234_567, "INR", { compact: true })).toBe("-₹12.35L");
+    expect(formatCurrency(-1_234_567, "USD", { compact: true })).toBe("-$1.23M");
+  });
 });
 
 describe("formatPercent", () => {
@@ -60,6 +74,12 @@ describe("formatPercent", () => {
 
   it("honours a custom decimal count", () => {
     expect(formatPercent(1.23456, 4)).toBe("+1.2346%");
+  });
+
+  it("supports whole-percent displays and does not label negative zero as a loss", () => {
+    expect(formatPercent(5.4, 0)).toBe("+5%");
+    expect(formatPercent(-5.4, 0)).toBe("-5%");
+    expect(formatPercent(-0)).toBe("+0.00%");
   });
 });
 
@@ -96,6 +116,13 @@ describe("getPriceColor / getPriceBgColor", () => {
     expect(getPriceBgColor(1)).toBe("bg-profit-subtle");
     expect(getPriceBgColor(-1)).toBe("bg-loss-subtle");
     expect(getPriceBgColor(0)).toBe("");
+  });
+
+  it("preserves the direction of small moves while negative zero stays neutral", () => {
+    expect(getPriceColor(0.01)).toBe("text-profit");
+    expect(getPriceColor(-0.01)).toBe("text-loss");
+    expect(getPriceColor(-0)).toBe("text-[var(--color-text-muted)]");
+    expect(getPriceBgColor(-0)).toBe("");
   });
 });
 
@@ -164,6 +191,20 @@ describe("debounce", () => {
     vi.advanceTimersByTime(50);
 
     expect(spy).toHaveBeenCalledTimes(2);
+  });
+
+  it("waits a full quiet period after a later call, rather than the original deadline", () => {
+    vi.useFakeTimers();
+    const spy = vi.fn();
+    const debounced = debounce(spy as (...args: unknown[]) => void, 100);
+
+    debounced("first");
+    vi.advanceTimersByTime(50);
+    debounced("latest");
+    vi.advanceTimersByTime(99);
+    expect(spy).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(spy).toHaveBeenCalledExactlyOnceWith("latest");
   });
 });
 

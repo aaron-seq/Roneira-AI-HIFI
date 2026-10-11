@@ -9,9 +9,8 @@ import type { PredictionComponent } from "@/lib/market/types";
  * The blended number the ensemble returns is a single point estimate that hides
  * its own disagreement — four models clustered inside a dollar is a completely
  * different claim from one model calling BUY while another calls SELL, even when
- * the average is identical. Measured skill for the sequence slots is currently
- * zero against a no-change baseline, so presenting one confident figure would
- * overstate what the system knows. This puts the dispersion in front instead.
+ * the average is identical. The corrected walk-forward harness has not been
+ * rerun, so dispersion must not be presented as measured forecasting accuracy.
  *
  * Every value here is the model's own output (`components` from the ML service).
  * Nothing is interpolated or synthesised for visual effect.
@@ -92,7 +91,7 @@ export function ModelSpread({
 
   return (
     <section
-      aria-label="Model agreement"
+      aria-label="Model target spread"
       className="rounded-xl border p-6"
       style={{
         background: "var(--color-bg)",
@@ -108,7 +107,7 @@ export function ModelSpread({
               color: "var(--color-text-primary)",
             }}
           >
-            {disagree ? "The models disagree" : "The models agree"}
+            {disagree ? "The model calls differ" : "The model calls agree"}
           </h2>
           <p
             className="mt-1 text-xs"
@@ -116,7 +115,7 @@ export function ModelSpread({
           >
             {disagree
               ? "Each ran on the same history and reached a different call. Treat the blend as one view, not a consensus."
-              : "Each ran on the same history and reached the same call."}
+              : "Each ran on the same history and reached the same call. Shared inputs can produce shared errors."}
           </p>
         </div>
 
@@ -140,7 +139,7 @@ export function ModelSpread({
               className="text-[10px] uppercase tracking-[0.14em]"
               style={{ color: "var(--color-text-faint)" }}
             >
-              Agreement
+              Target proximity
             </dt>
             <dd
               className="font-mono text-sm"
@@ -148,7 +147,7 @@ export function ModelSpread({
             >
               {agreementScore == null
                 ? "—"
-                : `${Math.round(Math.max(0, Math.min(1, agreementScore)) * 100)}%`}
+                : `${Math.round(Math.max(0, Math.min(1, agreementScore)) * 100)} of 100`}
             </dd>
           </div>
         </dl>
@@ -173,7 +172,7 @@ export function ModelSpread({
             color: "var(--color-text-muted)",
           }}
         >
-          today {currency}
+          latest close {currency}
           {currentPrice.toFixed(2)}
         </span>
       </div>
@@ -190,7 +189,7 @@ export function ModelSpread({
           const labelRight = left < todayLeft;
 
           return (
-            <li key={component.name} className="grid grid-cols-[9.5rem_1fr] items-center gap-4">
+            <li key={component.name} className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[9.5rem_1fr] sm:gap-4">
               <div className="min-w-0">
                 <p
                   className="truncate text-[13px]"
@@ -202,9 +201,10 @@ export function ModelSpread({
                   className="font-mono text-[10px]"
                   style={{ color: "var(--color-text-faint)" }}
                 >
-                  w {component.weight.toFixed(2)} · conf{" "}
-                  {component.confidence.toFixed(0)}% ·{" "}
+                  weight {component.weight.toFixed(2)} · score{" "}
+                  {component.confidence.toFixed(0)}/100 ·{" "}
                   {SIGNAL_LABEL[component.signal] ?? component.signal.toLowerCase()}
+                  {component.fallback ? " · fallback estimate" : ""}
                 </p>
               </div>
 
@@ -244,7 +244,7 @@ export function ModelSpread({
                       background: tone,
                       // Weight as ring thickness: a low-weight model visibly
                       // makes a smaller claim on the blend.
-                      boxShadow: `0 0 0 ${1 + component.weight * 4}px ${tone}22`,
+                      boxShadow: `0 0 0 ${1 + component.weight * 4}px color-mix(in srgb, ${tone} 14%, transparent)`,
                     }}
                   />
                   <span
@@ -270,6 +270,11 @@ export function ModelSpread({
           );
         })}
       </ol>
+
+      <p className="mt-5 text-xs leading-relaxed" style={{ color: "var(--color-text-muted)" }}>
+        Target proximity measures how close the estimates are. It does not measure accuracy.
+        Model scores are separate, uncalibrated heuristics, not probabilities or directly comparable ratings.
+      </p>
 
       <footer
         className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 border-t pt-4 text-[11px]"

@@ -20,7 +20,7 @@
   /* ---- Text ---- */
   --color-text-primary: #D7DBE7;
   --color-text-muted: #838BA0;
-  --color-text-faint: #565D73;
+  --color-text-faint: #8791A6;
 
   /* ---- Accent Colors (financial theme) ---- */
   --color-profit: #2ECC71;
@@ -281,6 +281,112 @@ body {
   --color-divider: rgba(0, 0, 0, 0.05);
   --color-text-primary: #1F2328;
   --color-text-muted: #656D76;
-  --color-text-faint: #B0B8C1;
+  --color-text-faint: #5C6675;
+  /* Directional text must remain legible on white and tinted badges. */
+  --color-profit: #147A42;
+  --color-loss: #B52B25;
+  --color-warning: #895300;
+  --color-info: #1F5C99;
+  --color-brass: #865B12;
+  --color-brass-bright: #81560D;
+  --color-strong-buy: #147A42;
+  --color-buy: #147A42;
+  --color-hold: #895300;
+  --color-sell: #994500;
+  --color-strong-sell: #B52B25;
   color-scheme: light;
+}
+
+[data-theme="light"] .badge-strong-buy,
+[data-theme="light"] .badge-buy { color: var(--color-profit); }
+[data-theme="light"] .badge-hold { color: var(--color-warning); }
+[data-theme="light"] .badge-sell { color: var(--color-sell); }
+[data-theme="light"] .badge-strong-sell { color: var(--color-loss); }
+
+/* ---- Responsive dashboard shell ---- */
+.dashboard-shell {
+  --dashboard-sidebar-width: 0px;
+}
+
+.dashboard-main {
+  margin-left: var(--dashboard-sidebar-width);
+  transition: margin-left var(--duration-normal) var(--ease-spring);
+}
+
+.dashboard-header {
+  left: var(--dashboard-sidebar-width);
+  transition: left var(--duration-normal) var(--ease-spring);
+}
+
+.dashboard-desktop-sidebar {
+  display: none;
+  height: 100dvh;
+  width: var(--dashboard-sidebar-width);
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  transition: width var(--duration-normal) var(--ease-spring);
+}
+
+.dashboard-header-action {
+  min-width: 40px;
+  min-height: 40px;
+}
+
+.dashboard-headlines {
+  display: none;
+}
+
+.dashboard-nav-link:hover,
+.dashboard-nav-link:focus-visible {
+  background: var(--color-surface-2);
+}
+
+.dashboard-mobile-panel {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.dashboard-notification-panel {
+  position: fixed;
+  top: calc(var(--spacing-header) + 8px);
+  right: 8px;
+  width: min(288px, calc(100vw - 16px));
+}
+
+.dashboard-skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 110;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--color-surface-offset);
+  color: var(--color-text-primary);
+  transform: translateY(-150%);
+}
+
+.dashboard-skip-link:focus {
+  transform: translateY(0);
+}
+
+@media (min-width: 768px) {
+  .dashboard-headlines { display: block; }
+  .dashboard-mobile-brand { flex: none; }
+}
+
+@media (min-width: 1024px) {
+  .dashboard-shell {
+    --dashboard-sidebar-width: var(--spacing-sidebar);
+  }
+  .dashboard-shell[data-sidebar-collapsed="true"] {
+    --dashboard-sidebar-width: var(--spacing-sidebar-collapsed);
+  }
+  .dashboard-desktop-sidebar { display: flex; }
+  .dashboard-mobile-toggle,
+  .dashboard-mobile-brand { display: none; }
+  .dashboard-notification-panel {
+    position: absolute;
+    top: 48px;
+    right: 0;
+  }
 }

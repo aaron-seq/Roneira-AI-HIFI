@@ -106,4 +106,36 @@ describe("server cache", () => {
 
     expect(cacheSize()).toBe(1);
   });
+
+  it("invalidates one quote without discarding a different cached quote", async () => {
+    const firstLoader = vi.fn(async () => 100);
+    const otherLoader = vi.fn(async () => 200);
+    await getCachedValue("quote:invalidate", 10_000, firstLoader);
+    await getCachedValue("quote:keep", 10_000, otherLoader);
+
+    clearCachedValue("quote:invalidate");
+    firstLoader.mockResolvedValue(110);
+    otherLoader.mockResolvedValue(210);
+
+    expect(await getCachedValue("quote:invalidate", 10_000, firstLoader)).toBe(110);
+    expect(await getCachedValue("quote:keep", 10_000, otherLoader)).toBe(200);
+    expect(firstLoader).toHaveBeenCalledTimes(2);
+    expect(otherLoader).toHaveBeenCalledTimes(1);
+  });
+
+  it("invalidates every cached quote when cleared without a key", async () => {
+    const firstLoader = vi.fn(async () => 100);
+    const otherLoader = vi.fn(async () => 200);
+    await getCachedValue("quote:first", 10_000, firstLoader);
+    await getCachedValue("quote:other", 10_000, otherLoader);
+
+    clearCachedValue();
+    firstLoader.mockResolvedValue(110);
+    otherLoader.mockResolvedValue(210);
+
+    expect(await getCachedValue("quote:first", 10_000, firstLoader)).toBe(110);
+    expect(await getCachedValue("quote:other", 10_000, otherLoader)).toBe(210);
+    expect(firstLoader).toHaveBeenCalledTimes(2);
+    expect(otherLoader).toHaveBeenCalledTimes(2);
+  });
 });
