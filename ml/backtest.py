@@ -7,8 +7,8 @@ date t, using only data up to t, what forward return did the model predict,
 and how does that compare with what happened h sessions later, and with the
 trivial "no change" forecast?
 
-Each model is called exactly the way /predict serves it: on a trailing window
-the length of the fetch app/main.py does (1y, or 2y for horizons over 180),
+Each model is called exactly the way /predict serves it: on the shared trailing
+session window defined in app/horizons.py,
 through its normal predict/analyze method. The two trained slots (LSTM, GAN)
 are refitted per fold on windows whose labels resolve before the fold starts,
 then served through the same adapter production loads from disk.
@@ -41,6 +41,7 @@ from app.models.lstm import LSTMPredictor
 from app.models.pdm_momentum import PVDMomentumEngine
 from app.models.random_forest import RandomForestPredictor
 from app.models.technical_analysis import TechnicalAnalyzer
+from app.horizons import serving_lookback
 
 logger = logging.getLogger("roneira-ml.backtest")
 
@@ -48,15 +49,14 @@ CACHE_DIR = Path(__file__).parent / ".cache" / "backtest"
 MEMBERS = ["RANDOM_FOREST", "TECHNICAL", "PVD_MOMENTUM", "LSTM", "GAN"]
 
 
-def serving_lookback(horizon: int) -> int:
-    """Sessions of history /predict hands a model: main.py fetches 2y past 180."""
-    return 504 if horizon > 180 else 252
-
-
 def score(predicted: np.ndarray, realised: np.ndarray) -> dict:
     """MAE, the no-change baseline, unclipped skill, and directional hit rate."""
     predicted = np.asarray(predicted, dtype=float)
     realised = np.asarray(realised, dtype=float)
+    if predicted.ndim != 1 or realised.ndim != 1 or len(predicted) != len(realised):
+        raise ValueError("Predicted and realised returns must be aligned one-dimensional arrays.")
+    if not np.isfinite(predicted).all() or not np.isfinite(realised).all():
+        raise ValueError("Score only finite returns; report unavailable predictions separately.")
     n = len(realised)
     if n == 0:
         return {"n": 0, "mae": np.nan, "baseline_mae": np.nan, "skill": np.nan, "hit_rate": np.nan}
@@ -145,8 +145,14 @@ def signal_precision(direction: np.ndarray, realised: np.ndarray) -> dict:
 
 
 def predicted_return(result: dict, current: float) -> float:
-    price = float(result.get("predicted_price", current))
-    return price / current - 1.0 if current > 0 else 0.0
+    """Unavailable/fallback forecasts are missing, never a successful model call."""
+    if result.get("fallback") or result.get("error") or current <= 0:
+        return np.nan
+    try:
+        price = float(result["predicted_price"])
+    except (KeyError, TypeError, ValueError):
+        return np.nan
+    return price / current - 1.0 if np.isfinite(price) and price > 0 else np.nan
 
 
 class Backtester:
@@ -154,8 +160,9 @@ class Backtester:
         self.frames = frames
         self.horizon = horizon
         self.lookback = serving_lookback(horizon)
-        # Calendar days, generous: the same rule train_gradient_boost uses.
-        self.purge_days = purge_days if purge_days is not None else horizon * 7 // 5 + 5
+        # Optional additional embargo. Label availability itself is exact:
+        # frames contain only sessions strictly before the fold start.
+        self.purge_days = purge_days if purge_days is not None else 0
         self.rf = RandomForestPredictor()
         self.ta = TechnicalAnalyzer()
         self.pdm = PVDMomentumEngine()
@@ -172,24 +179,27 @@ class Backtester:
             frame.loc[pd.to_datetime(frame.index, utc=True) < cutoff_utc]
             for frame in self.frames.values()
         ]
-        windows, targets, stamps = build_training_windows(
+        windows, targets, stamps, label_ends = build_training_windows(
             historical_frames, prepare, sequence_length, self.horizon
         )
         # Retain the optional calendar embargo in addition to the exact
         # label-availability boundary enforced by truncating the frames.
         limit = np.datetime64(cutoff_utc.tz_localize(None)) - np.timedelta64(self.purge_days, "D")
-        keep = stamps < limit
+        keep = (stamps < limit) & (label_ends < np.datetime64(cutoff_utc.tz_localize(None)))
         if keep.sum() < 500:
             raise ValueError(f"only {int(keep.sum())} training windows before {cutoff.date()}")
         X = windows[keep].reshape(int(keep.sum()), -1)
         estimator = build_estimator()
         estimator.fit(X, targets[keep])
-        return GradientBoostArtifact(estimator, n_features=X.shape[1])
+        return GradientBoostArtifact(
+            estimator, n_features=X.shape[1], window_shape=windows.shape[1:],
+            trained_horizon_sessions=self.horizon,
+        )
 
-    def _predict_all(self, frame: pd.DataFrame, ticker: str, pos: int, models: list[str]) -> dict[str, float]:
+    def _predict_all(self, frame: pd.DataFrame, ticker: str, pos: int, models: list[str]) -> dict:
         window = frame.iloc[max(0, pos + 1 - self.lookback) : pos + 1]
         current = float(window["Close"].iloc[-1])
-        out: dict[str, float] = {}
+        out: dict = {}
         for name in models:
             if name == "RANDOM_FOREST":
                 result = self.rf.predict(window, self.horizon)
@@ -204,7 +214,13 @@ class Backtester:
             else:
                 raise ValueError(name)
             out[name] = predicted_return(result, current)
-            out[f"{name}:signal"] = signal_direction(result)
+            unavailable = not np.isfinite(out[name])
+            out[f"{name}:fallback"] = unavailable
+            out[f"{name}:fallback_reason"] = (
+                str(result.get("fallback_reason") or result.get("error") or "unavailable_prediction")
+                if unavailable else ""
+            )
+            out[f"{name}:signal"] = np.nan if unavailable else signal_direction(result)
         return out
 
     def run(self, folds: list[Fold], models: list[str]) -> list[dict]:
@@ -214,10 +230,22 @@ class Backtester:
             started = time.time()
             if "LSTM" in models:
                 self.lstm._model = self._fit_slot(self.lstm._prepare_features, self.lstm.sequence_length, fold.start)
-                self.lstm._metadata = {"confidence": 50.0}
+                self.lstm._metadata = {
+                    "confidence": 50.0, "horizon_days": self.horizon,
+                    "window_contract": "origin-inclusive-v2",
+                    "backend": self.lstm._model.backend,
+                    "sequence_length": self.lstm.sequence_length,
+                    "n_features": self.lstm._model.n_features,
+                }
             if "GAN" in models:
                 self.gan._generator = self._fit_slot(self.gan._prepare_data, self.gan.sequence_length, fold.start)
-                self.gan._metadata = {"confidence": 50.0}
+                self.gan._metadata = {
+                    "confidence": 50.0, "horizon_days": self.horizon,
+                    "window_contract": "origin-inclusive-v2",
+                    "backend": self.gan._generator.backend,
+                    "sequence_length": self.gan.sequence_length,
+                    "n_features": self.gan._generator.n_features,
+                }
 
             for ticker, pos in fold.origins:
                 frame = self.frames[ticker]
@@ -253,9 +281,27 @@ def ensemble_variants(records: pd.DataFrame) -> pd.DataFrame:
     if len(members) < 2:
         return records
     out = records.copy()
-    matrix = out[members].to_numpy()
+    matrix = out[members].to_numpy(dtype=float)
+    rule_members = ["RANDOM_FOREST", "TECHNICAL", "PVD_MOMENTUM"]
+    if all(name in out for name in rule_members):
+        # A fixed equal-weight comparison that needs no offline sequence
+        # artifact. With the shipped 30-session bundle this matches the live
+        # seven-session ensemble's eligible members.
+        out["ENSEMBLE_RF_RULES"] = out[rule_members].to_numpy(dtype=float).mean(axis=1)
     if members == list(ENSEMBLE_MEMBERS):
-        out["ENSEMBLE_PRODUCTION"] = matrix @ np.asarray(ENSEMBLE_WEIGHTS)
+        # Production excludes unavailable/fallback members and renormalises
+        # the remaining configured weights. Keep these degraded origins visible.
+        eligible = np.isfinite(matrix)
+        weights = eligible * np.asarray(ENSEMBLE_WEIGHTS)
+        totals = weights.sum(axis=1)
+        blended = (np.where(eligible, matrix, 0.0) * weights).sum(axis=1)
+        out["ENSEMBLE_PRODUCTION"] = np.divide(
+            blended, totals, out=np.full(len(out), np.nan), where=totals > 0,
+        )
+        out["ensemble_eligible_members"] = eligible.sum(axis=1)
+        out["ensemble_degraded"] = eligible.sum(axis=1) < len(members)
+    # Alternative full-member blends use complete cases only. Missing calls
+    # cannot gain a statistical advantage by being treated as zero returns.
     out["ENSEMBLE_EQUAL"] = matrix.mean(axis=1)
 
     if not {"origin_timestamp", "label_timestamp"}.issubset(out.columns):
@@ -266,7 +312,8 @@ def ensemble_variants(records: pd.DataFrame) -> pd.DataFrame:
     inverse = np.full(len(out), np.nan)
     for fold in sorted(out["fold"].unique()):
         fold_start = origins[out["fold"] == fold].min()
-        past = out[(out["fold"] < fold) & (label_ends < fold_start)]
+        complete = np.isfinite(matrix).all(axis=1) & np.isfinite(out["realised"].to_numpy(dtype=float))
+        past = out[(out["fold"] < fold) & (label_ends < fold_start) & complete]
         if past.empty:
             continue
         mae = np.array([np.mean(np.abs(past[m] - past["realised"])) for m in members])
@@ -283,7 +330,8 @@ def ensemble_variants(records: pd.DataFrame) -> pd.DataFrame:
 def summarise(records: pd.DataFrame, columns: list[str]) -> dict:
     summary: dict[str, dict] = {}
     for name in columns:
-        valid = records[records[name].notna()]
+        finite = np.isfinite(records[name].to_numpy(dtype=float)) & np.isfinite(records["realised"].to_numpy(dtype=float))
+        valid = records[finite]
         per_fold = [
             {"fold": int(f), "start": group["date"].min(), "end": group["date"].max(), **score(group[name], group["realised"])}
             for f, group in valid.groupby("fold")
@@ -291,6 +339,11 @@ def summarise(records: pd.DataFrame, columns: list[str]) -> dict:
         skills = np.array([row["skill"] for row in per_fold], dtype=float)
         summary[name] = {
             "pooled": score(valid[name], valid["realised"]),
+            "coverage": {
+                "origins": len(records), "scored": len(valid),
+                "unavailable": int((~finite).sum()),
+                "fraction": float(finite.mean()) if len(records) else np.nan,
+            },
             "fold_skill_mean": float(np.nanmean(skills)) if len(skills) else np.nan,
             "fold_skill_std": float(np.nanstd(skills)) if len(skills) else np.nan,
             "folds_beating_baseline": int(np.sum(skills > 0)),
@@ -298,6 +351,8 @@ def summarise(records: pd.DataFrame, columns: list[str]) -> dict:
         }
         if f"{name}:signal" in valid:
             summary[name]["signals"] = signal_precision(valid[f"{name}:signal"], valid["realised"])
+        if name == "ENSEMBLE_PRODUCTION" and "ensemble_degraded" in valid:
+            summary[name]["coverage"]["degraded"] = int(valid["ensemble_degraded"].sum())
     return summary
 
 
@@ -314,6 +369,10 @@ def print_report(summary: dict, horizon: int) -> None:
             f"{s['fold_skill_mean']:>10.3f} ±{s['fold_skill_std']:>6.3f}"
             f"{s['folds_beating_baseline']:>4}/{folds:<2}{p['hit_rate'] * 100:>7.1f}"
         )
+        coverage = s.get("coverage", {})
+        if coverage.get("unavailable") or coverage.get("degraded"):
+            print(f"  coverage: {coverage.get('scored')}/{coverage.get('origins')} scored; "
+                  f"{coverage.get('unavailable', 0)} unavailable, {coverage.get('degraded', 0)} degraded blends")
     print()
     with_signals = {name: s["signals"] for name, s in summary.items() if "signals" in s}
     if with_signals:
@@ -342,6 +401,7 @@ def load_frames(tickers: list[str], period: str, refresh: bool) -> dict[str, pd.
     import yfinance as yf
 
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    yf.set_tz_cache_location(str(CACHE_DIR / "yfinance"))
     frames: dict[str, pd.DataFrame] = {}
     for ticker in tickers:
         # CSV, not pickle: this is plain OHLCV, and a cache file should never be
@@ -377,8 +437,13 @@ def main() -> None:
     parser.add_argument("--stride", type=int, default=None, help="sessions between origins (default: horizon)")
     parser.add_argument("--max-origins-per-fold", type=int, default=None, help="subsample for slow models")
     parser.add_argument("--json", type=Path, default=None, help="write the full summary here")
+    parser.add_argument("--records", type=Path, default=None, help="write per-origin predictions and availability as CSV")
     parser.add_argument("--refresh", action="store_true", help="re-download instead of using the cache")
     args = parser.parse_args()
+    if args.horizon <= 0 or args.folds <= 0 or (args.stride is not None and args.stride <= 0):
+        parser.error("horizon, folds and stride must be positive")
+    if args.max_origins_per_fold is not None and args.max_origins_per_fold <= 0:
+        parser.error("max-origins-per-fold must be positive")
 
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     models = MEMBERS if args.models == "all" else [m.strip().upper() for m in args.models.split(",")]
@@ -406,15 +471,30 @@ def main() -> None:
     columns = [c for c in records.columns if c in MEMBERS or c.startswith("ENSEMBLE_")]
     summary = summarise(records, columns)
     print_report(summary, args.horizon)
+    if args.records:
+        records.to_csv(args.records, index=False)
 
     if args.json:
         args.json.write_text(
-            json.dumps(
-                {"horizon": args.horizon, "tickers": list(frames), "models": models, "summary": summary},
-                indent=2,
-                default=lambda v: None if isinstance(v, float) and np.isnan(v) else str(v),
-            )
+            json.dumps(json_ready({
+                "horizon": args.horizon, "tickers": list(frames), "models": models,
+                "serving_lookback": tester.lookback, "stride": args.stride or args.horizon,
+                "summary": summary,
+            }), indent=2, allow_nan=False)
         )
+
+
+def json_ready(value):
+    """Standard JSON represents unavailable metrics as null, never NaN/Infinity."""
+    if isinstance(value, dict):
+        return {key: json_ready(item) for key, item in value.items()}
+    if isinstance(value, (tuple, list)):
+        return [json_ready(item) for item in value]
+    if isinstance(value, (float, np.floating)) and not np.isfinite(value):
+        return None
+    if isinstance(value, np.integer):
+        return int(value)
+    return value
 
 
 if __name__ == "__main__":

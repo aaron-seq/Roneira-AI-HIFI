@@ -80,6 +80,26 @@ export interface PredictionResult {
   model_used: string;
   timeframe: string;
   computation_time_ms: number;
+  /** Optional for older stored responses; absence is not inferred as success. */
+  horizon_sessions?: number;
+  history_sessions?: number;
+  /** Last provider OHLCV session, not a live quote or receipt timestamp. */
+  data_session_date?: string;
+  data_session_timezone?: string | null;
+  model_status?: {
+    backend: string;
+    requested_horizon_sessions: number;
+    trained_horizon_sessions: number | null;
+    fallback: boolean;
+    fallback_reason: string | null;
+  };
+  fallback?: boolean;
+  fallback_reason?: string | null;
+  excluded_components?: Array<{
+    name: string;
+    reason: string;
+    trained_horizon_sessions: number | null;
+  }>;
   /** Ensemble only: what each constituent model predicted before blending. */
   components?: PredictionComponent[] | null;
   /** Ensemble only: 1 = models agree, lower = they diverge. */
@@ -95,6 +115,8 @@ export interface PredictionComponent {
   weight: number;
   signal: string;
   fallback: boolean;
+  backend?: string;
+  trained_horizon_sessions?: number | null;
 }
 
 /** One row of the live fundamentals screener (ml/export_stock_screener.py). */

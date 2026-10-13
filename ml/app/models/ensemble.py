@@ -12,11 +12,9 @@ logger = logging.getLogger("roneira-ml.ensemble")
 # always scores the weights production actually serves.
 #
 # Equal weights (#145). The previous [0.35, 0.25, 0.25, 0.15] were hand-set and
-# never measured. In the walk-forward backtest (MODELS.md, "Walk-forward
-# results") they scored slightly *worse* out of sample than equal weighting --
-# pooled skill -0.017 vs -0.002 at a 30-session horizon -- and inverse-MAE
-# weights learned from earlier folds did no better than equal. With no member
-# showing out-of-sample skill, there is nothing to justify unequal weights.
+# never measured. Earlier benchmark numbers used a since-corrected harness;
+# they do not justify production weights. Equal weights remain a transparent
+# default, renormalized over compatible members, not an optimized trading rule.
 ENSEMBLE_MEMBERS = ("RANDOM_FOREST", "TECHNICAL", "PVD_MOMENTUM", "LSTM")
 ENSEMBLE_WEIGHTS = (0.25, 0.25, 0.25, 0.25)
 
@@ -49,6 +47,56 @@ class EnsembleCombiner:
             }
 
         n = len(predictions)
+        labels = names or [f"model_{i}" for i in range(n)]
+        if len(labels) != n:
+            raise ValueError("Model names must line up with predictions.")
+        if weights is not None and (
+            len(weights) != n or not np.isfinite(weights).all()
+            or any(w < 0 for w in weights) or sum(weights) <= 0
+        ):
+            raise ValueError("Weights must be finite, nonnegative and have a positive sum.")
+
+        # A failed member's no-change reference is not a learned forecast.
+        # Keep exclusions visible, but never include them in target proximity.
+        eligible = []
+        excluded = []
+        for i, (label, prediction) in enumerate(zip(labels, predictions)):
+            price = prediction.get("predicted_price")
+            valid_price = isinstance(price, (int, float)) and np.isfinite(price) and price > 0
+            if prediction.get("fallback") or not valid_price:
+                excluded.append({
+                    "name": label,
+                    "reason": prediction.get("fallback_reason") or (
+                        "invalid_input" if not valid_price else "inference_failed"
+                    ),
+                    "trained_horizon_sessions": prediction.get("trained_horizon_sessions"),
+                })
+            else:
+                eligible.append(i)
+
+        if not eligible:
+            reference = next((float(p["predicted_price"]) for p in predictions
+                              if isinstance(p.get("predicted_price"), (int, float))
+                              and np.isfinite(p["predicted_price"]) and p["predicted_price"] > 0), 0.0)
+            return {
+                "predicted_price": reference if np.isfinite(reference) and reference > 0 else 0,
+                "confidence": 0,
+                "indicators": [],
+                "short_term_signal": {"signal": "HOLD", "score": 5.0},
+                "long_term_signal": {"signal": "HOLD", "score": 5.0},
+                "fallback": True,
+                "fallback_reason": "no_eligible_models",
+                "backend": "ensemble",
+                "components": [],
+                "excluded_components": excluded,
+                "agreement_score": None,
+                "price_spread": None,
+            }
+        predictions = [predictions[i] for i in eligible]
+        labels = [labels[i] for i in eligible]
+        if weights is not None:
+            weights = [weights[i] for i in eligible]
+        n = len(predictions)
 
         if weights is None:
             # Use confidence-based weights
@@ -58,6 +106,8 @@ class EnsembleCombiner:
         else:
             # Normalize weights
             total = sum(weights)
+            if total <= 0:
+                raise ValueError("Compatible members must have positive total weight.")
             weights = [w / total for w in weights]
 
         # Weighted average predicted price
@@ -111,19 +161,16 @@ class EnsembleCombiner:
                     all_indicators.append(ind)
                     seen_names.add(ind["name"])
 
-        # Ensemble confidence boost (agreement premium)
+        # Descriptive dispersion only. Correlated members can agree and still
+        # be wrong; no measured calibration supports adding a score premium.
         price_spread = np.std([p.get("predicted_price", 0) for p in predictions])
         avg_price = np.mean([p.get("predicted_price", 0) for p in predictions])
         relative_spread = price_spread / avg_price if avg_price > 0 else 1.0
 
-        # Low spread = high agreement = confidence boost. Clamped to [0, 1]:
+        # Low spread = high proximity. Clamped to [0, 1]:
         # past a 10% relative spread this went negative and was reported to
         # the UI as a negative agreement score (#145).
         agreement = float(min(1.0, max(0.0, 1 - relative_spread * 10)))
-        agreement_bonus = 5 * agreement
-        confidence = min(95, confidence + agreement_bonus)
-
-        labels = names or [f"model_{i}" for i in range(n)]
 
         # Per-model breakdown. The blended price hides disagreement, which is the
         # part a reader actually needs: four models clustered tightly is a very
@@ -136,6 +183,8 @@ class EnsembleCombiner:
                 "weight": round(float(w), 3),
                 "signal": p.get("short_term_signal", {}).get("signal", "HOLD"),
                 "fallback": bool(p.get("fallback", False)),
+                "backend": p.get("backend", "unknown"),
+                "trained_horizon_sessions": p.get("trained_horizon_sessions"),
             }
             for label, p, w in zip(labels, predictions, weights)
         ]
@@ -151,4 +200,7 @@ class EnsembleCombiner:
             "agreement_score": round(agreement, 3),
             "price_spread": round(float(price_spread), 2),
             "components": components,
+            "excluded_components": excluded,
+            "backend": "ensemble",
+            "fallback": False,
         }

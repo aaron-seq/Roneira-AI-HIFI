@@ -36,13 +36,12 @@ export const AUDIT_ENTITY_TYPES = [
   "settings",
 ] as const;
 
-/** predictions_cache.model_used CHECK constraint. */
+/** Models actually served by FastAPI. The DB also permits the legacy FUNDAMENTAL value. */
 export const PREDICTION_MODELS = [
   "LSTM",
   "RANDOM_FOREST",
   "GAN",
   "ENSEMBLE",
-  "FUNDAMENTAL",
   "TECHNICAL",
   "PVD_MOMENTUM",
 ] as const;

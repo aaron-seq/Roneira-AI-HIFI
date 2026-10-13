@@ -1,0 +1,2420 @@
+{
+  "measured_date_utc": "2026-10-11",
+  "baseline_commit": "69ffd6696dfee6fc4cd51e4152ea5dba22c2b290",
+  "comparison_contract": "origin-inclusive-v2 plus shared 504-session serving history",
+  "purpose": "Small fixed Indian-equity diagnostic, not trading strategy validation",
+  "protocol": {
+    "tickers": [
+      "RELIANCE.NS",
+      "TCS.NS",
+      "INFY.NS",
+      "HDFCBANK.NS"
+    ],
+    "period": "10y",
+    "min_history": 1500,
+    "folds": 4,
+    "max_origins_per_fold_total": 12,
+    "origins_per_horizon_total": 48,
+    "horizons": [
+      7,
+      30
+    ],
+    "stride": "horizon",
+    "sampling_seed": 42,
+    "price_adjustment": "yfinance history default auto_adjust=True",
+    "source_bounds_local": "2016-10-10 through 2026-10-09, Asia/Kolkata",
+    "evaluation_origin_start_local": "2022-11-04",
+    "native_threads": 2,
+    "cpu_affinity": [
+      0,
+      1
+    ]
+  },
+  "runtime_versions": {
+    "python": "3.11.9",
+    "numpy": "2.0.2",
+    "pandas": "2.3.3",
+    "scikit-learn": "1.9.1",
+    "xgboost": "1.7.6",
+    "yfinance": "0.2.66"
+  },
+  "notes": [
+    "Baseline and after use identical cached adjusted OHLCV and the same fold/ticker/origin/label timestamps; identity checked.",
+    "Both protocols refit sequence models for the evaluated horizon before each fold; this evaluates model recipes, not shipped artifacts retrospectively.",
+    "The shipped sequence artifacts target 30 sessions. Live 7-session ensemble excludes LSTM and matches ENSEMBLE_RF_RULES when its other members are available.",
+    "ENSEMBLE_PRODUCTION denotes the configured four-member blend with horizon-matched research refits; at 7 sessions it is not the shipped 30-session bundle.",
+    "The baseline harness did not record fallback flags. After harness records availability; all five members covered all 48 origins per horizon.",
+    "Inverse-MAE omits the first fold, scores 36 origins, and has a different no-change MAE; it must not be compared by pooled MAE on different samples.",
+    "Four surviving large liquid NSE companies, 48 origins per horizon, correlated cross-stock outcomes, and evaluation after late 2022 do not represent all Indian equities or market regimes.",
+    "No trading costs, sizing, liquidity constraints, execution or strategy P&L are modelled.",
+    "Accuracy changes are mixed; extra historical data does not guarantee lower forecast error. No weights or model hyperparameters were tuned to this diagnostic."
+  ],
+  "horizons": {
+    "7": {
+      "baseline": {
+        "variant": "baseline",
+        "horizon": 7,
+        "period": "10y",
+        "tickers": [
+          "RELIANCE.NS",
+          "TCS.NS",
+          "INFY.NS",
+          "HDFCBANK.NS"
+        ],
+        "n_folds": 4,
+        "max_origins_per_fold": 12,
+        "min_history": 1500,
+        "stride": 7,
+        "seed": 42,
+        "serving_lookback": 252,
+        "runtime_seconds": 53.51056269199762,
+        "data": {
+          "RELIANCE.NS": {
+            "rows": 2471,
+            "start": "2016-10-09T18:30:00+00:00",
+            "end": "2026-10-08T18:30:00+00:00",
+            "sha256": "773ed3b4b5d5435df1ae7c6154563be2b06e4d356db8fa7e2d8c217b56d47ccf"
+          },
+          "TCS.NS": {
+            "rows": 2471,
+            "start": "2016-10-09T18:30:00+00:00",
+            "end": "2026-10-08T18:30:00+00:00",
+            "sha256": "c6c38b74d861e30ce7a3bbe85e0387de38f56b930f4c8add10763d9dc08339f5"
+          },
+          "INFY.NS": {
+            "rows": 2471,
+            "start": "2016-10-09T18:30:00+00:00",
+            "end": "2026-10-08T18:30:00+00:00",
+            "sha256": "4cbcde069c8193f8a68feb7470fa28f8e4fd637f4f1987bfa2a814f06ef05eb0"
+          },
+          "HDFCBANK.NS": {
+            "rows": 2471,
+            "start": "2016-10-09T18:30:00+00:00",
+            "end": "2026-10-08T18:30:00+00:00",
+            "sha256": "f22bbe2970eac469adb89db3f597e43232df9c148605ff5e559133d78244c8d0"
+          }
+        },
+        "summary": {
+          "RANDOM_FOREST": {
+            "pooled": {
+              "n": 48,
+              "mae": 0.03162497912495421,
+              "baseline_mae": 0.027927928149651615,
+              "skill": -0.13237827580663963,
+              "hit_rate": 0.5
+            },
+            "fold_skill_mean": -0.14454292364211355,
+            "fold_skill_std": 0.24982906374041794,
+            "folds_beating_baseline": 1,
+            "folds": [
+              {
+                "fold": 0,
+                "start": "2022-11-24",
+                "end": "2023-10-10",
+                "n": 12,
+                "mae": 0.023993994855720607,
+                "baseline_mae": 0.03030713650895908,
+                "skill": 0.20830544816968277,
+                "hit_rate": 0.75
+              },
+              {
+                "fold": 1,
+                "start": "2023-11-21",
+                "end": "2024-09-01",
+                "n": 12,
+                "mae": 0.03831291900978659,
+                "baseline_mae": 0.02916307571595031,
+                "skill": -0.31374754099863034,
+                "hit_rate": 0.3333333333333333
+              },
+              {
+                "fold": 2,
+                "start": "2024-10-21",
+                "end": "2025-08-04",
+                "n": 12,
+                "mae": 0.036081369128175896,
+                "baseline_mae": 0.025127285009124017,
+                "skill": -0.43594380033793234,
+                "hit_rate": 0.5
+              },
+              {
+                "fold": 3,
+                "start": "2025-11-17",
+                "end": "2026-09-01",
+                "n": 12,
+                "mae": 0.028111633506133743,
+                "baseline_mae": 0.027114215364573046,
+                "skill": -0.03678580140157428,
+                "hit_rate": 0.4166666666666667
+              }
+            ],
+            "signals": {
+              "base_up": 0.5208333333333334,
+              "n_buy": 8,
+              "p_up_given_buy": 0.625,
+              "n_sell": 6,
+              "p_down_given_sell": 0.5
+            }
+          },
+          "TECHNICAL": {
+            "pooled": {
+              "n": 48,
+              "mae": 0.029898917989427436,
+              "baseline_mae": 0.027927928149651615,
+              "skill": -0.07057415176715875,
+              "hit_rate": 0.4791666666666667
+            },
+            "fold_skill_mean": -0.06559023207801495,
+            "fold_skill_std": 0.08145675075353102,
+            "folds_beating_baseline": 2,
+            "folds": [
+              {
+                "fold": 0,
+                "start": "2022-11-24",
+                "end": "2023-10-10",
+                "n": 12,
+                "mae": 0.03391942359792127,
+                "baseline_mae": 0.03030713650895908,
+                "skill": -0.11918932321086695,
+                "hit_rate": 0.4166666666666667
+              },
+              {
+                "fold": 1,
+                "start": "2023-11-21",
+                "end": "2024-09-01",
+                "n": 12,
+                "mae": 0.03413635930276058,
+                "baseline_mae": 0.02916307571595031,
+                "skill": -0.17053357592492224,
+                "hit_rate": 0.4166666666666667
+              },
+              {
+                "fold": 2,
+                "start": "2024-10-21",
+                "end": "2025-08-04",
+                "n": 12,
+                "mae": 0.024617803506034142,
+                "baseline_mae": 0.025127285009124017,
+                "skill": 0.020276026753581866,
+                "hit_rate": 0.5
+              },
+              {
+                "fold": 3,
+                "start": "2025-11-17",
+                "end": "2026-09-01",
+                "n": 12,
+                "mae": 0.026922085550993746,
+                "baseline_mae": 0.027114215364573046,
+                "skill": 0.00708594407014751,
+                "hit_rate": 0.5833333333333334
+              }
+            ],
+            "signals": {
+              "base_up": 0.5208333333333334,
+              "n_buy": 18,
+              "p_up_given_buy": 0.6666666666666666,
+              "n_sell": 18,
+              "p_down_given_sell": 0.5
+            }
+          },
+          "PVD_MOMENTUM": {
+            "pooled": {
+              "n": 48,
+              "mae": 0.027808667433894114,
+              "baseline_mae": 0.027927928149651615,
+              "skill": 0.004270303014188626,
+              "hit_rate": 0.5
+            },
+            "fold_skill_mean": 0.00613641791395686,
+            "fold_skill_std": 0.026590130816265326,
+            "folds_beating_baseline": 2,
+            "folds": [
+              {
+                "fold": 0,
+                "start": "2022-11-24",
+                "end": "2023-10-10",
+                "n": 12,
+                "mae": 0.03121579728621433,
+                "baseline_mae": 0.03030713650895908,
+                "skill": -0.02998174297946754,
+                "hit_rate": 0.3333333333333333
+              },
+              {
+                "fold": 1,
+                "start": "2023-11-21",
+                "end": "2024-09-01",
+                "n": 12,
+                "mae": 0.029285226929599433,
+                "baseline_mae": 0.02916307571595031,
+                "skill": -0.0041885572989242,
+                "hit_rate": 0.5
+              },
+              {
+                "fold": 2,
+                "start": "2024-10-21",
+                "end": "2025-08-04",
+                "n": 12,
+                "mae": 0.024062687276801137,
+                "baseline_mae": 0.025127285009124017,
+                "skill": 0.04236819584512663,
+                "hit_rate": 0.5833333333333334
+              },
+              {
+                "fold": 3,
+                "start": "2025-11-17",
+                "end": "2026-09-01",
+                "n": 12,
+                "mae": 0.026670958242961573,
+                "baseline_mae": 0.027114215364573046,
+                "skill": 0.016347776089092547,
+                "hit_rate": 0.5833333333333334
+              }
+            ],
+            "signals": {
+              "base_up": 0.5208333333333334,
+              "n_buy": 13,
+              "p_up_given_buy": 0.6153846153846154,
+              "n_sell": 16,
+              "p_down_given_sell": 0.5625
+            }
+          },
+          "LSTM": {
+            "pooled": {
+              "n": 48,
+              "mae": 0.031107696182252263,
+              "baseline_mae": 0.027927928149651615,
+              "skill": -0.11385620929565143,
+              "hit_rate": 0.4583333333333333
+            },
+            "fold_skill_mean": -0.12017341127660708,
+            "fold_skill_std": 0.10830774652529016,
+            "folds_beating_baseline": 1,
+            "folds": [
+              {
+                "fold": 0,
+                "start": "2022-11-24",
+                "end": "2023-10-10",
+                "n": 12,
+                "mae": 0.029991202474788137,
+                "baseline_mae": 0.03030713650895908,
+                "skill": 0.010424410570017084,
+                "hit_rate": 0.75
+              },
+              {
+                "fold": 1,
+                "start": "2023-11-21",
+                "end": "2024-09-01",
+                "n": 12,
+                "mae": 0.03319567316236265,
+                "baseline_mae": 0.02916307571595031,
+                "skill": -0.13827750837017416,
+                "hit_rate": 0.3333333333333333
+              },
+              {
+                "fold": 2,
+                "start": "2024-10-21",
+                "end": "2025-08-04",
+                "n": 12,
+                "mae": 0.03226719811689299,
+                "baseline_mae": 0.025127285009124017,
+                "skill": -0.28414980389550193,
+                "hit_rate": 0.3333333333333333
+              },
+              {
+                "fold": 3,
+                "start": "2025-11-17",
+                "end": "2026-09-01",
+                "n": 12,
+                "mae": 0.028976710974965274,
+                "baseline_mae": 0.027114215364573046,
+                "skill": -0.0686907434107693,
+                "hit_rate": 0.4166666666666667
+              }
+            ],
+            "signals": {
+              "base_up": 0.5208333333333334,
+              "n_buy": 3,
+              "p_up_given_buy": 0.0,
+              "n_sell": 2,
+              "p_down_given_sell": 0.0
+            }
+          },
+          "GAN": {
+            "pooled": {
+              "n": 48,
+              "mae": 0.03184340778120071,
+              "baseline_mae": 0.027927928149651615,
+              "skill": -0.14019943085530828,
+              "hit_rate": 0.4583333333333333
+            },
+            "fold_skill_mean": -0.1422153687202365,
+            "fold_skill_std": 0.07130086959928279,
+            "folds_beating_baseline": 0,
+            "folds": [
+              {
+                "fold": 0,
+                "start": "2022-11-24",
+                "end": "2023-10-10",
+                "n": 12,
+                "mae": 0.031137401098937534,
+                "baseline_mae": 0.03030713650895908,
+                "skill": -0.0273950193127952,
+                "hit_rate": 0.5833333333333334
+              },
+              {
+                "fold": 1,
+                "start": "2023-11-21",
+                "end": "2024-09-01",
+                "n": 12,
+                "mae": 0.035206921111589205,
+                "baseline_mae": 0.02916307571595031,
+                "skill": -0.20724307183872592,
+                "hit_rate": 0.3333333333333333
+              },
+              {
+                "fold": 2,
+                "start": "2024-10-21",
+                "end": "2025-08-04",
+                "n": 12,
+                "mae": 0.028597378037649945,
+                "baseline_mae": 0.025127285009124017,
+                "skill": -0.13810059571759936,
+                "hit_rate": 0.5
+              },
+              {
+                "fold": 3,
+                "start": "2025-11-17",
+                "end": "2026-09-01",
+                "n": 12,
+                "mae": 0.032431930876626186,
+                "baseline_mae": 0.027114215364573046,
+                "skill": -0.19612278801182548,
+                "hit_rate": 0.4166666666666667
+              }
+            ],
+            "signals": {
+              "base_up": 0.5208333333333334,
+              "n_buy": 9,
+              "p_up_given_buy": 0.4444444444444444,
+              "n_sell": 2,
+              "p_down_given_sell": 0.0
+            }
+          },
+          "ENSEMBLE_PRODUCTION": {
+            "pooled": {
+              "n": 48,
+              "mae": 0.028495052963398267,
+              "baseline_mae": 0.027927928149651615,
+              "skill": -0.020306727040678263,
+              "hit_rate": 0.5
+            },
+            "fold_skill_mean": -0.02210714349659587,
+            "fold_skill_std": 0.10091182879014172,
+            "folds_beating_baseline": 2,
+            "folds": [
+              {
+                "fold": 0,
+                "start": "2022-11-24",
+                "end": "2023-10-10",
+                "n": 12,
+                "mae": 0.02824971484641378,
+                "baseline_mae": 0.03030713650895908,
+                "skill": 0.06788571602391757,
+                "hit_rate": 0.6666666666666666
+              },
+              {
+                "fold": 1,
+                "start": "2023-11-21",
+                "end": "2024-09-01",
+                "n": 12,
+                "mae": 0.03329361965791678,
+                "baseline_mae": 0.02916307571595031,
+                "skill": -0.14163608743460943,
+                "hit_rate": 0.4166666666666667
+              },
+              {
+                "fold": 2,
+                "start": "2024-10-21",
+                "end": "2025-08-04",
+                "n": 12,
+                "mae": 0.027689560823749588,
+                "baseline_mae": 0.025127285009124017,
+                "skill": -0.1019718530551621,
+                "hit_rate": 0.3333333333333333
+              },
+              {
+                "fold": 3,
+                "start": "2025-11-17",
+                "end": "2026-09-01",
+                "n": 12,
+                "mae": 0.02474731652551292,
+                "baseline_mae": 0.027114215364573046,
+                "skill": 0.08729365047947046,
+                "hit_rate": 0.5833333333333334
+              }
+            ]
+          },
+          "ENSEMBLE_EQUAL": {
+            "pooled": {
+              "n": 48,
+              "mae": 0.028495052963398267,
+              "baseline_mae": 0.027927928149651615,
+              "skill": -0.020306727040678263,
+              "hit_rate": 0.5
+            },
+            "fold_skill_mean": -0.02210714349659587,
+            "fold_skill_std": 0.10091182879014172,
+            "folds_beating_baseline": 2,
+            "folds": [
+              {
+                "fold": 0,
+                "start": "2022-11-24",
+                "end": "2023-10-10",
+                "n": 12,
+                "mae": 0.02824971484641378,
+                "baseline_mae": 0.03030713650895908,
+                "skill": 0.06788571602391757,
+                "hit_rate": 0.6666666666666666
+              },
+              {
+                "fold": 1,
+                "start": "2023-11-21",
+                "end": "2024-09-01",
+                "n": 12,
+                "mae": 0.03329361965791678,
+                "baseline_mae": 0.02916307571595031,
+                "skill": -0.14163608743460943,
+                "hit_rate": 0.4166666666666667
+              },
+              {
+                "fold": 2,
+                "start": "2024-10-21",
+                "end": "2025-08-04",
+                "n": 12,
+                "mae": 0.027689560823749588,
+                "baseline_mae": 0.025127285009124017,
+                "skill": -0.1019718530551621,
+                "hit_rate": 0.3333333333333333
+              },
+              {
+                "fold": 3,
+                "start": "2025-11-17",
+                "end": "2026-09-01",
+                "n": 12,
+                "mae": 0.02474731652551292,
+                "baseline_mae": 0.027114215364573046,
+                "skill": 0.08729365047947046,
+                "hit_rate": 0.5833333333333334
+              }
+            ]
+          },
+          "ENSEMBLE_INVERSE_MAE": {
+            "pooled": {
+              "n": 36,
+              "mae": 0.028724079740323157,
+              "baseline_mae": 0.027134858696549122,
+              "skill": -0.05856750763091845,
+              "hit_rate": 0.4722222222222222
+            },
+            "fold_skill_mean": -0.057338257776103164,
+            "fold_skill_std": 0.10115309295158127,
+            "folds_beating_baseline": 1,
+            "folds": [
+              {
+                "fold": 1,
+                "start": "2023-11-21",
+                "end": "2024-09-01",
+                "n": 12,
+                "mae": 0.03357424777687828,
+                "baseline_mae": 0.02916307571595031,
+                "skill": -0.15125880767491706,
+                "hit_rate": 0.4166666666666667
+              },
+              {
+                "fold": 2,
+                "start": "2024-10-21",
+                "end": "2025-08-04",
+                "n": 12,
+                "mae": 0.027736095128790633,
+                "baseline_mae": 0.025127285009124017,
+                "skill": -0.10382379627243155,
+                "hit_rate": 0.3333333333333333
+              },
+              {
+                "fold": 3,
+                "start": "2025-11-17",
+                "end": "2026-09-01",
+                "n": 12,
+                "mae": 0.024861896315300544,
+                "baseline_mae": 0.027114215364573046,
+                "skill": 0.0830678306190391,
+                "hit_rate": 0.6666666666666666
+              }
+            ]
+          },
+          "ENSEMBLE_RF_RULES": {
+            "pooled": {
+              "n": 48,
+              "mae": 0.027912898593602173,
+              "baseline_mae": 0.027927928149651615,
+              "skill": 0.00053815506717525,
+              "hit_rate": 0.5625
+            },
+            "coverage": {
+              "origins": 48,
+              "scored": 48,
+              "unavailable": 0,
+              "fraction": 1.0
+            },
+            "fold_skill_mean": 0.0008659789730336986,
+            "fold_skill_std": 0.10319323712919738,
+            "folds_beating_baseline": 2,
+            "folds": [
+              {
+                "fold": 0,
+                "start": "2022-11-24",
+                "end": "2023-10-10",
+                "n": 12,
+                "mae": 0.028629614440500963,
+                "baseline_mae": 0.03030713650895908,
+                "skill": 0.05535072797003526,
+                "hit_rate": 0.6666666666666666
+              },
+              {
+                "fold": 1,
+                "start": "2023-11-21",
+                "end": "2024-09-01",
+                "n": 12,
+                "mae": 0.033326268489768156,
+                "baseline_mae": 0.02916307571595031,
+                "skill": -0.14275561378942103,
+                "hit_rate": 0.4166666666666667
+              },
+              {
+                "fold": 2,
+                "start": "2024-10-21",
+                "end": "2025-08-04",
+                "n": 12,
+                "mae": 0.02616368172603513,
+                "baseline_mae": 0.025127285009124017,
+                "skill": -0.04124586944171571,
+                "hit_rate": 0.4166666666666667
+              },
+              {
+                "fold": 3,
+                "start": "2025-11-17",
+                "end": "2026-09-01",
+                "n": 12,
+                "mae": 0.02353202971810445,
+                "baseline_mae": 0.027114215364573046,
+                "skill": 0.13211467115323627,
+                "hit_rate": 0.75
+              }
+            ]
+          }
+        }
+      },
+      "after": {
+        "variant": "after",
+        "horizon": 7,
+        "period": "10y",
+        "tickers": [
+          "RELIANCE.NS",
+          "TCS.NS",
+          "INFY.NS",
+          "HDFCBANK.NS"
+        ],
+        "n_folds": 4,
+        "max_origins_per_fold": 12,
+        "min_history": 1500,
+        "stride": 7,
+        "seed": 42,
+        "serving_lookback": 504,
+        "runtime_seconds": 63.30382543100859,
+        "data": {
+          "RELIANCE.NS": {
+            "rows": 2471,
+            "start": "2016-10-09T18:30:00+00:00",
+            "end": "2026-10-08T18:30:00+00:00",
+            "sha256": "773ed3b4b5d5435df1ae7c6154563be2b06e4d356db8fa7e2d8c217b56d47ccf"
+          },
+          "TCS.NS": {
+            "rows": 2471,
+            "start": "2016-10-09T18:30:00+00:00",
+            "end": "2026-10-08T18:30:00+00:00",
+            "sha256": "c6c38b74d861e30ce7a3bbe85e0387de38f56b930f4c8add10763d9dc08339f5"
+          },
+          "INFY.NS": {
+            "rows": 2471,
+            "start": "2016-10-09T18:30:00+00:00",
+            "end": "2026-10-08T18:30:00+00:00",
+            "sha256": "4cbcde069c8193f8a68feb7470fa28f8e4fd637f4f1987bfa2a814f06ef05eb0"
+          },
+          "HDFCBANK.NS": {
+            "rows": 2471,
+            "start": "2016-10-09T18:30:00+00:00",
+            "end": "2026-10-08T18:30:00+00:00",
+            "sha256": "f22bbe2970eac469adb89db3f597e43232df9c148605ff5e559133d78244c8d0"
+          }
+        },
+        "summary": {
+          "RANDOM_FOREST": {
+            "pooled": {
+              "n": 48,
+              "mae": 0.0335485569712723,
+              "baseline_mae": 0.027927928149651615,
+              "skill": -0.20125477233766076,
+              "hit_rate": 0.5208333333333334
+            },
+            "coverage": {
+              "origins": 48,
+              "scored": 48,
+              "unavailable": 0,
+              "fraction": 1.0
+            },
+            "fold_skill_mean": -0.19744679543149335,
+            "fold_skill_std": 0.12861550368272037,
+            "folds_beating_baseline": 0,
+            "folds": [
+              {
+                "fold": 0,
+                "start": "2022-11-24",
+                "end": "2023-10-10",
+                "n": 12,
+                "mae": 0.03382782097646899,
+                "baseline_mae": 0.03030713650895908,
+                "skill": -0.11616684626306295,
+                "hit_rate": 0.5833333333333334
+              },
+              {
+                "fold": 1,
+                "start": "2023-11-21",
+                "end": "2024-09-01",
+                "n": 12,
+                "mae": 0.040597144848525994,
+                "baseline_mae": 0.02916307571595031,
+                "skill": -0.39207349882927445,
+                "hit_rate": 0.5833333333333334
+              },
+              {
+                "fold": 2,
+                "start": "2024-10-21",
+                "end": "2025-08-04",
+                "n": 12,
+                "mae": 0.02646981293727871,
+                "baseline_mae": 0.025127285009124017,
+                "skill": -0.05342908824678849,
+                "hit_rate": 0.5833333333333334
+              },
+              {
+                "fold": 3,
+                "start": "2025-11-17",
+                "end": "2026-09-01",
+                "n": 12,
+                "mae": 0.033299449122815516,
+                "baseline_mae": 0.027114215364573046,
+                "skill": -0.2281177483868475,
+                "hit_rate": 0.3333333333333333
+              }
+            ],
+            "signals": {
+              "base_up": 0.5208333333333334,
+              "n_buy": 6,
+              "p_up_given_buy": 0.6666666666666666,
+              "n_sell": 4,
+              "p_down_given_sell": 0.25
+            }
+          },
+          "TECHNICAL": {
+            "pooled": {
+              "n": 48,
+              "mae": 0.029898917989427436,
+              "baseline_mae": 0.027927928149651615,
+              "skill": -0.07057415176715875,
+              "hit_rate": 0.4791666666666667
+            },
+            "coverage": {
+              "origins": 48,
+              "scored": 48,
+              "unavailable": 0,
+              "fraction": 1.0
+            },
+            "fold_skill_mean": -0.06559023207801495,
+            "fold_skill_std": 0.08145675075353102,
+            "folds_beating_baseline": 2,
+            "folds": [
+              {
+                "fold": 0,
+                "start": "2022-11-24",
+                "end": "2023-10-10",
+                "n": 12,
+                "mae": 0.03391942359792127,
+                "baseline_mae": 0.03030713650895908,
+                "skill": -0.11918932321086695,
+                "hit_rate": 0.4166666666666667
+              },
+              {
+                "fold": 1,
+                "start": "2023-11-21",
+                "end": "2024-09-01",
+                "n": 12,
+                "mae": 0.03413635930276058,
+                "baseline_mae": 0.02916307571595031,
+                "skill": -0.17053357592492224,
+                "hit_rate": 0.4166666666666667
+              },
+              {
+                "fold": 2,
+                "start": "2024-10-21",
+                "end": "2025-08-04",
+                "n": 12,
+                "mae": 0.024617803506034142,
+                "baseline_mae": 0.025127285009124017,
+                "skill": 0.020276026753581866,
+                "hit_rate": 0.5
+              },
+              {
+                "fold": 3,
+                "start": "2025-11-17",
+                "end": "2026-09-01",
+                "n": 12,
+                "mae": 0.026922085550993746,
+                "baseline_mae": 0.027114215364573046,
+                "skill": 0.00708594407014751,
+                "hit_rate": 0.5833333333333334
+              }
+            ],
+            "signals": {
+              "base_up": 0.5208333333333334,
+              "n_buy": 18,
+              "p_up_given_buy": 0.6666666666666666,
+              "n_sell": 18,
+              "p_down_given_sell": 0.5
+            }
+          },
+          "PVD_MOMENTUM": {
+            "pooled": {
+              "n": 48,
+              "mae": 0.027808667433894114,
+              "baseline_mae": 0.027927928149651615,
+              "skill": 0.004270303014188626,
+              "hit_rate": 0.5
+            },
+            "coverage": {
+              "origins": 48,
+              "scored": 48,
+              "unavailable": 0,
+              "fraction": 1.0
+            },
+            "fold_skill_mean": 0.00613641791395686,
+            "fold_skill_std": 0.026590130816265326,
+            "folds_beating_baseline": 2,
+            "folds": [
+              {
+                "fold": 0,
+                "start": "2022-11-24",
+                "end": "2023-10-10",
+                "n": 12,
+                "mae": 0.03121579728621433,
+                "baseline_mae": 0.03030713650895908,
+                "skill": -0.02998174297946754,
+                "hit_rate": 0.3333333333333333
+              },
+              {
+                "fold": 1,
+                "start": "2023-11-21",
+                "end": "2024-09-01",
+                "n": 12,
+                "mae": 0.029285226929599433,
+                "baseline_mae": 0.02916307571595031,
+                "skill": -0.0041885572989242,
+                "hit_rate": 0.5
+              },
+              {
+                "fold": 2,
+                "start": "2024-10-21",
+                "end": "2025-08-04",
+                "n": 12,
+                "mae": 0.024062687276801137,
+                "baseline_mae": 0.025127285009124017,
+                "skill": 0.04236819584512663,
+                "hit_rate": 0.5833333333333334
+              },
+              {
+                "fold": 3,
+                "start": "2025-11-17",
+                "end": "2026-09-01",
+                "n": 12,
+                "mae": 0.026670958242961573,
+                "baseline_mae": 0.027114215364573046,
+                "skill": 0.016347776089092547,
+                "hit_rate": 0.5833333333333334
+              }
+            ],
+            "signals": {
+              "base_up": 0.5208333333333334,
+              "n_buy": 13,
+              "p_up_given_buy": 0.6153846153846154,
+              "n_sell": 16,
+              "p_down_given_sell": 0.5625
+            }
+          },
+          "LSTM": {
+            "pooled": {
+              "n": 48,
+              "mae": 0.030779387081868618,
+              "baseline_mae": 0.027927928149651615,
+              "skill": -0.10210062547201781,
+              "hit_rate": 0.4791666666666667
+            },
+            "coverage": {
+              "origins": 48,
+              "scored": 48,
+              "unavailable": 0,
+              "fraction": 1.0
+            },
+            "fold_skill_mean": -0.10833408025454397,
+            "fold_skill_std": 0.11346753919361072,
+            "folds_beating_baseline": 1,
+            "folds": [
+              {
+                "fold": 0,
+                "start": "2022-11-24",
+                "end": "2023-10-10",
+                "n": 12,
+                "mae": 0.02768359914810269,
+                "baseline_mae": 0.03030713650895908,
+                "skill": 0.08656500293522773,
+                "hit_rate": 0.6666666666666666
+              },
+              {
+                "fold": 1,
+                "start": "2023-11-21",
+                "end": "2024-09-01",
+                "n": 12,
+                "mae": 0.03353074797636096,
+                "baseline_mae": 0.02916307571595031,
+                "skill": -0.14976720229896112,
+                "hit_rate": 0.3333333333333333
+              },
+              {
+                "fold": 2,
+                "start": "2024-10-21",
+                "end": "2025-08-04",
+                "n": 12,
+                "mae": 0.02985946695081826,
+                "baseline_mae": 0.025127285009124017,
+                "skill": -0.18832842226989222,
+                "hit_rate": 0.5833333333333334
+              },
+              {
+                "fold": 3,
+                "start": "2025-11-17",
+                "end": "2026-09-01",
+                "n": 12,
+                "mae": 0.03204373425219257,
+                "baseline_mae": 0.027114215364573046,
+                "skill": -0.18180569938455027,
+                "hit_rate": 0.3333333333333333
+              }
+            ],
+            "signals": {
+              "base_up": 0.5208333333333334,
+              "n_buy": 4,
+              "p_up_given_buy": 0.5,
+              "n_sell": 1,
+              "p_down_given_sell": 0.0
+            }
+          },
+          "GAN": {
+            "pooled": {
+              "n": 48,
+              "mae": 0.031188689330484187,
+              "baseline_mae": 0.027927928149651615,
+              "skill": -0.1167562865157703,
+              "hit_rate": 0.4791666666666667
+            },
+            "coverage": {
+              "origins": 48,
+              "scored": 48,
+              "unavailable": 0,
+              "fraction": 1.0
+            },
+            "fold_skill_mean": -0.11882506970389833,
+            "fold_skill_std": 0.0892409176497545,
+            "folds_beating_baseline": 0,
+            "folds": [
+              {
+                "fold": 0,
+                "start": "2022-11-24",
+                "end": "2023-10-10",
+                "n": 12,
+                "mae": 0.03050728219024898,
+                "baseline_mae": 0.03030713650895908,
+                "skill": -0.006603912620736452,
+                "hit_rate": 0.5833333333333334
+              },
+              {
+                "fold": 1,
+                "start": "2023-11-21",
+                "end": "2024-09-01",
+                "n": 12,
+                "mae": 0.03597052796645447,
+                "baseline_mae": 0.02916307571595031,
+                "skill": -0.233427102024802,
+                "hit_rate": 0.3333333333333333
+              },
+              {
+                "fold": 2,
+                "start": "2024-10-21",
+                "end": "2025-08-04",
+                "n": 12,
+                "mae": 0.02947374577256508,
+                "baseline_mae": 0.025127285009124017,
+                "skill": -0.1729777316515817,
+                "hit_rate": 0.5
+              },
+              {
+                "fold": 3,
+                "start": "2025-11-17",
+                "end": "2026-09-01",
+                "n": 12,
+                "mae": 0.028803201392668232,
+                "baseline_mae": 0.027114215364573046,
+                "skill": -0.06229153251847319,
+                "hit_rate": 0.5
+              }
+            ],
+            "signals": {
+              "base_up": 0.5208333333333334,
+              "n_buy": 8,
+              "p_up_given_buy": 0.25,
+              "n_sell": 1,
+              "p_down_given_sell": 0.0
+            }
+          },
+          "ENSEMBLE_RF_RULES": {
+            "pooled": {
+              "n": 48,
+              "mae": 0.02873564609510612,
+              "baseline_mae": 0.027927928149651615,
+              "skill": -0.028921513301178425,
+              "hit_rate": 0.5625
+            },
+            "coverage": {
+              "origins": 48,
+              "scored": 48,
+              "unavailable": 0,
+              "fraction": 1.0
+            },
+            "fold_skill_mean": -0.024795740752418832,
+            "fold_skill_std": 0.06951203285582501,
+            "folds_beating_baseline": 2,
+            "folds": [
+              {
+                "fold": 0,
+                "start": "2022-11-24",
+                "end": "2023-10-10",
+                "n": 12,
+                "mae": 0.03220802905722728,
+                "baseline_mae": 0.03030713650895908,
+                "skill": -0.06272095510264641,
+                "hit_rate": 0.4166666666666667
+              },
+              {
+                "fold": 1,
+                "start": "2023-11-21",
+                "end": "2024-09-01",
+                "n": 12,
+                "mae": 0.03265075589277049,
+                "baseline_mae": 0.02916307571595031,
+                "skill": -0.11959233006800618,
+                "hit_rate": 0.5833333333333334
+              },
+              {
+                "fold": 2,
+                "start": "2024-10-21",
+                "end": "2025-08-04",
+                "n": 12,
+                "mae": 0.02390928961691086,
+                "baseline_mae": 0.025127285009124017,
+                "skill": 0.04847302013611454,
+                "hit_rate": 0.6666666666666666
+              },
+              {
+                "fold": 3,
+                "start": "2025-11-17",
+                "end": "2026-09-01",
+                "n": 12,
+                "mae": 0.026174509813515864,
+                "baseline_mae": 0.027114215364573046,
+                "skill": 0.034657302024862724,
+                "hit_rate": 0.5833333333333334
+              }
+            ]
+          },
+          "ENSEMBLE_PRODUCTION": {
+            "pooled": {
+              "n": 48,
+              "mae": 0.028680992973775212,
+              "baseline_mae": 0.027927928149651615,
+              "skill": -0.026964578972285436,
+              "hit_rate": 0.5
+            },
+            "coverage": {
+              "origins": 48,
+              "scored": 48,
+              "unavailable": 0,
+              "fraction": 1.0,
+              "degraded": 0
+            },
+            "fold_skill_mean": -0.02513382098016817,
+            "fold_skill_std": 0.04241426847300564,
+            "folds_beating_baseline": 2,
+            "folds": [
+              {
+                "fold": 0,
+                "start": "2022-11-24",
+                "end": "2023-10-10",
+                "n": 12,
+                "mae": 0.030906864988217875,
+                "baseline_mae": 0.03030713650895908,
+                "skill": -0.01978835839807913,
+                "hit_rate": 0.4166666666666667
+              },
+              {
+                "fold": 1,
+                "start": "2023-11-21",
+                "end": "2024-09-01",
+                "n": 12,
+                "mae": 0.03195143717829762,
+                "baseline_mae": 0.02916307571595031,
+                "skill": -0.09561273610184595,
+                "hit_rate": 0.5
+              },
+              {
+                "fold": 2,
+                "start": "2024-10-21",
+                "end": "2025-08-04",
+                "n": 12,
+                "mae": 0.024782747827998653,
+                "baseline_mae": 0.025127285009124017,
+                "skill": 0.013711675614785257,
+                "hit_rate": 0.5
+              },
+              {
+                "fold": 3,
+                "start": "2025-11-17",
+                "end": "2026-09-01",
+                "n": 12,
+                "mae": 0.0270829219005867,
+                "baseline_mae": 0.027114215364573046,
+                "skill": 0.0011541349644671461,
+                "hit_rate": 0.5833333333333334
+              }
+            ]
+          },
+          "ENSEMBLE_EQUAL": {
+            "pooled": {
+              "n": 48,
+              "mae": 0.028680992973775212,
+              "baseline_mae": 0.027927928149651615,
+              "skill": -0.026964578972285436,
+              "hit_rate": 0.5
+            },
+            "coverage": {
+              "origins": 48,
+              "scored": 48,
+              "unavailable": 0,
+              "fraction": 1.0
+            },
+            "fold_skill_mean": -0.02513382098016817,
+            "fold_skill_std": 0.04241426847300564,
+            "folds_beating_baseline": 2,
+            "folds": [
+              {
+                "fold": 0,
+                "start": "2022-11-24",
+                "end": "2023-10-10",
+                "n": 12,
+                "mae": 0.030906864988217875,
+                "baseline_mae": 0.03030713650895908,
+                "skill": -0.01978835839807913,
+                "hit_rate": 0.4166666666666667
+              },
+              {
+                "fold": 1,
+                "start": "2023-11-21",
+                "end": "2024-09-01",
+                "n": 12,
+                "mae": 0.03195143717829762,
+                "baseline_mae": 0.02916307571595031,
+                "skill": -0.09561273610184595,
+                "hit_rate": 0.5
+              },
+              {
+                "fold": 2,
+                "start": "2024-10-21",
+                "end": "2025-08-04",
+                "n": 12,
+                "mae": 0.024782747827998653,
+                "baseline_mae": 0.025127285009124017,
+                "skill": 0.013711675614785257,
+                "hit_rate": 0.5
+              },
+              {
+                "fold": 3,
+                "start": "2025-11-17",
+                "end": "2026-09-01",
+                "n": 12,
+                "mae": 0.0270829219005867,
+                "baseline_mae": 0.027114215364573046,
+                "skill": 0.0011541349644671461,
+                "hit_rate": 0.5833333333333334
+              }
+            ]
+          },
+          "ENSEMBLE_INVERSE_MAE": {
+            "pooled": {
+              "n": 36,
+              "mae": 0.027905440128581236,
+              "baseline_mae": 0.027134858696549122,
+              "skill": -0.028398210606127572,
+              "hit_rate": 0.5277777777777778
+            },
+            "coverage": {
+              "origins": 48,
+              "scored": 36,
+              "unavailable": 12,
+              "fraction": 0.75
+            },
+            "fold_skill_mean": -0.025888399923724343,
+            "fold_skill_std": 0.04515950532415049,
+            "folds_beating_baseline": 2,
+            "folds": [
+              {
+                "fold": 1,
+                "start": "2023-11-21",
+                "end": "2024-09-01",
+                "n": 12,
+                "mae": 0.03177123899850996,
+                "baseline_mae": 0.02916307571595031,
+                "skill": -0.08943375204876469,
+                "hit_rate": 0.5
+              },
+              {
+                "fold": 2,
+                "start": "2024-10-21",
+                "end": "2025-08-04",
+                "n": 12,
+                "mae": 0.02484051693705597,
+                "baseline_mae": 0.025127285009124017,
+                "skill": 0.011412616681982013,
+                "hit_rate": 0.5
+              },
+              {
+                "fold": 3,
+                "start": "2025-11-17",
+                "end": "2026-09-01",
+                "n": 12,
+                "mae": 0.027104564450177768,
+                "baseline_mae": 0.027114215364573046,
+                "skill": 0.0003559355956096466,
+                "hit_rate": 0.5833333333333334
+              }
+            ]
+          }
+        }
+      }
+    },
+    "30": {
+      "baseline": {
+        "variant": "baseline",
+        "horizon": 30,
+        "period": "10y",
+        "tickers": [
+          "RELIANCE.NS",
+          "TCS.NS",
+          "INFY.NS",
+          "HDFCBANK.NS"
+        ],
+        "n_folds": 4,
+        "max_origins_per_fold": 12,
+        "min_history": 1500,
+        "stride": 30,
+        "seed": 42,
+        "serving_lookback": 252,
+        "runtime_seconds": 61.079146570002194,
+        "data": {
+          "RELIANCE.NS": {
+            "rows": 2471,
+            "start": "2016-10-09T18:30:00+00:00",
+            "end": "2026-10-08T18:30:00+00:00",
+            "sha256": "773ed3b4b5d5435df1ae7c6154563be2b06e4d356db8fa7e2d8c217b56d47ccf"
+          },
+          "TCS.NS": {
+            "rows": 2471,
+            "start": "2016-10-09T18:30:00+00:00",
+            "end": "2026-10-08T18:30:00+00:00",
+            "sha256": "c6c38b74d861e30ce7a3bbe85e0387de38f56b930f4c8add10763d9dc08339f5"
+          },
+          "INFY.NS": {
+            "rows": 2471,
+            "start": "2016-10-09T18:30:00+00:00",
+            "end": "2026-10-08T18:30:00+00:00",
+            "sha256": "4cbcde069c8193f8a68feb7470fa28f8e4fd637f4f1987bfa2a814f06ef05eb0"
+          },
+          "HDFCBANK.NS": {
+            "rows": 2471,
+            "start": "2016-10-09T18:30:00+00:00",
+            "end": "2026-10-08T18:30:00+00:00",
+            "sha256": "f22bbe2970eac469adb89db3f597e43232df9c148605ff5e559133d78244c8d0"
+          }
+        },
+        "summary": {
+          "RANDOM_FOREST": {
+            "pooled": {
+              "n": 48,
+              "mae": 0.0910256796528337,
+              "baseline_mae": 0.06456206793000563,
+              "skill": -0.4098941154040845,
+              "hit_rate": 0.3958333333333333
+            },
+            "fold_skill_mean": -0.47922843712380647,
+            "fold_skill_std": 0.39395286582493855,
+            "folds_beating_baseline": 0,
+            "folds": [
+              {
+                "fold": 0,
+                "start": "2022-11-03",
+                "end": "2023-07-26",
+                "n": 12,
+                "mae": 0.09265360933222928,
+                "baseline_mae": 0.04466975875093806,
+                "skill": -1.0741909498287492,
+                "hit_rate": 0.4166666666666667
+              },
+              {
+                "fold": 1,
+                "start": "2023-09-07",
+                "end": "2024-07-22",
+                "n": 12,
+                "mae": 0.07546326859597612,
+                "baseline_mae": 0.06604284424123458,
+                "skill": -0.14264110613303638,
+                "hit_rate": 0.5
+              },
+              {
+                "fold": 2,
+                "start": "2024-09-03",
+                "end": "2025-05-27",
+                "n": 12,
+                "mae": 0.10727844612315196,
+                "baseline_mae": 0.0672533984244801,
+                "skill": -0.5951379207047303,
+                "hit_rate": 0.3333333333333333
+              },
+              {
+                "fold": 3,
+                "start": "2025-08-20",
+                "end": "2026-08-11",
+                "n": 12,
+                "mae": 0.0887073945599774,
+                "baseline_mae": 0.08028227030336975,
+                "skill": -0.10494377182871006,
+                "hit_rate": 0.3333333333333333
+              }
+            ],
+            "signals": {
+              "base_up": 0.5,
+              "n_buy": 21,
+              "p_up_given_buy": 0.42857142857142855,
+              "n_sell": 18,
+              "p_down_given_sell": 0.4444444444444444
+            }
+          },
+          "TECHNICAL": {
+            "pooled": {
+              "n": 48,
+              "mae": 0.0732129677850009,
+              "baseline_mae": 0.06456206793000563,
+              "skill": -0.1339935372636154,
+              "hit_rate": 0.5208333333333334
+            },
+            "fold_skill_mean": -0.14380252522991094,
+            "fold_skill_std": 0.1443611302693104,
+            "folds_beating_baseline": 1,
+            "folds": [
+              {
+                "fold": 0,
+                "start": "2022-11-03",
+                "end": "2023-07-26",
+                "n": 12,
+                "mae": 0.04999345545019762,
+                "baseline_mae": 0.04466975875093806,
+                "skill": -0.11917898927868653,
+                "hit_rate": 0.6666666666666666
+              },
+              {
+                "fold": 1,
+                "start": "2023-09-07",
+                "end": "2024-07-22",
+                "n": 12,
+                "mae": 0.08625973403509557,
+                "baseline_mae": 0.06604284424123458,
+                "skill": -0.3061177940794735,
+                "hit_rate": 0.5
+              },
+              {
+                "fold": 2,
+                "start": "2024-09-03",
+                "end": "2025-05-27",
+                "n": 12,
+                "mae": 0.08259639117151889,
+                "baseline_mae": 0.0672533984244801,
+                "skill": -0.22813706231169384,
+                "hit_rate": 0.4166666666666667
+              },
+              {
+                "fold": 3,
+                "start": "2025-08-20",
+                "end": "2026-08-11",
+                "n": 12,
+                "mae": 0.07400229048319158,
+                "baseline_mae": 0.08028227030336975,
+                "skill": 0.0782237447502101,
+                "hit_rate": 0.5
+              }
+            ],
+            "signals": {
+              "base_up": 0.5,
+              "n_buy": 21,
+              "p_up_given_buy": 0.2857142857142857,
+              "n_sell": 18,
+              "p_down_given_sell": 0.4444444444444444
+            }
+          },
+          "PVD_MOMENTUM": {
+            "pooled": {
+              "n": 48,
+              "mae": 0.06679936984697968,
+              "baseline_mae": 0.06456206793000563,
+              "skill": -0.03465350458414074,
+              "hit_rate": 0.4791666666666667
+            },
+            "fold_skill_mean": -0.03917901510759347,
+            "fold_skill_std": 0.024589674395491347,
+            "folds_beating_baseline": 0,
+            "folds": [
+              {
+                "fold": 0,
+                "start": "2022-11-03",
+                "end": "2023-07-26",
+                "n": 12,
+                "mae": 0.04786966585861699,
+                "baseline_mae": 0.04466975875093806,
+                "skill": -0.07163475239524852,
+                "hit_rate": 0.5833333333333334
+              },
+              {
+                "fold": 1,
+                "start": "2023-09-07",
+                "end": "2024-07-22",
+                "n": 12,
+                "mae": 0.06946460397328283,
+                "baseline_mae": 0.06604284424123458,
+                "skill": -0.05181121090953611,
+                "hit_rate": 0.3333333333333333
+              },
+              {
+                "fold": 2,
+                "start": "2024-09-03",
+                "end": "2025-05-27",
+                "n": 12,
+                "mae": 0.0690262859630123,
+                "baseline_mae": 0.0672533984244801,
+                "skill": -0.026361307830756076,
+                "hit_rate": 0.4166666666666667
+              },
+              {
+                "fold": 3,
+                "start": "2025-08-20",
+                "end": "2026-08-11",
+                "n": 12,
+                "mae": 0.08083692359300658,
+                "baseline_mae": 0.08028227030336975,
+                "skill": -0.006908789294833184,
+                "hit_rate": 0.5833333333333334
+              }
+            ],
+            "signals": {
+              "base_up": 0.5,
+              "n_buy": 10,
+              "p_up_given_buy": 0.3,
+              "n_sell": 13,
+              "p_down_given_sell": 0.38461538461538464
+            }
+          },
+          "LSTM": {
+            "pooled": {
+              "n": 48,
+              "mae": 0.06792950504086721,
+              "baseline_mae": 0.06456206793000563,
+              "skill": -0.05215813586566598,
+              "hit_rate": 0.5208333333333334
+            },
+            "fold_skill_mean": -0.04246582710910288,
+            "fold_skill_std": 0.09135358988425961,
+            "folds_beating_baseline": 1,
+            "folds": [
+              {
+                "fold": 0,
+                "start": "2022-11-03",
+                "end": "2023-07-26",
+                "n": 12,
+                "mae": 0.045587203832737434,
+                "baseline_mae": 0.04466975875093806,
+                "skill": -0.020538393478118033,
+                "hit_rate": 0.6666666666666666
+              },
+              {
+                "fold": 1,
+                "start": "2023-09-07",
+                "end": "2024-07-22",
+                "n": 12,
+                "mae": 0.06160045731672745,
+                "baseline_mae": 0.06604284424123458,
+                "skill": 0.06726522722553308,
+                "hit_rate": 0.5
+              },
+              {
+                "fold": 2,
+                "start": "2024-09-03",
+                "end": "2025-05-27",
+                "n": 12,
+                "mae": 0.06928541180016827,
+                "baseline_mae": 0.0672533984244801,
+                "skill": -0.0302142854233598,
+                "hit_rate": 0.5
+              },
+              {
+                "fold": 3,
+                "start": "2025-08-20",
+                "end": "2026-08-11",
+                "n": 12,
+                "mae": 0.09524494721383565,
+                "baseline_mae": 0.08028227030336975,
+                "skill": -0.18637585676046675,
+                "hit_rate": 0.4166666666666667
+              }
+            ],
+            "signals": {
+              "base_up": 0.5,
+              "n_buy": 19,
+              "p_up_given_buy": 0.5263157894736842,
+              "n_sell": 3,
+              "p_down_given_sell": 0.6666666666666666
+            }
+          },
+          "GAN": {
+            "pooled": {
+              "n": 48,
+              "mae": 0.07139129509711652,
+              "baseline_mae": 0.06456206793000563,
+              "skill": -0.10577770176932266,
+              "hit_rate": 0.5208333333333334
+            },
+            "fold_skill_mean": -0.11368609569199395,
+            "fold_skill_std": 0.08219800551635324,
+            "folds_beating_baseline": 1,
+            "folds": [
+              {
+                "fold": 0,
+                "start": "2022-11-03",
+                "end": "2023-07-26",
+                "n": 12,
+                "mae": 0.05382988940597217,
+                "baseline_mae": 0.04466975875093806,
+                "skill": -0.20506335631019623,
+                "hit_rate": 0.5
+              },
+              {
+                "fold": 1,
+                "start": "2023-09-07",
+                "end": "2024-07-22",
+                "n": 12,
+                "mae": 0.06509948812612605,
+                "baseline_mae": 0.06604284424123458,
+                "skill": 0.014284001937632018,
+                "hit_rate": 0.75
+              },
+              {
+                "fold": 2,
+                "start": "2024-09-03",
+                "end": "2025-05-27",
+                "n": 12,
+                "mae": 0.07804985917042863,
+                "baseline_mae": 0.0672533984244801,
+                "skill": -0.1605340547670917,
+                "hit_rate": 0.5
+              },
+              {
+                "fold": 3,
+                "start": "2025-08-20",
+                "end": "2026-08-11",
+                "n": 12,
+                "mae": 0.08858594368593924,
+                "baseline_mae": 0.08028227030336975,
+                "skill": -0.10343097362831988,
+                "hit_rate": 0.3333333333333333
+              }
+            ],
+            "signals": {
+              "base_up": 0.5,
+              "n_buy": 22,
+              "p_up_given_buy": 0.5,
+              "n_sell": 3,
+              "p_down_given_sell": 0.6666666666666666
+            }
+          },
+          "ENSEMBLE_PRODUCTION": {
+            "pooled": {
+              "n": 48,
+              "mae": 0.06731074660335354,
+              "baseline_mae": 0.06456206793000563,
+              "skill": -0.04257420435057724,
+              "hit_rate": 0.4583333333333333
+            },
+            "fold_skill_mean": -0.048773660367058824,
+            "fold_skill_std": 0.03296105054043074,
+            "folds_beating_baseline": 0,
+            "folds": [
+              {
+                "fold": 0,
+                "start": "2022-11-03",
+                "end": "2023-07-26",
+                "n": 12,
+                "mae": 0.049139156865968044,
+                "baseline_mae": 0.04466975875093806,
+                "skill": -0.10005422549850085,
+                "hit_rate": 0.5
+              },
+              {
+                "fold": 1,
+                "start": "2023-09-07",
+                "end": "2024-07-22",
+                "n": 12,
+                "mae": 0.06793181112549769,
+                "baseline_mae": 0.06604284424123458,
+                "skill": -0.02860214313852505,
+                "hit_rate": 0.5
+              },
+              {
+                "fold": 2,
+                "start": "2024-09-03",
+                "end": "2025-05-27",
+                "n": 12,
+                "mae": 0.07085362858698009,
+                "baseline_mae": 0.0672533984244801,
+                "skill": -0.05353231579133877,
+                "hit_rate": 0.3333333333333333
+              },
+              {
+                "fold": 3,
+                "start": "2025-08-20",
+                "end": "2026-08-11",
+                "n": 12,
+                "mae": 0.08131838983496832,
+                "baseline_mae": 0.08028227030336975,
+                "skill": -0.01290595703987063,
+                "hit_rate": 0.5
+              }
+            ]
+          },
+          "ENSEMBLE_EQUAL": {
+            "pooled": {
+              "n": 48,
+              "mae": 0.06731074660335354,
+              "baseline_mae": 0.06456206793000563,
+              "skill": -0.04257420435057724,
+              "hit_rate": 0.4583333333333333
+            },
+            "fold_skill_mean": -0.048773660367058824,
+            "fold_skill_std": 0.03296105054043074,
+            "folds_beating_baseline": 0,
+            "folds": [
+              {
+                "fold": 0,
+                "start": "2022-11-03",
+                "end": "2023-07-26",
+                "n": 12,
+                "mae": 0.049139156865968044,
+                "baseline_mae": 0.04466975875093806,
+                "skill": -0.10005422549850085,
+                "hit_rate": 0.5
+              },
+              {
+                "fold": 1,
+                "start": "2023-09-07",
+                "end": "2024-07-22",
+                "n": 12,
+                "mae": 0.06793181112549769,
+                "baseline_mae": 0.06604284424123458,
+                "skill": -0.02860214313852505,
+                "hit_rate": 0.5
+              },
+              {
+                "fold": 2,
+                "start": "2024-09-03",
+                "end": "2025-05-27",
+                "n": 12,
+                "mae": 0.07085362858698009,
+                "baseline_mae": 0.0672533984244801,
+                "skill": -0.05353231579133877,
+                "hit_rate": 0.3333333333333333
+              },
+              {
+                "fold": 3,
+                "start": "2025-08-20",
+                "end": "2026-08-11",
+                "n": 12,
+                "mae": 0.08131838983496832,
+                "baseline_mae": 0.08028227030336975,
+                "skill": -0.01290595703987063,
+                "hit_rate": 0.5
+              }
+            ]
+          },
+          "ENSEMBLE_INVERSE_MAE": {
+            "pooled": {
+              "n": 36,
+              "mae": 0.07265632087712309,
+              "baseline_mae": 0.07119283765636147,
+              "skill": -0.02055660750349153,
+              "hit_rate": 0.5277777777777778
+            },
+            "fold_skill_mean": -0.02098659628418457,
+            "fold_skill_std": 0.005172420287527203,
+            "folds_beating_baseline": 0,
+            "folds": [
+              {
+                "fold": 1,
+                "start": "2023-09-07",
+                "end": "2024-07-22",
+                "n": 12,
+                "mae": 0.06752144553579499,
+                "baseline_mae": 0.06604284424123458,
+                "skill": -0.022388516296474537,
+                "hit_rate": 0.5
+              },
+              {
+                "fold": 2,
+                "start": "2024-09-03",
+                "end": "2025-05-27",
+                "n": 12,
+                "mae": 0.06903582200894448,
+                "baseline_mae": 0.0672533984244801,
+                "skill": -0.02650310060488459,
+                "hit_rate": 0.4166666666666667
+              },
+              {
+                "fold": 3,
+                "start": "2025-08-20",
+                "end": "2026-08-11",
+                "n": 12,
+                "mae": 0.08141169508662983,
+                "baseline_mae": 0.08028227030336975,
+                "skill": -0.014068171951194586,
+                "hit_rate": 0.6666666666666666
+              }
+            ]
+          },
+          "ENSEMBLE_RF_RULES": {
+            "pooled": {
+              "n": 48,
+              "mae": 0.06930697254523262,
+              "baseline_mae": 0.06456206793000563,
+              "skill": -0.07349369013971385,
+              "hit_rate": 0.5
+            },
+            "coverage": {
+              "origins": 48,
+              "scored": 48,
+              "unavailable": 0,
+              "fraction": 1.0
+            },
+            "fold_skill_mean": -0.08588654742785415,
+            "fold_skill_std": 0.06831740360918095,
+            "folds_beating_baseline": 1,
+            "folds": [
+              {
+                "fold": 0,
+                "start": "2022-11-03",
+                "end": "2023-07-26",
+                "n": 12,
+                "mae": 0.05210683302787666,
+                "baseline_mae": 0.04466975875093806,
+                "skill": -0.16649013750902375,
+                "hit_rate": 0.6666666666666666
+              },
+              {
+                "fold": 1,
+                "start": "2023-09-07",
+                "end": "2024-07-22",
+                "n": 12,
+                "mae": 0.071468881882506,
+                "baseline_mae": 0.06604284424123458,
+                "skill": -0.08215935736280144,
+                "hit_rate": 0.4166666666666667
+              },
+              {
+                "fold": 2,
+                "start": "2024-09-03",
+                "end": "2025-05-27",
+                "n": 12,
+                "mae": 0.07500661390300224,
+                "baseline_mae": 0.0672533984244801,
+                "skill": -0.11528362372986045,
+                "hit_rate": 0.4166666666666667
+              },
+              {
+                "fold": 3,
+                "start": "2025-08-20",
+                "end": "2026-08-11",
+                "n": 12,
+                "mae": 0.0786455613675456,
+                "baseline_mae": 0.08028227030336975,
+                "skill": 0.02038692889026905,
+                "hit_rate": 0.5
+              }
+            ]
+          }
+        }
+      },
+      "after": {
+        "variant": "after",
+        "horizon": 30,
+        "period": "10y",
+        "tickers": [
+          "RELIANCE.NS",
+          "TCS.NS",
+          "INFY.NS",
+          "HDFCBANK.NS"
+        ],
+        "n_folds": 4,
+        "max_origins_per_fold": 12,
+        "min_history": 1500,
+        "stride": 30,
+        "seed": 42,
+        "serving_lookback": 504,
+        "runtime_seconds": 59.87880373900407,
+        "data": {
+          "RELIANCE.NS": {
+            "rows": 2471,
+            "start": "2016-10-09T18:30:00+00:00",
+            "end": "2026-10-08T18:30:00+00:00",
+            "sha256": "773ed3b4b5d5435df1ae7c6154563be2b06e4d356db8fa7e2d8c217b56d47ccf"
+          },
+          "TCS.NS": {
+            "rows": 2471,
+            "start": "2016-10-09T18:30:00+00:00",
+            "end": "2026-10-08T18:30:00+00:00",
+            "sha256": "c6c38b74d861e30ce7a3bbe85e0387de38f56b930f4c8add10763d9dc08339f5"
+          },
+          "INFY.NS": {
+            "rows": 2471,
+            "start": "2016-10-09T18:30:00+00:00",
+            "end": "2026-10-08T18:30:00+00:00",
+            "sha256": "4cbcde069c8193f8a68feb7470fa28f8e4fd637f4f1987bfa2a814f06ef05eb0"
+          },
+          "HDFCBANK.NS": {
+            "rows": 2471,
+            "start": "2016-10-09T18:30:00+00:00",
+            "end": "2026-10-08T18:30:00+00:00",
+            "sha256": "f22bbe2970eac469adb89db3f597e43232df9c148605ff5e559133d78244c8d0"
+          }
+        },
+        "summary": {
+          "RANDOM_FOREST": {
+            "pooled": {
+              "n": 48,
+              "mae": 0.07294957391099077,
+              "baseline_mae": 0.06456206793000563,
+              "skill": -0.12991383717879645,
+              "hit_rate": 0.5208333333333334
+            },
+            "coverage": {
+              "origins": 48,
+              "scored": 48,
+              "unavailable": 0,
+              "fraction": 1.0
+            },
+            "fold_skill_mean": -0.14486569641787134,
+            "fold_skill_std": 0.11461908424836922,
+            "folds_beating_baseline": 0,
+            "folds": [
+              {
+                "fold": 0,
+                "start": "2022-11-03",
+                "end": "2023-07-26",
+                "n": 12,
+                "mae": 0.05931494660786474,
+                "baseline_mae": 0.04466975875093806,
+                "skill": -0.32785464409115783,
+                "hit_rate": 0.5
+              },
+              {
+                "fold": 1,
+                "start": "2023-09-07",
+                "end": "2024-07-22",
+                "n": 12,
+                "mae": 0.06875460772068047,
+                "baseline_mae": 0.06604284424123458,
+                "skill": -0.0410606706994725,
+                "hit_rate": 0.6666666666666666
+              },
+              {
+                "fold": 2,
+                "start": "2024-09-03",
+                "end": "2025-05-27",
+                "n": 12,
+                "mae": 0.07091913637206058,
+                "baseline_mae": 0.0672533984244801,
+                "skill": -0.05450636002724529,
+                "hit_rate": 0.5
+              },
+              {
+                "fold": 3,
+                "start": "2025-08-20",
+                "end": "2026-08-11",
+                "n": 12,
+                "mae": 0.09280960494335733,
+                "baseline_mae": 0.08028227030336975,
+                "skill": -0.15604111085360972,
+                "hit_rate": 0.4166666666666667
+              }
+            ],
+            "signals": {
+              "base_up": 0.5,
+              "n_buy": 19,
+              "p_up_given_buy": 0.47368421052631576,
+              "n_sell": 14,
+              "p_down_given_sell": 0.6428571428571429
+            }
+          },
+          "TECHNICAL": {
+            "pooled": {
+              "n": 48,
+              "mae": 0.0732129677850009,
+              "baseline_mae": 0.06456206793000563,
+              "skill": -0.1339935372636154,
+              "hit_rate": 0.5208333333333334
+            },
+            "coverage": {
+              "origins": 48,
+              "scored": 48,
+              "unavailable": 0,
+              "fraction": 1.0
+            },
+            "fold_skill_mean": -0.14380252522991094,
+            "fold_skill_std": 0.1443611302693104,
+            "folds_beating_baseline": 1,
+            "folds": [
+              {
+                "fold": 0,
+                "start": "2022-11-03",
+                "end": "2023-07-26",
+                "n": 12,
+                "mae": 0.04999345545019762,
+                "baseline_mae": 0.04466975875093806,
+                "skill": -0.11917898927868653,
+                "hit_rate": 0.6666666666666666
+              },
+              {
+                "fold": 1,
+                "start": "2023-09-07",
+                "end": "2024-07-22",
+                "n": 12,
+                "mae": 0.08625973403509557,
+                "baseline_mae": 0.06604284424123458,
+                "skill": -0.3061177940794735,
+                "hit_rate": 0.5
+              },
+              {
+                "fold": 2,
+                "start": "2024-09-03",
+                "end": "2025-05-27",
+                "n": 12,
+                "mae": 0.08259639117151889,
+                "baseline_mae": 0.0672533984244801,
+                "skill": -0.22813706231169384,
+                "hit_rate": 0.4166666666666667
+              },
+              {
+                "fold": 3,
+                "start": "2025-08-20",
+                "end": "2026-08-11",
+                "n": 12,
+                "mae": 0.07400229048319158,
+                "baseline_mae": 0.08028227030336975,
+                "skill": 0.0782237447502101,
+                "hit_rate": 0.5
+              }
+            ],
+            "signals": {
+              "base_up": 0.5,
+              "n_buy": 21,
+              "p_up_given_buy": 0.2857142857142857,
+              "n_sell": 18,
+              "p_down_given_sell": 0.4444444444444444
+            }
+          },
+          "PVD_MOMENTUM": {
+            "pooled": {
+              "n": 48,
+              "mae": 0.06679936984697968,
+              "baseline_mae": 0.06456206793000563,
+              "skill": -0.03465350458414074,
+              "hit_rate": 0.4791666666666667
+            },
+            "coverage": {
+              "origins": 48,
+              "scored": 48,
+              "unavailable": 0,
+              "fraction": 1.0
+            },
+            "fold_skill_mean": -0.03917901510759347,
+            "fold_skill_std": 0.024589674395491347,
+            "folds_beating_baseline": 0,
+            "folds": [
+              {
+                "fold": 0,
+                "start": "2022-11-03",
+                "end": "2023-07-26",
+                "n": 12,
+                "mae": 0.04786966585861699,
+                "baseline_mae": 0.04466975875093806,
+                "skill": -0.07163475239524852,
+                "hit_rate": 0.5833333333333334
+              },
+              {
+                "fold": 1,
+                "start": "2023-09-07",
+                "end": "2024-07-22",
+                "n": 12,
+                "mae": 0.06946460397328283,
+                "baseline_mae": 0.06604284424123458,
+                "skill": -0.05181121090953611,
+                "hit_rate": 0.3333333333333333
+              },
+              {
+                "fold": 2,
+                "start": "2024-09-03",
+                "end": "2025-05-27",
+                "n": 12,
+                "mae": 0.0690262859630123,
+                "baseline_mae": 0.0672533984244801,
+                "skill": -0.026361307830756076,
+                "hit_rate": 0.4166666666666667
+              },
+              {
+                "fold": 3,
+                "start": "2025-08-20",
+                "end": "2026-08-11",
+                "n": 12,
+                "mae": 0.08083692359300658,
+                "baseline_mae": 0.08028227030336975,
+                "skill": -0.006908789294833184,
+                "hit_rate": 0.5833333333333334
+              }
+            ],
+            "signals": {
+              "base_up": 0.5,
+              "n_buy": 10,
+              "p_up_given_buy": 0.3,
+              "n_sell": 13,
+              "p_down_given_sell": 0.38461538461538464
+            }
+          },
+          "LSTM": {
+            "pooled": {
+              "n": 48,
+              "mae": 0.06850484799547349,
+              "baseline_mae": 0.06456206793000563,
+              "skill": -0.06106960622361712,
+              "hit_rate": 0.5625
+            },
+            "coverage": {
+              "origins": 48,
+              "scored": 48,
+              "unavailable": 0,
+              "fraction": 1.0
+            },
+            "fold_skill_mean": -0.04943605367270873,
+            "fold_skill_std": 0.06402866210821874,
+            "folds_beating_baseline": 1,
+            "folds": [
+              {
+                "fold": 0,
+                "start": "2022-11-03",
+                "end": "2023-07-26",
+                "n": 12,
+                "mae": 0.043513151470099785,
+                "baseline_mae": 0.04466975875093806,
+                "skill": 0.025892400433301765,
+                "hit_rate": 0.6666666666666666
+              },
+              {
+                "fold": 1,
+                "start": "2023-09-07",
+                "end": "2024-07-22",
+                "n": 12,
+                "mae": 0.06703629958812513,
+                "baseline_mae": 0.06604284424123458,
+                "skill": -0.015042588766494669,
+                "hit_rate": 0.5833333333333334
+              },
+              {
+                "fold": 2,
+                "start": "2024-09-03",
+                "end": "2025-05-27",
+                "n": 12,
+                "mae": 0.07144551039851459,
+                "baseline_mae": 0.0672533984244801,
+                "skill": -0.06233308757983247,
+                "hit_rate": 0.5833333333333334
+              },
+              {
+                "fold": 3,
+                "start": "2025-08-20",
+                "end": "2026-08-11",
+                "n": 12,
+                "mae": 0.09202443052515447,
+                "baseline_mae": 0.08028227030336975,
+                "skill": -0.14626093877780955,
+                "hit_rate": 0.4166666666666667
+              }
+            ],
+            "signals": {
+              "base_up": 0.5,
+              "n_buy": 22,
+              "p_up_given_buy": 0.4090909090909091,
+              "n_sell": 3,
+              "p_down_given_sell": 0.6666666666666666
+            }
+          },
+          "GAN": {
+            "pooled": {
+              "n": 48,
+              "mae": 0.0701526508105371,
+              "baseline_mae": 0.06456206793000563,
+              "skill": -0.0865923762942733,
+              "hit_rate": 0.5208333333333334
+            },
+            "coverage": {
+              "origins": 48,
+              "scored": 48,
+              "unavailable": 0,
+              "fraction": 1.0
+            },
+            "fold_skill_mean": -0.09142801769466752,
+            "fold_skill_std": 0.05159689165282735,
+            "folds_beating_baseline": 0,
+            "folds": [
+              {
+                "fold": 0,
+                "start": "2022-11-03",
+                "end": "2023-07-26",
+                "n": 12,
+                "mae": 0.051201183512720294,
+                "baseline_mae": 0.04466975875093806,
+                "skill": -0.1462158056012577,
+                "hit_rate": 0.4166666666666667
+              },
+              {
+                "fold": 1,
+                "start": "2023-09-07",
+                "end": "2024-07-22",
+                "n": 12,
+                "mae": 0.06678241281014524,
+                "baseline_mae": 0.06604284424123458,
+                "skill": -0.011198314933397624,
+                "hit_rate": 0.6666666666666666
+              },
+              {
+                "fold": 2,
+                "start": "2024-09-03",
+                "end": "2025-05-27",
+                "n": 12,
+                "mae": 0.07567393373143362,
+                "baseline_mae": 0.0672533984244801,
+                "skill": -0.12520609373233493,
+                "hit_rate": 0.5833333333333334
+              },
+              {
+                "fold": 3,
+                "start": "2025-08-20",
+                "end": "2026-08-11",
+                "n": 12,
+                "mae": 0.08695307318784924,
+                "baseline_mae": 0.08028227030336975,
+                "skill": -0.08309185651167983,
+                "hit_rate": 0.4166666666666667
+              }
+            ],
+            "signals": {
+              "base_up": 0.5,
+              "n_buy": 28,
+              "p_up_given_buy": 0.5,
+              "n_sell": 3,
+              "p_down_given_sell": 0.6666666666666666
+            }
+          },
+          "ENSEMBLE_RF_RULES": {
+            "pooled": {
+              "n": 48,
+              "mae": 0.0658050854743384,
+              "baseline_mae": 0.06456206793000563,
+              "skill": -0.019253062737711213,
+              "hit_rate": 0.5208333333333334
+            },
+            "coverage": {
+              "origins": 48,
+              "scored": 48,
+              "unavailable": 0,
+              "fraction": 1.0
+            },
+            "fold_skill_mean": -0.018880146527181757,
+            "fold_skill_std": 0.03971482854816347,
+            "folds_beating_baseline": 2,
+            "folds": [
+              {
+                "fold": 0,
+                "start": "2022-11-03",
+                "end": "2023-07-26",
+                "n": 12,
+                "mae": 0.044696909573412096,
+                "baseline_mae": 0.04466975875093806,
+                "skill": -0.0006078121582302476,
+                "hit_rate": 0.6666666666666666
+              },
+              {
+                "fold": 1,
+                "start": "2023-09-07",
+                "end": "2024-07-22",
+                "n": 12,
+                "mae": 0.06571601767263544,
+                "baseline_mae": 0.06604284424123458,
+                "skill": 0.004948705228462691,
+                "hit_rate": 0.5
+              },
+              {
+                "fold": 2,
+                "start": "2024-09-03",
+                "end": "2025-05-27",
+                "n": 12,
+                "mae": 0.07313646361339331,
+                "baseline_mae": 0.0672533984244801,
+                "skill": -0.08747610272095607,
+                "hit_rate": 0.3333333333333333
+              },
+              {
+                "fold": 3,
+                "start": "2025-08-20",
+                "end": "2026-08-11",
+                "n": 12,
+                "mae": 0.07967095103791277,
+                "baseline_mae": 0.08028227030336975,
+                "skill": 0.007614623541996601,
+                "hit_rate": 0.5833333333333334
+              }
+            ]
+          },
+          "ENSEMBLE_PRODUCTION": {
+            "pooled": {
+              "n": 48,
+              "mae": 0.06411503814013747,
+              "baseline_mae": 0.06456206793000563,
+              "skill": 0.0069240314661668245,
+              "hit_rate": 0.5208333333333334
+            },
+            "coverage": {
+              "origins": 48,
+              "scored": 48,
+              "unavailable": 0,
+              "fraction": 1.0,
+              "degraded": 0
+            },
+            "fold_skill_mean": 0.01279635294783843,
+            "fold_skill_std": 0.03643519396159977,
+            "folds_beating_baseline": 2,
+            "folds": [
+              {
+                "fold": 0,
+                "start": "2022-11-03",
+                "end": "2023-07-26",
+                "n": 12,
+                "mae": 0.04158832651282829,
+                "baseline_mae": 0.04466975875093806,
+                "skill": 0.06898251354547691,
+                "hit_rate": 0.5833333333333334
+              },
+              {
+                "fold": 1,
+                "start": "2023-09-07",
+                "end": "2024-07-22",
+                "n": 12,
+                "mae": 0.06489029585689289,
+                "baseline_mae": 0.06604284424123458,
+                "skill": 0.017451525560161718,
+                "hit_rate": 0.5833333333333334
+              },
+              {
+                "fold": 2,
+                "start": "2024-09-03",
+                "end": "2025-05-27",
+                "n": 12,
+                "mae": 0.06923544645333642,
+                "baseline_mae": 0.0672533984244801,
+                "skill": -0.02947134383226735,
+                "hit_rate": 0.4166666666666667
+              },
+              {
+                "fold": 3,
+                "start": "2025-08-20",
+                "end": "2026-08-11",
+                "n": 12,
+                "mae": 0.08074608373749227,
+                "baseline_mae": 0.08028227030336975,
+                "skill": -0.005777283482017559,
+                "hit_rate": 0.5
+              }
+            ]
+          },
+          "ENSEMBLE_EQUAL": {
+            "pooled": {
+              "n": 48,
+              "mae": 0.06411503814013747,
+              "baseline_mae": 0.06456206793000563,
+              "skill": 0.0069240314661668245,
+              "hit_rate": 0.5208333333333334
+            },
+            "coverage": {
+              "origins": 48,
+              "scored": 48,
+              "unavailable": 0,
+              "fraction": 1.0
+            },
+            "fold_skill_mean": 0.01279635294783843,
+            "fold_skill_std": 0.03643519396159977,
+            "folds_beating_baseline": 2,
+            "folds": [
+              {
+                "fold": 0,
+                "start": "2022-11-03",
+                "end": "2023-07-26",
+                "n": 12,
+                "mae": 0.04158832651282829,
+                "baseline_mae": 0.04466975875093806,
+                "skill": 0.06898251354547691,
+                "hit_rate": 0.5833333333333334
+              },
+              {
+                "fold": 1,
+                "start": "2023-09-07",
+                "end": "2024-07-22",
+                "n": 12,
+                "mae": 0.06489029585689289,
+                "baseline_mae": 0.06604284424123458,
+                "skill": 0.017451525560161718,
+                "hit_rate": 0.5833333333333334
+              },
+              {
+                "fold": 2,
+                "start": "2024-09-03",
+                "end": "2025-05-27",
+                "n": 12,
+                "mae": 0.06923544645333642,
+                "baseline_mae": 0.0672533984244801,
+                "skill": -0.02947134383226735,
+                "hit_rate": 0.4166666666666667
+              },
+              {
+                "fold": 3,
+                "start": "2025-08-20",
+                "end": "2026-08-11",
+                "n": 12,
+                "mae": 0.08074608373749227,
+                "baseline_mae": 0.08028227030336975,
+                "skill": -0.005777283482017559,
+                "hit_rate": 0.5
+              }
+            ]
+          },
+          "ENSEMBLE_INVERSE_MAE": {
+            "pooled": {
+              "n": 36,
+              "mae": 0.07169499251744982,
+              "baseline_mae": 0.07119283765636147,
+              "skill": -0.007053446352457193,
+              "hit_rate": 0.5
+            },
+            "coverage": {
+              "origins": 48,
+              "scored": 36,
+              "unavailable": 12,
+              "fraction": 0.75
+            },
+            "fold_skill_mean": -0.0066118392783002244,
+            "fold_skill_std": 0.01747948859105696,
+            "folds_beating_baseline": 1,
+            "folds": [
+              {
+                "fold": 1,
+                "start": "2023-09-07",
+                "end": "2024-07-22",
+                "n": 12,
+                "mae": 0.06492857705766673,
+                "baseline_mae": 0.06604284424123458,
+                "skill": 0.016871883644165364,
+                "hit_rate": 0.5
+              },
+              {
+                "fold": 2,
+                "start": "2024-09-03",
+                "end": "2025-05-27",
+                "n": 12,
+                "mae": 0.06893731413573306,
+                "baseline_mae": 0.0672533984244801,
+                "skill": -0.02503837353503946,
+                "hit_rate": 0.4166666666666667
+              },
+              {
+                "fold": 3,
+                "start": "2025-08-20",
+                "end": "2026-08-11",
+                "n": 12,
+                "mae": 0.08121908635894966,
+                "baseline_mae": 0.08028227030336975,
+                "skill": -0.011669027944026578,
+                "hit_rate": 0.5833333333333334
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "final_random_forest_guard_verification": {
+    "7": {
+      "origins": 48,
+      "current_features_valid": 48,
+      "forecast_and_coverage_unchanged": true
+    },
+    "30": {
+      "origins": 48,
+      "current_features_valid": 48,
+      "forecast_and_coverage_unchanged": true
+    }
+  }
+}

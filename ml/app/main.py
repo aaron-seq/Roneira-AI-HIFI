@@ -9,6 +9,7 @@ import time
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
+from typing import Literal
 
 import numpy as np
 import pandas as pd
@@ -26,6 +27,7 @@ from app.models.pdm_momentum import PVDMomentumEngine
 from app.models.ensemble import ENSEMBLE_MEMBERS, ENSEMBLE_WEIGHTS, EnsembleCombiner
 from app.models.lstm import LSTMPredictor
 from app.models.gan import GANPredictor
+from app.horizons import TIMEFRAME_SESSIONS, history_period, serving_lookback
 import export_stock_screener as screener
 
 # ========== Configuration ==========
@@ -92,9 +94,9 @@ gan_predictor = GANPredictor()
 
 # ========== Pydantic Models ==========
 class PredictionRequest(BaseModel):
-    ticker: str
-    timeframe: str = Field(default="1month", description="tomorrow, 1week, 1month, 3month, 6month, 1year, 1year_plus")
-    model_type: str = Field(default="ENSEMBLE", description="LSTM, RANDOM_FOREST, GAN, ENSEMBLE, FUNDAMENTAL, TECHNICAL, PVD_MOMENTUM")
+    ticker: str = Field(min_length=1, max_length=20, pattern=r"^[A-Za-z0-9.^=:-]+$")
+    timeframe: Literal["tomorrow", "1week", "1month", "3month", "6month", "1year", "1year_plus"] = "1month"
+    model_type: Literal["LSTM", "RANDOM_FOREST", "GAN", "ENSEMBLE", "TECHNICAL", "PVD_MOMENTUM"] = "ENSEMBLE"
     include_pdm: bool = True
 
 
@@ -124,6 +126,14 @@ class PredictionResponse(BaseModel):
     components: list[dict] | None = None
     agreement_score: float | None = None
     price_spread: float | None = None
+    horizon_sessions: int
+    history_sessions: int
+    data_session_date: str
+    data_session_timezone: str | None = None
+    model_status: dict
+    fallback: bool = False
+    fallback_reason: str | None = None
+    excluded_components: list[dict] = Field(default_factory=list)
 
 
 class MarketDataRequest(BaseModel):
@@ -176,6 +186,9 @@ def fetch_stock_data(ticker: str, period: str = "1y", interval: str = "1d") -> p
             # downstream: iloc[-1] price reads, model features, and JSON
             # encoding (NaN is not valid JSON).
             df = df.dropna(subset=["Close"])
+            # A numeric but infinite/zero close is just as unusable as NaN.
+            valid = np.isfinite(df["Close"]) & (df["Close"] > 0)
+            df = df.loc[valid]
         if df.empty:
             raise ValueError(f"No data found for {ticker}")
         historical_cache.set(cache_key, df)
@@ -219,15 +232,7 @@ def get_exchange_from_ticker(ticker: str) -> str:
         return "NASDAQ"
 
 
-TIMEFRAME_DAYS = {
-    "tomorrow": 1,
-    "1week": 7,
-    "1month": 30,
-    "3month": 90,
-    "6month": 180,
-    "1year": 365,
-    "1year_plus": 400,
-}
+TIMEFRAME_DAYS = TIMEFRAME_SESSIONS  # compatibility for callers of the old name
 
 
 # ========== API Routes ==========
@@ -269,50 +274,69 @@ def predict(request: PredictionRequest):
     logger.info(f"Prediction request: {ticker} | {timeframe} | {model_type}")
 
     # Fetch data
-    period = "2y" if timeframe in ("1year", "1year_plus") else "1y"
-    df = fetch_stock_data(ticker, period)
+    horizon = TIMEFRAME_SESSIONS[timeframe]
+    df = fetch_stock_data(ticker, history_period(horizon)).tail(serving_lookback(horizon))
+    if df.empty or not np.isfinite(df["Close"].iloc[-1]) or df["Close"].iloc[-1] <= 0:
+        raise HTTPException(status_code=422, detail="No valid price history is available")
     company = get_company_info(ticker)
     current_price = float(df["Close"].iloc[-1])
     exchange = get_exchange_from_ticker(ticker)
 
     # Run selected model
-    horizon = TIMEFRAME_DAYS.get(timeframe, 30)
-    if model_type == "RANDOM_FOREST":
-        prediction = rf_predictor.predict(df, horizon)
-    elif model_type == "LSTM":
-        prediction = lstm_predictor.predict(df, horizon)
-    elif model_type == "GAN":
-        prediction = gan_predictor.predict(df, horizon)
-    elif model_type == "TECHNICAL":
-        prediction = ta_analyzer.analyze(df, horizon)
-    elif model_type == "PVD_MOMENTUM":
-        prediction = pdm_engine.analyze(df, ticker, horizon)
-    elif model_type == "ENSEMBLE":
+    def run_model(name: str) -> dict:
+        if name == "RANDOM_FOREST":
+            result = rf_predictor.predict(df, horizon)
+            backend = "random_forest"
+        elif name == "TECHNICAL":
+            result = ta_analyzer.analyze(df, horizon)
+            backend = "technical"
+        elif name == "PVD_MOMENTUM":
+            result = pdm_engine.analyze(df, ticker, horizon)
+            backend = "pvd_momentum"
+        elif name == "LSTM":
+            return lstm_predictor.predict(df, horizon)
+        else:
+            return gan_predictor.predict(df, horizon)
+        result["backend"] = backend
+        result["trained_horizon_sessions"] = horizon if name == "RANDOM_FOREST" and not result.get("fallback") else None
+        if result.get("fallback") or result.get("error"):
+            # Exceptions are logged by the owning model; expose only a stable
+            # operational reason, not internal details or invented signals.
+            result.update(
+                predicted_price=current_price, confidence=0, indicators=[], fallback=True,
+                fallback_reason=result.get("fallback_reason") or "inference_failed",
+                short_term_signal={"signal": "HOLD", "score": 5.0},
+                long_term_signal={"signal": "HOLD", "score": 5.0},
+            )
+        return result
+
+    if model_type == "ENSEMBLE":
         # Run all available models and combine
-        rf_result = rf_predictor.predict(df, horizon)
-        ta_result = ta_analyzer.analyze(df, horizon)
-        pdm_result = pdm_engine.analyze(df, ticker, horizon)
-        lstm_result = lstm_predictor.predict(df, horizon)
         # Members and weights live in ensemble.py, next to the reasoning and
         # the walk-forward numbers behind them (#145).
         prediction = ensemble.combine(
-            [rf_result, ta_result, pdm_result, lstm_result],
+            [run_model(name) for name in ENSEMBLE_MEMBERS],
             weights=list(ENSEMBLE_WEIGHTS),
             names=list(ENSEMBLE_MEMBERS),
         )
     else:
-        # Default to Ensemble
-        prediction = rf_predictor.predict(df, horizon)
+        prediction = run_model(model_type)
 
     # Calculate price targets
     predicted_price = prediction["predicted_price"]
+    if not isinstance(predicted_price, (int, float)) or not np.isfinite(predicted_price) or predicted_price <= 0:
+        raise HTTPException(status_code=422, detail="The model could not produce a valid estimate")
     price_change = predicted_price - current_price
     price_change_pct = (price_change / current_price) * 100
     volatility = float(df["Close"].pct_change().std()) * np.sqrt(252)
+    if not np.isfinite(volatility):
+        volatility = 0.0
     target_range = predicted_price * volatility * 0.5
 
     computation_time = (time.time() - start_time) * 1000
 
+    fallback = bool(prediction.get("fallback"))
+    session = df.index[-1]
     return PredictionResponse(
         ticker=ticker,
         company_name=company["name"],
@@ -334,14 +358,28 @@ def predict(request: PredictionRequest):
         short_term_signal=prediction.get("short_term_signal", {"signal": "HOLD", "score": 5.0}),
         long_term_signal=prediction.get("long_term_signal", {"signal": "BUY", "score": 6.0}),
         indicators=prediction.get("indicators", []),
-        price_target_low=round(predicted_price - target_range, 2),
-        price_target_high=round(predicted_price + target_range, 2),
+        price_target_low=round(current_price if fallback else max(0, predicted_price - target_range), 2),
+        price_target_high=round(current_price if fallback else predicted_price + target_range, 2),
         model_used=model_type,
         timeframe=timeframe,
         computation_time_ms=round(computation_time, 1),
         components=prediction.get("components"),
         agreement_score=prediction.get("agreement_score"),
         price_spread=prediction.get("price_spread"),
+        horizon_sessions=horizon,
+        history_sessions=len(df),
+        data_session_date=session.strftime("%Y-%m-%d"),
+        data_session_timezone=str(df.index.tz) if df.index.tz is not None else None,
+        fallback=fallback,
+        fallback_reason=prediction.get("fallback_reason"),
+        excluded_components=prediction.get("excluded_components", []),
+        model_status={
+            "backend": prediction.get("backend") or "unknown",
+            "requested_horizon_sessions": horizon,
+            "trained_horizon_sessions": prediction.get("trained_horizon_sessions"),
+            "fallback": fallback,
+            "fallback_reason": prediction.get("fallback_reason"),
+        },
     )
 
 

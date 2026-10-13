@@ -3,7 +3,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from backtest import Backtester, ensemble_variants, make_folds, score
+from backtest import Backtester, ensemble_variants, json_ready, make_folds, score, summarise
+from app.horizons import serving_lookback
 
 
 def _frame(n=900, seed=0, start="2015-01-01"):
@@ -159,3 +160,111 @@ def test_signal_precision_is_measured_against_the_base_rate():
     assert result["base_up"] == pytest.approx(0.75)
     assert result["n_buy"] == 2 and result["p_up_given_buy"] == pytest.approx(0.5)
     assert result["n_sell"] == 1 and result["p_down_given_sell"] == pytest.approx(0.0)
+
+
+def test_backtest_uses_shared_serving_history_policy():
+    frame = _frame(n=1800)
+    tester = Backtester({"A": frame}, horizon=365)
+    assert tester.lookback == serving_lookback(365) == 1660
+    seen = []
+
+    def spy(window, horizon):
+        seen.append(window)
+        return {"predicted_price": window["Close"].iloc[-1]}
+
+    tester.ta.analyze = spy
+    tester._predict_all(frame, "A", 1700, ["TECHNICAL"])
+    assert len(seen[0]) == 1660
+    assert seen[0].index[-1] == frame.index[1700]
+
+
+def test_fallback_predictions_are_missing_and_reported_in_coverage():
+    frames = {"A": _frame()}
+    tester = Backtester(frames, horizon=7)
+    tester.ta.analyze = lambda window, horizon: {
+        "predicted_price": window["Close"].iloc[-1],
+        "fallback": True, "fallback_reason": "insufficient_history",
+    }
+    folds = make_folds(frames, 2, 7, 100, 504)
+    records = pd.DataFrame(tester.run(folds, ["TECHNICAL"]))
+    assert records["TECHNICAL"].isna().all()
+    assert records["TECHNICAL:fallback"].all()
+    assert set(records["TECHNICAL:fallback_reason"]) == {"insufficient_history"}
+    summary = summarise(records, ["TECHNICAL"])["TECHNICAL"]
+    assert summary["pooled"]["n"] == 0
+    assert summary["coverage"]["fraction"] == 0
+    assert summary["coverage"]["unavailable"] == len(records)
+
+
+def test_production_ensemble_renormalises_only_available_members():
+    records = pd.DataFrame([
+        {"fold": 0, "date": "2020-01-01", "origin_timestamp": "2020-01-01T00:00:00Z",
+         "label_timestamp": "2020-01-08T00:00:00Z", "realised": 0.03,
+         "RANDOM_FOREST": 0.03, "TECHNICAL": 0.06, "PVD_MOMENTUM": np.nan, "LSTM": 0.0},
+        {"fold": 1, "date": "2020-02-01", "origin_timestamp": "2020-02-01T00:00:00Z",
+         "label_timestamp": "2020-02-08T00:00:00Z", "realised": 0.02,
+         "RANDOM_FOREST": 0.03, "TECHNICAL": 0.06, "PVD_MOMENTUM": 0.0, "LSTM": 0.0},
+        {"fold": 2, "date": "2020-03-01", "origin_timestamp": "2020-03-01T00:00:00Z",
+         "label_timestamp": "2020-03-08T00:00:00Z", "realised": 0.02,
+         "RANDOM_FOREST": np.nan, "TECHNICAL": np.nan, "PVD_MOMENTUM": np.nan, "LSTM": np.nan},
+    ])
+    out = ensemble_variants(records)
+    assert out.loc[0, "ENSEMBLE_PRODUCTION"] == pytest.approx(0.03)
+    assert np.isnan(out.loc[0, "ENSEMBLE_RF_RULES"])
+    assert out.loc[0, "ensemble_eligible_members"] == 3
+    assert bool(out.loc[0, "ensemble_degraded"])
+    assert np.isnan(out.loc[0, "ENSEMBLE_EQUAL"])
+    # An incomplete earlier row cannot teach inverse-MAE weights.
+    assert np.isnan(out.loc[1, "ENSEMBLE_INVERSE_MAE"])
+    assert out.loc[1, "ENSEMBLE_RF_RULES"] == pytest.approx(0.03)
+    assert np.isnan(out.loc[2, "ENSEMBLE_PRODUCTION"])
+    summary = summarise(out, ["ENSEMBLE_PRODUCTION"])["ENSEMBLE_PRODUCTION"]
+    assert summary["coverage"] == {
+        "origins": 3, "scored": 2, "unavailable": 1, "fraction": pytest.approx(2 / 3), "degraded": 1,
+    }
+
+
+def test_nonfinite_predictions_cannot_make_metrics_look_valid():
+    with pytest.raises(ValueError, match="finite returns"):
+        score([np.inf], [0.01])
+    with pytest.raises(ValueError, match="aligned"):
+        score([0.01], [0.01, 0.02])
+    records = pd.DataFrame({
+        "fold": [0, 0], "date": ["2020-01-01", "2020-01-08"],
+        "realised": [0.02, 0.03], "TECHNICAL": [np.inf, 0.01],
+    })
+    summary = summarise(records, ["TECHNICAL"])["TECHNICAL"]
+    assert summary["pooled"]["n"] == 1
+    assert summary["coverage"]["unavailable"] == 1
+    assert json_ready({"unavailable": np.nan, "infinite": np.inf, "count": np.int64(2)}) == {
+        "unavailable": None, "infinite": None, "count": 2,
+    }
+
+
+def test_refitted_slots_are_horizon_and_contract_matched(monkeypatch):
+    import backtest
+    from sklearn.dummy import DummyRegressor
+
+    frames = {"A": _frame(n=1400)}
+    tester = Backtester(frames, horizon=7)
+    estimators = []
+
+    def estimator():
+        model = DummyRegressor(strategy="constant", constant=0.0)
+        estimators.append(model)
+        return model
+
+    # Exercise real window construction, artifact adapter, metadata checks
+    # and both slot predictors; only the expensive estimator is substituted.
+    monkeypatch.setattr(backtest, "build_estimator", estimator)
+    folds = make_folds(frames, 1, 7, 100, 900)
+    records = tester.run(folds, ["LSTM", "GAN"])
+    assert len(estimators) == 2
+    for model, artifact in [(tester.lstm, tester.lstm._model), (tester.gan, tester.gan._generator)]:
+        assert model._metadata["horizon_days"] == 7
+        assert model._metadata["window_contract"] == "origin-inclusive-v2"
+        assert model._metadata["sequence_length"] == model.sequence_length
+        assert model._metadata["n_features"] == artifact.n_features
+        assert artifact.window_shape[0] == model.sequence_length
+        assert artifact.trained_horizon_sessions == 7
+    assert all(not record["LSTM:fallback"] and not record["GAN:fallback"] for record in records)

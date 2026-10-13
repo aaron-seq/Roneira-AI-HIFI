@@ -593,14 +593,18 @@ table doesn't already cover.
       request handler on the hot path (the LSTM/GAN models are the reference
       pattern; Random Forest is the accepted exception and is documented as
       retraining per-request).
-- [ ] **Graceful fallback**: if an optional heavy dependency (e.g. TensorFlow)
-      or artifact is missing, degrade to a documented fallback and log a warning
-      instead of crashing.
+- [ ] **Enforced artifact contract**: record the backend, feature/window schema,
+      session horizon and purged validation cutoffs. Reject incompatible bundles;
+      never pad/truncate features or reuse a fixed-horizon target for another horizon.
+- [ ] **Graceful fallback**: expose `fallback` and a stable `fallback_reason`.
+      A missing/incompatible artifact returns a disclosed no-change reference,
+      excluded from blends and forecast history. TensorFlow training is disabled.
 - [ ] **Register it**: wire the model into the `model_type` switch and the
-      `/models` list in `ml/app/main.py`. If it should participate in the
+      root endpoint's `models` list in `ml/app/main.py`. If it should participate in the
       Ensemble, add it there with a justified weight.
-- [ ] **Validate honestly**: use `TimeSeriesSplit` (or a walk-forward scheme) —
-      never a random split — to avoid look-ahead leakage on time-series data.
+- [ ] **Validate honestly**: use a chronological/walk-forward scheme and purge
+      labels by their actual resolution timestamps. Keep shared-date instruments
+      in one split; report signed skill, no-change baseline and forecast coverage.
 - [ ] **Numerical safety**: handle NaNs, empty/short histories, and
       division-by-zero explicitly (see the PDM engine's `np.where` volume-
       sensitivity handling for the expected standard).

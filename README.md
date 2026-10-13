@@ -93,22 +93,24 @@ roadmap. See [IDEAS.md](./IDEAS.md) for near-term and speculative extensions
 (risk planning, trade journals and options-flow data remain follow-up work).
 
 <details>
-<summary><strong>Six models, a four-model ensemble, with disagreement surfaced, not hidden</strong></summary>
+<summary><strong>Six model selections with method details and compatible-member comparisons</strong></summary>
 
 - **RandomForest** — refit per prediction request with `TimeSeriesSplit`, on engineered
-  price/volume/volatility features (~2.6s per call, real, not cached).
+  price/volume/volatility features. Fit latency depends on the requested history/horizon.
 - **Technical** and **PVD Momentum** — deterministic rule-based signal engines (see below).
-- **LSTM and GAN slots** — gradient-boosted (`xgboost`), trained offline on full available
-  history for 9 tickers (~93,000 windows each), artifacts committed to the repo. TensorFlow
-  is not a dependency; see [ARCHITECTURE.md](./ARCHITECTURE.md#ml-service-ml) for why.
+- **LSTM and GAN slots** — deterministic gradient-boosted (`xgboost`) regressors,
+  retrained on ten years from 9 tickers (~22,000 windows each), committed with
+  origin-inclusive window/horizon contracts and purged held-out validation metadata.
+  Both bundled artifacts support 30 sessions; unsupported horizons return a disclosed
+  no-change reference. TensorFlow training is disabled pending a validated pipeline.
 - **Evaluation harness.** `ml/backtest.py` walks models forward through historical periods.
-  Recorded results predate the validation corrections in PR #165 and need rerunning;
-  they do not establish current out-of-sample skill or a trading edge. Method and limits
-  are in [ml/MODELS.md](./ml/MODELS.md#walk-forward-results-144).
-- **Ensemble** — an equal-weight blend of four members that also returns each
-  constituent model's own price target, confidence, and signal, plus an agreement score.
-  The Predict page's model-spread view plots these against spot so you can see when models
-  disagree instead of only the averaged number.
+  A bounded before/after Indian-equity diagnostic uses identical data and origins;
+  results are mixed and do not establish a trading edge. Method and limits are in
+  [ml/MODELS.md](./ml/MODELS.md#walk-forward-evaluation).
+- **Ensemble** — an equal-weight blend of up to four compatible members. Failed or
+  unsupported members are excluded and reported. The analysis screen explains the
+  selected method, requested/trained sessions, daily input session and actual backend.
+  Model agreement is descriptive; it adds no confidence bonus.
 
 </details>
 
@@ -401,6 +403,8 @@ open so platform health checks keep working.
 **Model artifacts:** the LSTM and GAN slots load bundled gradient-boosted
 artifacts from `ml/artifacts/generated`; TensorFlow is not required. Training is
 an explicit maintenance task (`npm run train:ml`), not a setup prerequisite.
+The authenticated prediction route checks the user session before inference.
+Fallback references are audited but excluded from forecast history and cache.
 
 </details>
 

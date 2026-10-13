@@ -1,282 +1,182 @@
-# Roneira AI HIFI — ML Models Review & Comparison
+# Roneira AI HIFI — model behavior and validation
 
-This document reviews every prediction model shipped in the platform, explains
-how they work, and gives concrete guidance on **which model to use when**. It is
-the reference for the model-selection logic in `ml/app/main.py` and for
-contributors adding or tuning models.
+`ml/` is the deployed FastAPI service. The six selection names are API aliases;
+**LSTM** and **GAN** are currently sequence-feature slots backed by fitted,
+deterministic gradient-boosted regressors. TensorFlow is not an installed
+runtime dependency. Neither deployed slot produces a distribution of future
+prices, and the selection names alone do not establish prediction quality.
 
-> **Scope note.** `ml/` is the only Python service in this repo — the FastAPI
-> backend (`app.main:app`) with six pluggable models and offline-trained
-> LSTM/GAN artifacts. An older `ml-service/` tree shared the PDM lineage as a
-> separate deployment; it was never wired into CI or deployed alongside `ml/`,
-> and has been deleted. Git history has it if the backtesting code there is ever
-> wanted.
+## What each selection does
 
----
+| Selection | Current implementation | Training | Useful information | Limits |
+|---|---|---|---|---|
+| Random Forest | 200 bagged trees, maximum depth 12, returns and technical features | Fits the requested horizon on the supplied historical window | A learned return estimate and its influential features | Retrains per request; history and resolved labels limit validation |
+| LSTM | Gradient-boosted regression over 60 ordered feature rows | Offline, for a recorded session horizon | A learned sequence-feature point estimate | Requires a compatible artifact; requesting another horizon uses a flagged fallback |
+| GAN | Gradient-boosted regression over 30 feature rows | Offline, for a recorded session horizon | A second learned sequence-feature point estimate | Ignores latent noise; produces no simulated paths or calibrated interval |
+| Technical | Fixed indicator rules | None | RSI, MACD, trend and volume indicator votes | A heuristic price projection; no trained forecast accuracy |
+| PVD Momentum | Fixed price/volume derivative rules | None | Momentum and volume context | Rule thresholds and confidence are heuristics |
+| Ensemble | Available Random Forest, Technical, PVD Momentum and LSTM results | Inherits member training | Member estimates, disagreement and effective weights | Excludes fallback members; fewer members change the blend |
 
-## The six models at a glance
+Random Forest, Technical and PVD Momentum need no offline artifact. The
+Ensemble starts with equal configured weights of 0.25. Unavailable or fallback
+members receive no weight, and eligible weights are renormalised. It reports
+excluded members and the resulting component weights. Agreement does not earn
+an extra confidence bonus: closely clustered forecasts can all be wrong.
 
-| Model | Family | Learns from data? | Training | Inference cost | Best horizon | Key strength | Key weakness |
-|---|---|---|---|---|---|---|---|
-| **Random Forest** | Supervised ML (bagged trees) | Yes | Online, per-request | Low–Medium | 1w – 3m | Robust, non-linear feature interactions, no GPU | Poor extrapolation beyond training range; retrains each call |
-| **LSTM** | Deep learning (recurrent NN) | Yes | **Offline** (`train_models.py`) → `.keras` artifact | Medium (CPU) / Low (GPU) | 1m – 1y | Captures temporal sequence structure | Needs TensorFlow + a trained artifact; falls back otherwise |
-| **GAN** | Deep learning (generative) | Yes | **Offline** → generator artifact | Medium | 1m – 6m | Models a *distribution* of trajectories, not a point | Hardest to train/validate; can hallucinate; artifact-dependent |
-| **Technical Analysis** | Rule-based (no ML) | No | None | Very low | tomorrow – 1w | Deterministic, explainable, instant | No learning; blind to regime it wasn't coded for |
-| **PVD Momentum (PDM)** | Rule-based + calculus | No | None | Low | 1w – 1m | Institutional-flow / momentum capture via price & volume derivatives | Momentum strategies whipsaw in choppy/sideways markets |
-| **Ensemble** | Meta-model | Combines the above | Inherits | Sum of members | 1m (general default) | Diversification lowers variance of any single model | Only as good as its members; highest latency |
+The confidence/model scores are **heuristics**, not the probability of an
+upward move or profitable trade. Scores from different model families use
+different formulas and are not calibrated for comparison. Fundamental and
+news sentiment analysis are not trained input features in these predictors;
+the legacy confidence breakdown should not be read as evidence of either.
 
-“Learns from data?” distinguishes the statistical/deep models (which fit
-parameters) from the rule-based engines (which apply fixed formulas).
+## Session horizons and serving history
 
----
+`horizon_days` counts **observed trading sessions**, despite its legacy name.
+The web aliases continue to mean 1, 7, 30, 90, 180, 365 and 400 sessions; a week
+or month label is not an exchange calendar conversion. Target dates stored by
+the web app are calendar dates and do not prove when an exchange session will
+occur. Issue #157 tracks the remaining date/calendar contract work.
 
-## Model-by-model review
+Serving and evaluation share `app/horizons.py`:
 
-### 1. Random Forest — `app/models/random_forest.py`
-A `RandomForestRegressor` (200 trees, depth 12) over ~20 engineered features:
-multi-horizon returns, SMA/EMA ratios, RSI, MACD, volatility, and volume ratios,
-validated with `TimeSeriesSplit` **plus a purge by each target's actual
-resolution timestamp**. A forward-return label must resolve strictly before
-the validation fold starts. Feature rows may be missing, so the purge uses
-source-session timestamps rather than assuming one feature row per session.
-Trees use unscaled features; no preprocessing is fitted on validation rows.
-Early folds with no resolved training labels are omitted rather than assigned
-an invented score. The returned confidence remains a heuristic, not a calibrated
-probability of a profitable trade (see #158).
+```python
+lookback = max(504, 4 * horizon_sessions + 200)
+```
 
-- **Use it when** you want a dependable, CPU-only, non-linear baseline and can
-  tolerate the model retraining on the fetched window each request.
-- **Watch out for**: tree ensembles cannot extrapolate — a genuine breakout to
-  new all-time highs will be under-predicted because no training row covers that
-  range. It is a mean-reverting-friendly model.
+The service fetches 5 or 10 years, then tails the result to that session
+budget. Fetching extra calendar history avoids assuming that two years contain
+504 exchange sessions. This gives Random Forest more resolved training labels and validation
+history than the former one-year request. A young listing or suspended stock
+can still have too little history; the result must disclose that limitation.
 
-### 2. LSTM — `app/models/lstm.py`
-A recurrent network trained **offline** by `ml/train_models.py` and saved as a
-`.keras` artifact (60-step sequences). At runtime it only *loads* the artifact;
-if TensorFlow or the artifact is missing it degrades to a documented fallback
-rather than crashing.
+## Training and leakage boundaries
 
-- **Use it when** temporal ordering matters (trend persistence, multi-day
-  momentum) and you have run offline training to produce an artifact.
-- **Watch out for**: without a trained artifact it is not doing deep learning at
-  all — check `is_ready()` / the health endpoint before trusting it.
+Both deployed sequence slots use their own feature functions and CPU
+regressors in `app/models/gradient_boost.py`. Training windows include the
+**origin session** as their final feature row. Their label is the return from
+that origin's close to the close `horizon_days` observed sessions later. This
+matches inference, which receives data through the latest known close.
 
-### 3. GAN — `app/models/gan.py`
-A conditional generator (also offline-trained) that maps a latent vector plus
-the recent price window to a forward return. Inference makes **one** call at the
-latent mean (zero noise) and reports that central estimate.
+Pooled windows are ordered by origin timestamp across instruments. The
+chronological validation split admits a training row only when its actual
+label-resolution timestamp is strictly earlier than the first validation
+origin. Missing sessions, market holidays and suspensions therefore cannot
+make a calendar-day estimate admit unresolved outcomes. An optional additional
+calendar embargo can remove more rows; it does not replace label availability.
 
-It does **not** report a spread. The deployed backend is the gradient-boosted
-artifact (TensorFlow is not a dependency), which ignores the noise input, so
-sampling it repeatedly returned identical values and the old "Prediction Std"
-indicator was always exactly 0 (#143). Confidence comes from validation error.
-A real interval would need quantile regressors — see the `ponytail:` note in
-`gradient_boost.py`.
+Validation reports MAE, RMSE, the no-change MAE, and **unclipped** skill against
+that baseline. Negative skill remains visible. A validation split with fewer
+than 500 resolved training windows is rejected. Validation weights or metrics
+must never be fitted from the held-out outcomes. The saved artifact is the
+training-split estimator evaluated on that held-out period; validation outcomes
+are not subsequently folded into its fit.
 
-- **Use it when** you want a second sequence model's point estimate alongside
-  the LSTM slot.
-- **Watch out for**: GANs are the hardest to validate; treat outputs as scenario
-  generation, not precise forecasts. Artifact-dependent like the LSTM.
-
-### 4. Technical Analysis — `app/models/technical_analysis.py`
-Pure rule-based engine over nine indicators: RSI, MACD, Bollinger Bands,
-Stochastic RSI, ADX, EMA crossovers, Supertrend (10,3), Ichimoku Cloud and
-Anchored VWAP. No training, fully deterministic and explainable.
-
-Each indicator votes Buy / Sell / Neutral and the verdict is the **net vote**,
-`(buy - sell) / total`, mapped by `_aggregate`. Two properties that matter:
-
-- **Neutral means neutral.** An indicator that abstains reduces conviction; it
-  does not add direction. The previous aggregate was `buy / total`, which counted
-  every abstention as evidence against buying and never read `sell` at all — a
-  flat tape with one buy, one sell and four abstentions was reported as `SELL`,
-  and a sustained downtrend with a 2-2 mean-reversion/trend split as `HOLD`.
-- **An indicator that cannot be computed abstains** rather than raising. Ichimoku
-  needs 52 sessions; Anchored VWAP needs non-zero volume, which index tickers
-  like `^NSEI` do not report, plus at least `min_segment` bars between its anchor
-  and the last bar. A short or volume-less frame degrades conviction instead of
-  losing the whole analysis to the exception handler.
-
-  Abstaining correctly needs a *neutral* fallback, not just a non-crashing one.
-  `_last` returning a bare `0.0` made two indicators vote on no evidence: RSI 0 is
-  maximally oversold, so an unwarmed RSI read Buy, and 0.0 as a Bollinger band put
-  price above the upper band, so an unwarmed Bollinger read Sell. RSI now falls
-  back to 50.0, and the Bollinger bands are checked for warm-up explicitly —
-  a band is a threshold, so no scalar stand-in is neutral with respect to it.
-
-  Anchored VWAP has the mirror-image trap: anchoring on a plain argmax/argmin of
-  the lookback put the anchor on the *latest* bar in any sustained trend, making
-  the segment one bar long and its VWAP equal to the current price. Neither strict
-  comparison could fire, so it abstained in exactly the trends it exists to read.
-  `min_segment` keeps the anchor at least 20 bars back, which is also what a
-  trader means by an anchor: a swing that has already formed.
-
-Score is 0–10 with 5.0 as "no opinion", so it can never disagree with the label,
-and confidence is derived from the net fraction so it does not inflate when the
-basket size changes.
-
-- **Use it when** you need an instant, transparent, short-horizon read that a
-  human can audit indicator-by-indicator.
-- **Watch out for**: it encodes fixed heuristics — it cannot adapt to a regime
-  its thresholds weren't designed for. The mean-reversion indicators (RSI,
-  Bollinger, Stochastic) and the trend indicators (EMA, ADX, Supertrend,
-  Ichimoku) genuinely disagree in a strong trend, and `HOLD` on a 2-2 split is an
-  honest report of that rather than a bug.
-
-### 5. PVD Momentum (PDM) — `app/models/pdm_momentum.py`
-The house strategy: treats price and volume as functions of time and uses their
-**first/second derivatives** (velocity, curvature) plus volume sensitivity and
-institutional-participation detection to flag momentum entries.
-
-A now-deleted `ml-service/pdm_strategy_engine.py` variant additionally did
-universe scanning, ATR-based stops, and a real historical backtest. None of
-that exists in the deployed service — if you want backtesting, it is new work,
-recoverable from git history as a starting point.
-
-- **Use it when** you're hunting trend/momentum entries and want volume-confirmed
-  signals rather than price alone.
-- **Watch out for**: like all momentum systems it whipsaws in sideways markets;
-  the confidence score (now continuous, see below) should gate acting on it.
-
-### 6. Ensemble — `app/models/ensemble.py`
-Combines Random Forest, Technical, PDM, and LSTM with explicit equal weights
-(`[0.25, 0.25, 0.25, 0.25]`, shared in `ensemble.py`). The combiner can also use
-confidence weights when a caller omits explicit weights.
-
-- **Use it as the default** for general-purpose predictions — averaging
-  decorrelated models reduces the variance of any single one.
-- **Watch out for**: it is only as good as its members and pays their combined
-  latency; if one member silently falls back, the blend quietly degrades.
-
----
-
-## Walk-forward results (#144)
-
-The harness evaluates models across multiple periods, including 2008, 2020 and
-2022 when the selected histories cover them. Run the current harness with:
+Artifact metadata records the training horizon and
+`window_contract="origin-inclusive-v2"`. Inference rejects incompatible
+horizons/contracts and mismatched feature widths through a flagged fallback.
+Existing artifacts trained on the older origin-exclusive windows require
+retraining; an old artifact cannot become compatible by changing its metadata.
 
 ```bash
 cd ml
-python backtest.py --models all --folds 10 --horizon 30 --max-origins-per-fold 60
-python -m pytest tests/test_backtest.py        # the harness's own guarantees
+python train_models.py --backend gradient-boost --models all --horizon 30
+python -m pytest tests/test_training.py tests/test_models.py
 ```
 
-**Method.** For each origin date, every model is called exactly the way
-`/predict` serves it: on the trailing 1y window (2y past 180 sessions) and
-through its normal `predict`/`analyze`, seeing nothing after the origin
-(`test_models_never_see_past_the_origin`). The LSTM and GAN slots are refitted
-per fold from frames truncated strictly before the fold starts, so training
-windows cannot contain labels from that fold even when holidays or missing
-sessions stretch the horizon. A calendar embargo is retained in addition to
-this exact boundary. Inverse-MAE weights learn only from earlier-fold labels
-whose actual resolution timestamps precede the scored fold. Origins are 30 sessions apart, so realised returns don't
-overlap. 9 tickers (the training set: NIFTY, S&P 500, NASDAQ, AAPL, MSFT, NVDA,
-RELIANCE, TCS, INFY), 10 contiguous periods from 1934 to 2026, 60 origins per
-period (600 total). Skill is `1 − MAE / MAE(no change)`, **not clipped**:
-negative means worse than predicting no move.
+The optional TensorFlow training entrypoints are blocked as experimental and
+unvalidated, and inference loads only gradient-boosted artifacts. Restoring
+neural training requires a separately reviewed causal feature, label and
+validation contract. The gradient-boosted benchmark below does not validate a
+recurrent network or generative model.
 
-**Historical run, measured 2026-10-09, horizon 30 sessions.** These are retained
-as a record of the pre-review implementation, not measurements of the corrected
-harness. Review found an estimated calendar purge that could admit unresolved
-sequence-model labels, inverse-MAE weights that could use unresolved prior-fold
-outcomes, and unpurged Random Forest internal validation. Those paths now have
-regression tests. The benchmark has **not** been rerun; sequence-model,
-Random Forest and ensemble numbers below must be remeasured before being used
-as evidence for current-model performance or a trading edge.
+Random Forest constructs forward-return targets only when the future close is
+already present in its input prefix. Its three internal chronological folds
+purge by each label's actual resolution timestamp. Features can drop rows, so
+source-session timestamps are used rather than counting retained feature rows.
+No scaler is fitted on validation data. Folds without resolved training data
+cannot contribute an invented validation score.
+If feature preparation cannot supply the latest input session, the predictor
+returns an explicit fallback instead of anchoring an older feature row to the
+latest price.
 
-| Model | Skill | Periods > 0 | Per-period skill (mean ± sd) | Direction hit-rate |
-|---|---|---|---|---|
-| Random Forest | −0.264 | 0/10 | −0.248 ± 0.158 | 54.8% |
-| Technical | −0.233 | 0/10 | −0.237 ± 0.094 | 53.3% |
-| PVD Momentum | −0.008 | 3/10 | −0.006 ± 0.026 | 54.3% |
-| LSTM slot | −0.049 | 4/10 | −0.084 ± 0.234 | 59.2% |
-| GAN slot | −0.037 | 4/10 | −0.074 ± 0.269 | 59.0% |
-| Ensemble, hand-set weights (old) | −0.017 | 5/10 | −0.014 ± 0.047 | 56.0% |
-| Ensemble, equal weights | −0.002 | 4/10 | −0.004 ± 0.039 | 57.5% |
-| Ensemble, inverse-MAE from past folds | −0.001 | 4/9 | −0.003 ± 0.039 | 57.8% |
+## Walk-forward evaluation
 
-Do BUY/SELL calls beat the base rate? Prices rose over 30 sessions at 60.2% of
-origins, so a model saying BUY must beat **60.2%**, not 50%:
+`backtest.py` evaluates forecasts rather than executing trades. For every
+origin it calls each predictor on the same trailing session window production
+uses, with no data after that origin. The sequence slots are refitted for the
+requested horizon before each fold, using only labels already observable
+strictly before the fold starts. The harness does not use the shipped artifact
+to score dates before that artifact was trained.
 
-| Model | #BUY | P(up \| BUY) | #SELL | P(down \| SELL) (base 39.8%) |
-|---|---|---|---|---|
-| Random Forest | 266 | 65.0% | 178 | 43.8% |
-| Technical | 321 | 59.2% | 134 | 39.6% |
-| PVD Momentum | 206 | 59.7% | 105 | 41.0% |
-| LSTM slot | 283 | 62.5% | 22 | 36.4% |
-| GAN slot | 376 | 60.1% | 20 | 35.0% |
-
-**What the historical run suggested (pending remeasurement):**
-
-- **No model predicts the size of a 30-session move better than "no change."**
-  The LSTM slot's earlier `skill_vs_no_change` of 0.036 was one good split;
-  across periods it is −0.08 ± 0.23, positive in 4 of 10.
-- **Technical's price target is noise.** It is negative in every period.
-  `analyze` projects price from the last 5 days' return; it does not use its
-  nine indicator votes for the target at all, and the votes themselves do not
-  beat the base rate either.
-- **Random Forest's recorded direction was above the base rate**: BUY is
-  right 65.0% vs 60.2%, SELL 43.8% vs 39.8%. With n=266 that is about 1.6
-  standard errors, so it is suggestive, not significant. Its magnitude is the worst
-  of the five.
-- **Ensemble weights (#145):** equal weights beat the hand-set
-  `[0.35, 0.25, 0.25, 0.15]` slightly, and inverse-MAE weights learned from
-  earlier periods did no better than equal. Production now uses equal weights
-  (`ENSEMBLE_WEIGHTS` in `app/models/ensemble.py`).
-
-The harness found two production bugs on its first run. Random Forest returned
-an invented +2% for any index with no volume data (`^NSEI` reports zeros), and
-crashed on any zero-volume day. Both are fixed, with regression tests.
-
-Not covered yet: other horizons, transaction costs, and the
-`agreement_bonus` question in #145 (whether agreeing members deserve extra
-confidence). All three are cheap to add to `backtest.py`.
-
----
-
-## How to choose (decision guide)
-
-Read the historical results and their review caveat first. No current trading
-edge has been established; choose for the information you want to inspect
-while the corrected harness is remeasured.
-
-```
-Want to audit a read indicator-by-indicator?            → TECHNICAL (ignore its price target)
-Want a volume-confirmed momentum read?                  → PVD_MOMENTUM (PDM)
-Want to inspect a learned direction estimate?          → RANDOM_FOREST (unvalidated as a trading edge)
-Want to see where the models disagree?                  → ENSEMBLE (default) and its model spread
+```bash
+cd ml
+python backtest.py --models all --tickers RELIANCE.NS,TCS.NS,INFY.NS,HDFCBANK.NS \
+  --period 10y --folds 4 --horizon 7 --max-origins-per-fold 12 \
+  --json results-7.json --records origins-7.csv
+python -m pytest tests/test_backtest.py
 ```
 
-Two rules of thumb:
-1. **No trained artifact ⇒ avoid LSTM/GAN** as your sole model; prefer Random
-   Forest, Technical, or PDM, all of which run without offline training.
-2. **Sideways market ⇒ down-weight momentum** (PDM) and lean on Technical /
-   mean-reversion-friendly Random Forest.
+By default origins are one horizon apart per stock, so its forward returns do
+not overlap. Cross-stock outcomes can remain correlated. Fold edges are shared
+calendar periods across stocks. The optional origin cap uses deterministic
+sampling, not a selection based on realised outcomes.
 
----
+A fallback, invalid price or inference error is an **unavailable model
+prediction**. Its return is missing and its reason is recorded; it cannot be
+scored as a fitted model that successfully forecast no change. Reports include
+scored/total origin coverage. The production ensemble renormalises eligible
+members, reports degraded blends, and is evaluated with those actual weights.
+Full-member equal-weight and inverse-MAE variants require complete predictions.
+The fixed RF + Technical + PVD Momentum blend is also reported. With a bundled
+30-session sequence artifact it matches the live seven-session ensemble's
+eligible members when the three are available. Fold refits of seven-session
+sequence models are research models, not the shipped 30-session bundle.
+Inverse-MAE weights learn only from complete earlier-fold labels whose actual
+resolution timestamps precede the scored fold.
 
-## Known limitations & recent fixes
+Metrics are:
 
-The PDM engine was overhauled in the since-deleted `ml-service/` tree (issue #7).
-Recorded here because the same reasoning applies to `app/models/pdm_momentum.py`:
+- MAE of predicted forward returns, alongside the no-change MAE.
+- Skill `1 - MAE / baseline_MAE`, including negative results.
+- Per-fold skill and the number of folds beating no change.
+- Directional hit rate among nonzero forecasts, and BUY/SELL precision compared
+  with the observed up/down base rate.
+- Prediction coverage and degraded ensemble count.
 
-- Removed the hard-coded `[:10]` demo scan cap → full universe is scanned, with
-  an optional, explicit `max_scan_candidates` bound (env: `PDM_MAX_SCAN_CANDIDATES`).
-- Data is now fetched **once per symbol** and reused for both liquidity
-  filtering and signal generation (was downloaded twice), fetched
-  **concurrently** via a thread pool.
-- **Continuous** confidence scoring replaced the all-or-nothing 0/1 components,
-  so signal strength reflects indicator magnitude.
-- The backtest now **computes real trade-level P&L** from historical prices
-  (win rate, Sharpe-like ratio) instead of returning a hard-coded `42.8%`.
-- Added volatility-adjusted **position sizing** (`calculate_position_size`) and
-  NaN/division-by-zero handling.
+No transaction costs, liquidity, position sizing or realised trading P&L are
+modelled. Better forecast metrics in a small sample do not establish a trading
+edge. Broader unseen instruments, periods and costs remain necessary to
+validate a strategy. Issue #145 tracks broader ensemble validation.
 
-## Contributing a new model
+## How to use the results screen
 
-See [`../CONTRIBUTING.md`](../CONTRIBUTING.md#contributing-a-machine-learning-model)
-for the full checklist. In short: implement `predict(df, horizon)` (or
-`analyze(...)`) returning the standard prediction dict, expose `is_ready()`,
-register it in `ml/app/main.py`'s model switch and the `/models` list, keep heavy
-training **offline** in `train_models.py`, and add it to the comparison table
-above with an honest strengths/weaknesses entry.
+Choose Technical to inspect indicator votes, PVD Momentum to inspect momentum
+and volume inputs, or Random Forest to inspect a fitted return estimate.
+Choose Ensemble to inspect where eligible members agree or disagree. A
+sequence slot should be selected only for its recorded compatible horizon.
+
+Read the history timestamp, requested sessions, backend and fallback state
+before the estimate. Treat model disagreement as information to investigate;
+it is not a calibrated risk interval. A neutral HOLD vote means the engine
+lacks directional conviction, not a guarantee that price will remain flat.
+
+## Historical benchmark caveat
+
+The 2026-10-09 benchmark used the earlier window and validation contracts.
+Review subsequently found unresolved sequence labels in a calendar-based
+purge, unresolved outcomes in inverse-MAE weights, unpurged Random Forest
+validation and an off-by-one sequence origin. Its numbers are retained in Git
+history and must not be cited as current accuracy. The new Indian-equity
+comparison is recorded in
+[`docs/ml-validation-2026-10-11.md`](../docs/ml-validation-2026-10-11.md), with
+identical cached histories and origin dates. Accuracy changes were mixed;
+the small diagnostic does not establish a stable advantage over no change.
+
+## Contributing a model
+
+Implement the standard prediction result, expose readiness, register the
+selection in `app/main.py`, and keep offline fitting out of inference requests.
+Record the actual backend, feature/window contract, training horizon,
+validation cutoffs and no-change baseline. Add regression tests for causal
+feature/label alignment and unavailable inference. Re-run a fixed, documented
+walk-forward protocol before changing weights or making performance claims.
