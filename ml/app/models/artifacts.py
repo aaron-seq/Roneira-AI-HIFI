@@ -4,9 +4,12 @@ Helpers for locating and storing trained model artifacts.
 from __future__ import annotations
 
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger("roneira-ml.artifacts")
 
 
 def get_artifact_dir() -> Path:
@@ -38,4 +41,12 @@ def load_metadata(filename: str) -> dict[str, Any]:
     path = artifact_path(filename)
     if not path.exists():
         return {}
-    return json.loads(path.read_text(encoding="utf-8"))
+    try:
+        metadata = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        logger.warning("Model metadata could not be read for %s", filename)
+        return {}
+    if not isinstance(metadata, dict):
+        logger.warning("Model metadata must be an object for %s", filename)
+        return {}
+    return metadata

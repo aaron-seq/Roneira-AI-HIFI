@@ -1,17 +1,93 @@
 {
-  "validation_mae": 0.07112731011233689,
-  "validation_rmse": 0.09886226540042399,
-  "baseline_mae": 0.07380755292957869,
-  "skill_vs_no_change": 0.03631393686495843,
-  "confidence": 41.81569684324792,
-  "training_windows": 92644,
-  "train_rows": 73819,
-  "purge_days": 47,
-  "purged_rows": 296,
+  "validation_mae": 0.06967678322682985,
+  "validation_rmse": 0.09140915519229166,
+  "baseline_mae": 0.06257246423565334,
+  "skill_vs_no_change": -0.11353746536848908,
+  "confidence": 34.32312673157555,
+  "training_windows": 21648,
+  "train_rows": 17047,
+  "train_origin_start": "2017-01-04T05:00:00Z",
+  "train_origin_end": "2024-08-08T04:00:00Z",
+  "train_label_end": "2024-09-20T04:00:00Z",
+  "validation_rows": 4331,
+  "validation_start": "2024-09-22T00:00:00Z",
+  "validation_end": "2026-08-27T04:00:00Z",
+  "validation_label_end": "2026-10-09T04:00:00Z",
+  "validation_method": "chronological-purged",
+  "purge_days": 0,
+  "purged_rows": 270,
   "n_features": 660,
   "backend": "xgboost",
   "sequence_length": 60,
   "horizon_days": 30,
+  "window_contract": "origin-inclusive-v2",
   "backend_slot": "lstm",
-  "trained_on_frames": 9
+  "trained_on_frames": 9,
+  "training_period_requested": "10y",
+  "training_dataset": [
+    {
+      "ticker": "^NSEI",
+      "sessions": 2466,
+      "start": "2016-10-10T00:00:00+05:30",
+      "end": "2026-10-09T00:00:00+05:30",
+      "sha256": "907f3290ed0fbcce8a5245a94ce04b61cbf44fbb15d11cd8344fbe50ea190167"
+    },
+    {
+      "ticker": "^GSPC",
+      "sessions": 2514,
+      "start": "2016-10-10T00:00:00-04:00",
+      "end": "2026-10-09T00:00:00-04:00",
+      "sha256": "3e1247e295e2cf1c33225763627b4cab06ce13af372e0a4081d92bdfbcb8d2ad"
+    },
+    {
+      "ticker": "^IXIC",
+      "sessions": 2514,
+      "start": "2016-10-10T00:00:00-04:00",
+      "end": "2026-10-09T00:00:00-04:00",
+      "sha256": "23b821eedb9d50c02870763c1f489d3ad0d30ec87755d7ec3c712cf4ebdfb2cb"
+    },
+    {
+      "ticker": "AAPL",
+      "sessions": 2514,
+      "start": "2016-10-10T00:00:00-04:00",
+      "end": "2026-10-09T00:00:00-04:00",
+      "sha256": "4cf08a62e898e5b6928c4277120365289abf8f2c7d8d188bca4e9b58346d1569"
+    },
+    {
+      "ticker": "MSFT",
+      "sessions": 2514,
+      "start": "2016-10-10T00:00:00-04:00",
+      "end": "2026-10-09T00:00:00-04:00",
+      "sha256": "d34cbdb2fbaa9210cac1b450642e977f1c37b6c5f7d24d1561ffce272a344702"
+    },
+    {
+      "ticker": "NVDA",
+      "sessions": 2514,
+      "start": "2016-10-10T00:00:00-04:00",
+      "end": "2026-10-09T00:00:00-04:00",
+      "sha256": "34622828d56cd69bbc17685a7d502b47a4872bc70b28ef18f908ef6cda1aa1e8"
+    },
+    {
+      "ticker": "RELIANCE.NS",
+      "sessions": 2471,
+      "start": "2016-10-10T00:00:00+05:30",
+      "end": "2026-10-09T00:00:00+05:30",
+      "sha256": "4ad4664bdaf63baf4c542e8a2786669c55da777a02ca1e7f77090f8b4611f892"
+    },
+    {
+      "ticker": "TCS.NS",
+      "sessions": 2471,
+      "start": "2016-10-10T00:00:00+05:30",
+      "end": "2026-10-09T00:00:00+05:30",
+      "sha256": "c2a94987588d00f49c6f42a916ae2546590f64959b2e0155e8d243321990cbba"
+    },
+    {
+      "ticker": "INFY.NS",
+      "sessions": 2471,
+      "start": "2016-10-10T00:00:00+05:30",
+      "end": "2026-10-09T00:00:00+05:30",
+      "sha256": "8e783d5697d94625cb07a26ddeb3db27b8084c28e8d9351215c7355628fcdf36"
+    }
+  ],
+  "created_at": "2026-10-11T18:02:24.977549+00:00"
 }

@@ -90,6 +90,17 @@ class RandomForestPredictor:
         try:
             # Create features
             features = self._create_features(df)
+            # Feature cleanup can remove the latest source session. Anchoring
+            # an older feature vector to today's close silently changes the
+            # forecast origin; disclose missing current inputs instead.
+            if features.empty or features.index[-1] != df.index[-1]:
+                return {
+                    "predicted_price": float(df["Close"].iloc[-1]),
+                    "confidence": 0.0,
+                    "indicators": [],
+                    "fallback": True,
+                    "fallback_reason": "invalid_input",
+                }
 
             # Target: future return
             target = df["Close"].pct_change(horizon_days).shift(-horizon_days)
@@ -113,6 +124,7 @@ class RandomForestPredictor:
                     "confidence": 30.0,
                     "indicators": [],
                     "fallback": True,
+                    "fallback_reason": "insufficient_history",
                 }
 
             # Trees do not need scaling. In particular, fitting a scaler on
@@ -200,4 +212,5 @@ class RandomForestPredictor:
                 "indicators": [],
                 "error": str(e),
                 "fallback": True,
+                "fallback_reason": "inference_failed",
             }

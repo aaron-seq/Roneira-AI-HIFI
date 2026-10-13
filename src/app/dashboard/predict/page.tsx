@@ -12,6 +12,7 @@ import {
 import { PredictionChart } from "@/components/charts/PredictionChart";
 import { CompetitorTable } from "@/components/prediction/CompetitorTable";
 import { ModelScore } from "@/components/prediction/ModelScore";
+import { AnalysisMethod, modelName, unavailableReason } from "@/components/prediction/AnalysisMethod";
 import { StockSearch, type StockOption } from "@/components/prediction/StockSearch";
 import { ModelSpread } from "@/components/prediction/ModelSpread";
 import { SignalMeter } from "@/components/prediction/SignalMeter";
@@ -31,12 +32,12 @@ const TIMEFRAMES = [
 ];
 
 const MODELS = [
-  { value: "ENSEMBLE", label: "Auto (Ensemble)" },
-  { value: "LSTM", label: "Sequence model (gradient-boosted)" },
-  { value: "RANDOM_FOREST", label: "Random Forest" },
-  { value: "GAN", label: "Scenario model (gradient-boosted)" },
-  { value: "TECHNICAL", label: "Technical Analysis" },
-  { value: "PVD_MOMENTUM", label: "PVD Momentum" },
+  { value: "ENSEMBLE", label: "Equal-weight blend", description: "Combines compatible model estimates with equal weights. Unavailable models and artifacts trained for another horizon are excluded; agreement does not establish accuracy." },
+  { value: "LSTM", label: "Sequence artifact", description: "Estimates forward returns from recent sessions using a trained artifact. The result identifies its actual backend. A matching trained horizon is required." },
+  { value: "RANDOM_FOREST", label: "Random forest", description: "Fits decision trees to this stock's historical technical features for your requested session horizon. Longer horizons need more historical sessions." },
+  { value: "GAN", label: "Price / range artifact", description: "Uses recent return, price-range, volume and volatility features in a trained artifact. Produces one estimate, not a probability distribution. A matching trained horizon is required." },
+  { value: "TECHNICAL", label: "Technical rules", description: "Uses trend, momentum and volatility indicators with rule-based price estimates. This method does not fit a learned forecasting model." },
+  { value: "PVD_MOMENTUM", label: "Momentum rules", description: "Uses price, volume and momentum rules to produce a research estimate. These signals do not establish an entry, stop or position size." },
 ];
 
 const resultsVariants = {
@@ -84,6 +85,7 @@ function PredictPageContent() {
   const [model, setModel] = useState("ENSEMBLE");
   const predictionMutation = usePredictionMutation();
   const result = predictionMutation.data;
+  const resultIsFallback = Boolean(result?.fallback || result?.model_status?.fallback);
 
   const resultMatchesControls = result && selectedStock?.symbol === result.ticker && timeframe === result.timeframe && model === result.model_used;
 
@@ -115,8 +117,8 @@ function PredictPageContent() {
         </h1>
         <p className="mt-2 max-w-3xl text-sm" style={{ color: "var(--color-text-muted)" }}>
           Explore each model&apos;s estimate and compare their targets. Historical
-          tests did not establish a trading edge; the corrected walk-forward harness
-          has not been rerun. These estimates are research inputs, not advice.
+          tests have not established a trading edge. Check the input history and
+          model compatibility below each result. Estimates are research inputs, not advice.
         </p>
       </div>
 
@@ -151,6 +153,7 @@ function PredictPageContent() {
             <div className="relative">
               <select
                 id="prediction-model"
+                aria-describedby="prediction-model-help"
                 disabled={predictionMutation.isPending}
                 value={model}
                 onChange={(event) => setModel(event.target.value)}
@@ -206,13 +209,9 @@ function PredictPageContent() {
           closures make the actual date vary. Stored calendar target dates are not
           exchange-calendar forecasts.
         </p>
-        {timeframe !== "1month" && ["ENSEMBLE", "LSTM", "GAN"].includes(model) && (
-          <p role="status" className="mt-3 text-xs leading-relaxed" style={{ color: "var(--color-warning)" }}>
-            Sequence and scenario models use artifacts trained for a fixed horizon.
-            Selecting another horizon does not retrain them; this estimate may not match
-            your requested session count. Compare the rule-based or Random Forest models instead.
-          </p>
-        )}
+        <p id="prediction-model-help" className="mt-3 text-xs leading-relaxed" style={{ color: "var(--color-text-muted)" }}>
+          {MODELS.find((option) => option.value === model)?.description}
+        </p>
       </div>
 
       {predictionMutation.isPending ? (
@@ -236,28 +235,38 @@ function PredictPageContent() {
           {result && (
             <motion.div variants={resultsVariants} initial={reduceMotion ? false : "hidden"} animate="visible" exit="hidden" className="space-y-6" aria-label="Prediction results">
               <p role="status" className="text-sm" style={{ color: "var(--color-text-muted)" }}>
-                Analysis complete for {result.ticker} · {getTimeframeDays(result.timeframe)} trading sessions.
+                {resultIsFallback ? "Analysis unavailable" : "Analysis complete"} for {result.ticker} · {result.horizon_sessions ?? getTimeframeDays(result.timeframe)} trading sessions.
               </p>
               {!resultMatchesControls && (
                 <p role="status" className="rounded-xl border p-4 text-sm" style={{ color: "var(--color-warning)", borderColor: "var(--color-border)" }}>
                   These results are from your previous analysis. Run Analyze to update them for the selected stock, horizon or model.
                 </p>
               )}
+              {resultIsFallback && (
+                <div role="status" className="rounded-xl border p-4" style={{ borderColor: "var(--color-border)", color: "var(--color-warning)" }}>
+                  <h2 className="text-sm font-semibold">Fallback reference — no supported forecast</h2>
+                  <p className="mt-2 text-sm leading-relaxed">
+                    {unavailableReason(result.fallback_reason ?? result.model_status?.fallback_reason)}.
+                    {" "}The reference repeats the latest historical close; it is not a forecast or a trading signal.
+                    Try another horizon or a different model.
+                  </p>
+                </div>
+              )}
               <motion.div variants={cardVariant} className="card p-6">
                 <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
                   <div className="lg:col-span-2">
                     <div className="mb-4 flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl text-sm font-bold" style={{ background: "var(--color-surface-offset)", color: "var(--color-text-primary)" }}>
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold" style={{ background: "var(--color-surface-offset)", color: "var(--color-text-primary)" }}>
                         {result.ticker.substring(0, 2)}
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
                           <h3 className="ticker text-sm">{result.ticker}</h3>
                           <span className="rounded px-1.5 py-0.5 text-[9px] font-bold" style={{ background: "var(--color-surface-offset)", color: "var(--color-text-faint)" }}>
                             {result.exchange}
                           </span>
                           <span className="rounded px-1.5 py-0.5 text-[9px] font-bold" style={{ background: "var(--color-brass-dim)", color: "var(--color-brass-bright)", border: "1px solid rgba(200,146,47,0.3)" }}>
-                            {result.model_used}
+                            {modelName(result.model_used)}
                           </span>
                         </div>
                         <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>{result.company_name}</p>
@@ -272,15 +281,15 @@ function PredictPageContent() {
                         </p>
                       </div>
                       <div>
-                        <p className="text-[10px] uppercase tracking-wider" style={{ color: "var(--color-text-faint)" }}>Model Estimate</p>
-                        <p className={cn("break-words font-mono text-lg font-bold sm:text-xl", getPriceColor(result.price_change))} data-financial>
+                        <p className="text-[10px] uppercase tracking-wider" style={{ color: "var(--color-text-faint)" }}>{resultIsFallback ? "No-change reference" : "Model Estimate"}</p>
+                        <p className={cn("break-words font-mono text-lg font-bold sm:text-xl", !resultIsFallback && getPriceColor(result.price_change))} data-financial style={resultIsFallback ? { color: "var(--color-text-primary)" } : undefined}>
                           {formatPrice(result.predicted_price)}
                         </p>
                       </div>
                       <div>
-                        <p className="text-[10px] uppercase tracking-wider" style={{ color: "var(--color-text-faint)" }}>Estimated Change</p>
-                        <p className={cn("font-mono text-lg font-semibold", getPriceColor(result.price_change_percent))} data-financial>
-                          {formatPercent(result.price_change_percent)}
+                        <p className="text-[10px] uppercase tracking-wider" style={{ color: "var(--color-text-faint)" }}>{resultIsFallback ? "Forecast status" : "Estimated Change"}</p>
+                        <p className={cn("text-lg font-semibold", !resultIsFallback && "font-mono", !resultIsFallback && getPriceColor(result.price_change_percent))} data-financial={!resultIsFallback || undefined}>
+                          {resultIsFallback ? "Unavailable" : formatPercent(result.price_change_percent)}
                         </p>
                       </div>
                       <div>
@@ -291,10 +300,10 @@ function PredictPageContent() {
                       </div>
                     </div>
 
-                    <p className="mt-6 text-xs leading-relaxed" style={{ color: "var(--color-text-muted)" }}>
+                    {!resultIsFallback && <p className="mt-6 text-xs leading-relaxed" style={{ color: "var(--color-text-muted)" }}>
                       Illustrative range: {formatPrice(result.price_target_low)} to {formatPrice(result.price_target_high)}.
                       These volatility-based reference levels are not calibrated probability bounds.
-                    </p>
+                    </p>}
 
                     {/* No per-factor confidence tiles: the API's confidence_breakdown
                         is one confidence number scaled by fixed constants
@@ -303,7 +312,7 @@ function PredictPageContent() {
                   </div>
 
                   <div className="flex flex-col items-center justify-center">
-                    <ModelScore score={result.confidence} />
+                    {!resultIsFallback && <ModelScore score={result.confidence} />}
                     <p className="mt-4 font-mono text-xs" data-financial style={{ color: "var(--color-text-faint)" }}>
                       Computed in {result.computation_time_ms.toFixed(0)}ms
                     </p>
@@ -311,7 +320,11 @@ function PredictPageContent() {
                 </div>
               </motion.div>
 
-              {result.components && result.components.length > 0 && (
+              <motion.div variants={cardVariant}>
+                <AnalysisMethod result={result} />
+              </motion.div>
+
+              {!resultIsFallback && result.components && result.components.length > 0 && (
                 <motion.div variants={cardVariant}>
                   <ModelSpread
                     components={result.components}
@@ -323,7 +336,7 @@ function PredictPageContent() {
                 </motion.div>
               )}
 
-              <motion.div variants={cardVariant} className="card p-6">
+              {!resultIsFallback && <motion.div variants={cardVariant} className="card p-6">
                 <h3 className="mb-6 text-sm font-semibold" style={{ color: "var(--color-text-primary)" }}>
                   Signal Analysis
                 </h3>
@@ -361,20 +374,20 @@ function PredictPageContent() {
                                 style={{
                                   background:
                                     indicator.signal === "Buy"
-                                      ? "#2ECC71"
+                                      ? "var(--color-profit)"
                                       : indicator.signal === "Sell"
-                                        ? "#E74C3C"
-                                        : "#F39C12",
+                                        ? "var(--color-loss)"
+                                        : "var(--color-warning)",
                                 }}
                               />
                               <span
                                 style={{
                                   color:
                                     indicator.signal === "Buy"
-                                      ? "#2ECC71"
+                                      ? "var(--color-profit)"
                                       : indicator.signal === "Sell"
-                                        ? "#E74C3C"
-                                        : "#F39C12",
+                                        ? "var(--color-loss)"
+                                        : "var(--color-warning)",
                                 }}
                               >
                                 {indicator.signal}
@@ -386,23 +399,23 @@ function PredictPageContent() {
                     </tbody>
                   </table>
                 </div>
-              </motion.div>
+              </motion.div>}
 
-              <motion.div variants={cardVariant}>
+              {!resultIsFallback && <motion.div variants={cardVariant}>
                 <PredictionChart
                   symbol={result.ticker}
                   predictedPrice={result.predicted_price}
                   priceTargetLow={result.price_target_low}
                   priceTargetHigh={result.price_target_high}
-                  horizonSessions={getTimeframeDays(result.timeframe)}
+                  horizonSessions={result.horizon_sessions ?? getTimeframeDays(result.timeframe)}
                 />
-              </motion.div>
+              </motion.div>}
 
               <motion.div variants={cardVariant}>
                 <CompetitorTable ticker={result.ticker} sector={result.sector} />
               </motion.div>
 
-              <motion.div variants={cardVariant} className="card p-6">
+              {!resultIsFallback && <motion.div variants={cardVariant} className="card p-6">
                 <div className="mb-4 flex items-center gap-2">
                   <BarChart3 className="h-4 w-4" style={{ color: "var(--color-info)" }} />
                   <h3 className="text-sm font-semibold" style={{ color: "var(--color-text-primary)" }}>
@@ -414,8 +427,8 @@ function PredictPageContent() {
                 </p>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                   <div className="rounded-xl p-5 text-center" style={{ background: "rgba(231,76,60,0.06)", border: "1px solid rgba(231,76,60,0.15)" }}>
-                    <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#E74C3C" }}>Lower Reference</p>
-                    <p className="mt-2 font-mono text-2xl font-bold" data-financial style={{ color: "#E74C3C" }}>
+                    <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--color-loss)" }}>Lower Reference</p>
+                    <p className="mt-2 font-mono text-2xl font-bold" data-financial style={{ color: "var(--color-loss)" }}>
                       {formatPrice(result.price_target_low)}
                     </p>
                     <p className="mt-1 font-mono text-xs" data-financial style={{ color: "var(--color-text-faint)" }}>
@@ -432,8 +445,8 @@ function PredictPageContent() {
                     </p>
                   </div>
                   <div className="rounded-xl p-5 text-center" style={{ background: "rgba(46,204,113,0.06)", border: "1px solid rgba(46,204,113,0.15)" }}>
-                    <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#2ECC71" }}>Upper Reference</p>
-                    <p className="mt-2 font-mono text-2xl font-bold" data-financial style={{ color: "#2ECC71" }}>
+                    <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--color-profit)" }}>Upper Reference</p>
+                    <p className="mt-2 font-mono text-2xl font-bold" data-financial style={{ color: "var(--color-profit)" }}>
                       {formatPrice(result.price_target_high)}
                     </p>
                     <p className="mt-1 font-mono text-xs" data-financial style={{ color: "var(--color-text-faint)" }}>
@@ -441,7 +454,7 @@ function PredictPageContent() {
                     </p>
                   </div>
                 </div>
-              </motion.div>
+              </motion.div>}
             </motion.div>
           )}
         </AnimatePresence>

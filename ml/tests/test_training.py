@@ -18,6 +18,8 @@ import pytest
 from app.models.gan import GANPredictor
 from app.models.gradient_boost import (
     MIN_TRAIN_ROWS,
+    GradientBoostArtifact,
+    WINDOW_CONTRACT,
     build_training_windows,
     fit_windows,
 )
@@ -64,19 +66,20 @@ def isolated_artifact_dir(tmp_path, monkeypatch):
 class TestGradientBoostCore:
     def test_build_training_windows_shapes(self, training_frames):
         predictor = LSTMPredictor(sequence_length=60)
-        windows, targets, stamps = build_training_windows(
+        windows, targets, stamps, label_ends = build_training_windows(
             training_frames,
             predictor._prepare_features,
             sequence_length=60,
             horizon_days=30,
         )
         assert windows.ndim == 3
-        assert windows.shape[0] == targets.shape[0] == stamps.shape[0]
+        assert windows.shape[0] == targets.shape[0] == stamps.shape[0] == label_ends.shape[0]
         assert windows.shape[1] == 60
         assert np.isfinite(windows).all()
         assert np.isfinite(targets).all()
         # Sorted, because fit_windows splits on row order and purges on these.
         assert (np.diff(stamps) >= np.timedelta64(0, "ns")).all()
+        assert (label_ends > stamps).all()
 
     def test_build_training_windows_rejects_empty_input(self):
         with pytest.raises(ValueError):
@@ -90,18 +93,20 @@ class TestGradientBoostCore:
 
     def test_fit_windows_produces_sane_metrics(self, training_frames):
         predictor = LSTMPredictor(sequence_length=60)
-        windows, targets, stamps = build_training_windows(
+        windows, targets, stamps, label_ends = build_training_windows(
             training_frames, predictor._prepare_features, 60, 30
         )
-        artifact, metrics = fit_windows(windows, targets, stamps=stamps, purge_days=44)
+        artifact, metrics = fit_windows(windows, targets, stamps=stamps, label_end_stamps=label_ends, purge_days=44)
 
         assert metrics["training_windows"] == len(windows)
         assert metrics["validation_mae"] >= 0
         assert metrics["validation_rmse"] >= 0
         # RMSE is always >= MAE for the same error distribution (power-mean inequality).
         assert metrics["validation_rmse"] >= metrics["validation_mae"]
-        assert 35.0 <= metrics["confidence"] <= 85.0
+        assert 0.0 <= metrics["confidence"] <= 85.0
         assert metrics["backend"] in ("xgboost", "sklearn")
+        assert pd.Timestamp(metrics["train_label_end"]) < pd.Timestamp(metrics["validation_start"])
+        assert metrics["validation_rows"] > 0
 
         # The artifact must round-trip through the same Keras-shaped call the
         # inference code actually uses.
@@ -122,6 +127,8 @@ class TestLSTMSlotTraining:
         assert metrics["backend_slot"] == "lstm"
         assert metrics["trained_on_frames"] == len(training_frames)
         assert metrics["sequence_length"] == 60
+        assert metrics["window_contract"] == WINDOW_CONTRACT
+        assert metrics["horizon_days"] == 30
 
         # A fresh instance must load what was just saved, without retraining.
         reloaded = LSTMPredictor(sequence_length=60)
@@ -158,6 +165,7 @@ class TestGANSlotTraining:
         assert predictor.is_ready()
         assert metrics["backend_slot"] == "gan"
         assert metrics["trained_on_frames"] == len(training_frames)
+        assert metrics["window_contract"] == WINDOW_CONTRACT
 
         reloaded = GANPredictor(sequence_length=30)
         assert reloaded.is_ready()
@@ -241,7 +249,7 @@ class TestChronologicalPooling:
         # Deliberately out of order: appending frame-by-frame would put every
         # `late` window first, and the 80/20 split in fit_windows would then hold
         # out a different *ticker* while reporting a time split.
-        windows, _, _ = build_training_windows(
+        windows, _, _, _ = build_training_windows(
             [late, early], predictor._prepare_features, 60, 30
         )
         np.testing.assert_allclose(
@@ -252,7 +260,7 @@ class TestChronologicalPooling:
         newest = len(late) - 30 - 1
         np.testing.assert_allclose(
             windows[-1],
-            predictor._prepare_features(late)[newest - 60:newest],
+            predictor._prepare_features(late)[newest - 60 + 1:newest + 1],
             atol=1e-9,
         )
 
@@ -269,12 +277,12 @@ class TestChronologicalPooling:
         share a date, which is why that assertion caught nothing.
         """
         predictor = LSTMPredictor(sequence_length=60)
-        windows, targets, stamps = build_training_windows(
+        windows, targets, stamps, label_ends = build_training_windows(
             training_frames, predictor._prepare_features, 60, 30
         )
         purge_days = 44
         _, purged = fit_windows(
-            windows, targets, stamps=stamps, purge_days=purge_days
+            windows, targets, stamps=stamps, label_end_stamps=label_ends, purge_days=purge_days
         )
 
         split = int(len(windows) * 0.8)
@@ -303,6 +311,118 @@ class TestChronologicalPooling:
             dtype="datetime64[ns]",
         )
         stamps.sort()
+        label_ends = stamps + np.timedelta64(30, "D")
 
         with pytest.raises(ValueError, match="training rows"):
-            fit_windows(windows, targets, stamps=stamps, purge_days=44)
+            fit_windows(windows, targets, stamps=stamps, label_end_stamps=label_ends, purge_days=44)
+
+
+class _RecordingEstimator:
+    def __init__(self, value=0.0):
+        self.value = value
+        self.train = None
+        self.validation = None
+
+    def fit(self, X, y):
+        self.train = X.copy()
+
+    def predict(self, X):
+        self.validation = X.copy()
+        return np.full(len(X), self.value)
+
+
+class TestForecastOriginContract:
+    def test_window_ends_at_label_origin_and_retains_actual_label_date(self):
+        frame = _synthetic_ohlcv(2, periods=100)
+        frame = frame.drop(frame.index[40:50])
+        windows, targets, origins, label_ends = build_training_windows(
+            [frame], lambda data: data[["Close"]].to_numpy(), 3, 2
+        )
+        for window, target, origin, end in zip(windows, targets, origins, label_ends):
+            pos = frame.index.get_loc(pd.Timestamp(origin))
+            assert window[-1, 0] == frame["Close"].iloc[pos]
+            assert pd.Timestamp(end) == frame.index[pos + 2]
+            assert target == pytest.approx(frame["Close"].iloc[pos + 2] / frame["Close"].iloc[pos] - 1)
+
+    def test_nonfinite_features_are_excluded_instead_of_imputed(self):
+        frame = _synthetic_ohlcv(3, periods=100)
+
+        def prepare(data):
+            features = data[["Close"]].to_numpy().copy()
+            features[40, 0] = np.inf
+            return features
+
+        windows, _, origins, _ = build_training_windows([frame], prepare, 3, 2)
+        assert np.isfinite(windows).all()
+        assert not set(pd.DatetimeIndex(origins)).intersection(frame.index[40:43])
+
+    @pytest.mark.parametrize("width", [5, 7])
+    def test_adapter_rejects_shorter_or_longer_features(self, width):
+        artifact = GradientBoostArtifact(_RecordingEstimator(), 6, (3, 2))
+        with pytest.raises(ValueError, match="feature count"):
+            artifact.predict(np.zeros((1, width)))
+
+    def test_adapter_rejects_reshaped_sequence_even_with_equal_flattened_width(self):
+        artifact = GradientBoostArtifact(_RecordingEstimator(), 6, (3, 2))
+        with pytest.raises(ValueError, match="sequence shape"):
+            artifact.predict(np.zeros((1, 2, 3)))
+
+    @pytest.mark.parametrize("invalid", [np.nan, np.inf, -np.inf])
+    def test_adapter_rejects_nonfinite_input_and_estimator_output(self, invalid):
+        artifact = GradientBoostArtifact(_RecordingEstimator(), 6, (3, 2))
+        bad = np.zeros((1, 3, 2))
+        bad[0, 0, 0] = invalid
+        with pytest.raises(ValueError, match="finite"):
+            artifact.predict(bad)
+        invalid_output = GradientBoostArtifact(_RecordingEstimator(invalid), 6, (3, 2))
+        with pytest.raises(ValueError, match="invalid predictions"):
+            invalid_output.predict(np.zeros((1, 3, 2)))
+
+    def test_purge_uses_actual_resolution_through_a_suspension(self, monkeypatch):
+        import app.models.gradient_boost as core
+
+        frame = _synthetic_ohlcv(4, periods=1100)
+        frame = frame.drop(frame.index[785:845])
+        windows, targets, origins, ends = build_training_windows(
+            [frame], lambda data: np.arange(len(data)).reshape(-1, 1), 3, 30
+        )
+        estimator = _RecordingEstimator()
+        monkeypatch.setattr(core, "build_estimator", lambda **kwargs: estimator)
+        _, metrics = fit_windows(windows, targets, stamps=origins, label_end_stamps=ends)
+        start = np.datetime64(metrics["validation_start"].removesuffix("Z"))
+        retained_positions = estimator.train[:, -1].astype(int)
+        assert (frame.index.to_numpy()[retained_positions + 30] < start).all()
+        # The actual session horizon resolves after the estimated 47-day gap
+        # for some rows. Their origin is old enough, but their label is not.
+        estimated_only = (origins < start - np.timedelta64(47, "D")) & (ends >= start)
+        assert estimated_only.any()
+        assert pd.Timestamp(metrics["train_label_end"]) < pd.Timestamp(metrics["validation_start"])
+
+    def test_same_origin_day_is_not_split_and_negative_skill_is_visible(self, monkeypatch):
+        import app.models.gradient_boost as core
+
+        days = np.repeat(pd.date_range("2021-01-01", periods=334).to_numpy(), 3)[:1001]
+        offsets = np.tile(np.array([1, 2, 3], dtype="timedelta64[h]"), 334)[:1001]
+        origins = days + offsets
+        ends = origins + np.timedelta64(1, "D")
+        windows = np.arange(len(origins)).reshape(-1, 1, 1).astype(float)
+        estimator = _RecordingEstimator(value=0.2)
+        monkeypatch.setattr(core, "build_estimator", lambda **kwargs: estimator)
+        _, metrics = fit_windows(windows, np.full(len(origins), 0.1), stamps=origins, label_end_stamps=ends)
+        validation_indices = estimator.validation[:, 0].astype(int)
+        first_day = origins[validation_indices[0]].astype("datetime64[D]")
+        assert set(np.where(origins.astype("datetime64[D]") == first_day)[0]).issubset(validation_indices)
+        assert metrics["validation_rows"] == len(validation_indices)
+        assert metrics["skill_vs_no_change"] == pytest.approx(0.0)
+        estimator.value = 0.3
+        _, worse = fit_windows(windows, np.full(len(origins), 0.1), stamps=origins, label_end_stamps=ends)
+        assert worse["skill_vs_no_change"] == pytest.approx(-1.0)
+
+    def test_zero_baseline_has_no_defined_skill(self, monkeypatch):
+        import app.models.gradient_boost as core
+
+        stamps = pd.date_range("2021-01-01", periods=1000).to_numpy()
+        monkeypatch.setattr(core, "build_estimator", lambda **kwargs: _RecordingEstimator())
+        _, metrics = fit_windows(np.zeros((1000, 1, 1)), np.zeros(1000), stamps=stamps, label_end_stamps=stamps + np.timedelta64(1, "D"))
+        assert metrics["skill_vs_no_change"] is None
+        assert metrics["confidence"] == 0.0

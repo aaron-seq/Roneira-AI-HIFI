@@ -1,24 +1,17 @@
 """
 Gradient-boosted backend for the sequence-model slots.
 
-Why this exists: the LSTM and GAN slots require TensorFlow, which is not a
-declared dependency (see ml/requirements.txt). Without it both slots fell
-through to a hand-written heuristic -- `_fallback_predict` -- so two of the six
-advertised models were not trained on anything, and the Ensemble still weighted
-the LSTM slot at 0.3.
-
-xgboost and scikit-learn are already installed, train in seconds on CPU, and
-produce a genuine fitted model. This module wraps one in an adapter that speaks
-the small slice of the Keras API the existing inference code uses:
+The historical LSTM and GAN slots use fitted CPU regressors. Their public model
+identifiers remain compatible with saved requests; their runtime backend is
+reported separately. This adapter provides the existing sequence call shape:
 
     model.predict(x, verbose=0)[0][0]
 
-so `lstm.py` and `gan.py` keep their feature engineering, signal thresholds, and
-artifact-loading structure unchanged. The GAN slot additionally calls
-`predict([noise, sequence], verbose=0)`; the adapter accepts that shape too.
+The adapter also accepts the legacy `predict([noise, sequence], verbose=0)`
+shape, discarding noise because this is a deterministic point estimate.
 
-ponytail: point estimate only, so the GAN slot reports no spread and takes its
-confidence from validation error (#143). Upgrade path if an interval is ever
+This is a point estimate only, so the GAN slot reports no spread and takes its
+heuristic score from validation error (#143). Upgrade path if an interval is ever
 surfaced in the UI: fit quantile regressors (sklearn
 GradientBoostingRegressor(loss="quantile")) at p10/p50/p90.
 """
@@ -31,6 +24,7 @@ import numpy as np
 import pandas as pd
 
 logger = logging.getLogger("roneira-ml.gradient_boost")
+WINDOW_CONTRACT = "origin-inclusive-v2"
 
 try:
     import joblib
@@ -60,6 +54,8 @@ def _flatten(inputs) -> np.ndarray:
         inputs = inputs[-1]
 
     array = np.asarray(inputs, dtype=float)
+    if array.ndim not in (1, 2, 3):
+        raise ValueError("Prediction input must be a feature matrix or sequence batch.")
     if array.ndim == 1:
         array = array.reshape(1, -1)
     return array.reshape(array.shape[0], -1)
@@ -68,23 +64,100 @@ def _flatten(inputs) -> np.ndarray:
 class GradientBoostArtifact:
     """A fitted gradient-boosted regressor exposing a minimal Keras surface."""
 
-    def __init__(self, estimator, n_features: int):
+    def __init__(self, estimator, n_features: int, window_shape: tuple[int, int] | None = None, trained_horizon_sessions: int | None = None):
         self._estimator = estimator
         self.n_features = n_features
+        self.window_shape = window_shape
+        self.trained_horizon_sessions = trained_horizon_sessions
+        self.window_contract = WINDOW_CONTRACT
+
+    @property
+    def backend(self) -> str:
+        module = type(getattr(self, "_estimator", None)).__module__
+        if module.startswith("xgboost"):
+            return "xgboost"
+        if module.startswith("sklearn"):
+            return "sklearn"
+        return "unknown"
 
     def predict(self, inputs, verbose: int = 0):  # noqa: ARG002 - Keras parity
+        sequence = inputs[-1] if isinstance(inputs, (list, tuple)) else inputs
+        array = np.asarray(sequence, dtype=float)
+        fitted_shape = getattr(self, "window_shape", None)
+        if array.ndim == 3 and fitted_shape is not None and array.shape[1:] != fitted_shape:
+            raise ValueError("Prediction sequence shape does not match the fitted window.")
         matrix = _flatten(inputs)
-
-        # A window shorter/longer than training (different seq_len or feature
-        # count) would silently produce nonsense, so pad/truncate explicitly.
         if matrix.shape[1] != self.n_features:
-            fitted = np.zeros((matrix.shape[0], self.n_features), dtype=float)
-            width = min(matrix.shape[1], self.n_features)
-            fitted[:, :width] = matrix[:, :width]
-            matrix = fitted
+            raise ValueError("Prediction feature count does not match the fitted model.")
+        if len(matrix) == 0 or not np.isfinite(matrix).all():
+            raise ValueError("Prediction features must be finite and nonempty.")
 
         predictions = np.asarray(self._estimator.predict(matrix), dtype=float)
+        if predictions.size != len(matrix) or not np.isfinite(predictions).all():
+            raise ValueError("Estimator returned invalid predictions.")
         return predictions.reshape(-1, 1)
+
+
+def artifact_backend(artifact) -> str | None:
+    if artifact is None:
+        return None
+    if isinstance(artifact, GradientBoostArtifact):
+        return artifact.backend
+    module = type(artifact).__module__
+    return "tensorflow" if module.startswith(("tensorflow", "keras")) else "unknown"
+
+
+def trained_horizon(metadata: dict) -> int | None:
+    if not isinstance(metadata, dict):
+        return None
+    value = metadata.get("horizon_days")
+    return value if isinstance(value, int) and not isinstance(value, bool) and value > 0 else None
+
+
+def artifact_contract_reason(artifact, metadata: dict, sequence_length: int, n_features: int, horizon: int) -> str | None:
+    """Fail closed when a bundle does not describe the requested fitted task."""
+    if artifact is None:
+        return "artifact_unavailable"
+    if (
+        not isinstance(artifact, GradientBoostArtifact)
+        or not isinstance(metadata, dict)
+        or metadata.get("window_contract") != WINDOW_CONTRACT
+        or getattr(artifact, "window_contract", None) != WINDOW_CONTRACT
+        or artifact.backend not in ("xgboost", "sklearn")
+        or metadata.get("backend") != artifact.backend
+        or metadata.get("sequence_length") != sequence_length
+        or metadata.get("n_features") != sequence_length * n_features
+        or getattr(artifact, "n_features", None) != sequence_length * n_features
+        or getattr(artifact, "window_shape", None) != (sequence_length, n_features)
+        or trained_horizon(metadata) is None
+        or getattr(artifact, "trained_horizon_sessions", None) != trained_horizon(metadata)
+    ):
+        return "artifact_incompatible"
+    if trained_horizon(metadata) != horizon:
+        return "horizon_mismatch"
+    return None
+
+
+def no_change_prediction(df: pd.DataFrame, artifact, metadata: dict, reason: str, slot: str) -> dict:
+    """Represent an unavailable forecast without inventing a trading signal."""
+    try:
+        current_price = float(df["Close"].iloc[-1])
+        price = round(current_price, 2) if np.isfinite(current_price) and current_price > 0 else None
+    except (KeyError, IndexError, TypeError, ValueError):
+        price = None
+    return {
+        "predicted_price": price,
+        "predicted_return": 0.0,
+        "confidence": 0.0,
+        "confidence_breakdown": {"technical": 0.0, "fundamental": 0.0, "sentiment": 0.0, "historical": 0.0},
+        "short_term_signal": {"signal": "HOLD", "score": 5.0},
+        "long_term_signal": {"signal": "HOLD", "score": 5.0},
+        "indicators": [{"name": f"{slot} forecast unavailable", "value": 0.0, "signal": "Neutral"}],
+        "fallback": True,
+        "fallback_reason": reason,
+        "backend": artifact_backend(artifact),
+        "trained_horizon_sessions": trained_horizon(metadata),
+    }
 
 
 def build_estimator(n_estimators: int = 300, max_depth: int = 4):
@@ -142,84 +215,103 @@ def fit_windows(
     n_estimators: int = 300,
     max_depth: int = 4,
     stamps: np.ndarray | None = None,
+    label_end_stamps: np.ndarray | None = None,
     purge_days: int = 0,
 ) -> tuple[GradientBoostArtifact, dict]:
     """
-    Fit on 3-D sequence windows, returning the artifact and validation metrics.
+    Fit an origin-date split with training labels resolved before validation.
 
-    The split is chronological (no shuffling): these are overlapping time
-    windows, so a random split would leak future information into training and
-    report an optimistic error. `build_training_windows` sorts its output by
-    date for exactly this reason -- appending frame-by-frame made the last 20%
-    of rows *a different set of tickers* rather than a later period, so this
-    split measured cross-instrument transfer while reporting it as a time split.
-
-    `purge_days` removes training windows whose forward label resolves inside
-    the validation period. It is measured in **calendar days against `stamps`**,
-    not in rows. Counting rows was wrong once the pool was date-sorted: nine
-    tickers contribute a window for the same date, so a 30-row purge spanned two
-    trading sessions (measured: 2018-04-09 to 2018-04-12) while the label needed
-    thirty. Roughly 28 of the 30 sessions of overlap stayed in training and the
-    reported skill was optimistic.
-
-    Pass calendar days, generously: sessions-to-calendar is about 7/5 and market
-    holidays only widen it, so over-purging by a few days costs a little training
-    data and under-purging silently inflates the score.
+    The final approximately 20% of windows are held out, including every ticker
+    sharing the first validation origin. Actual label-end timestamps enforce
+    availability even when sessions have gaps or trading is suspended.
+    `purge_days` optionally adds a calendar embargo; it never substitutes for
+    checking the label-resolution boundary.
     """
+    windows = np.asarray(windows, dtype=float)
+    if windows.ndim != 3:
+        raise ValueError("Training windows must have batch, sequence and feature dimensions.")
     X = windows.reshape(windows.shape[0], -1)
     y = np.asarray(targets, dtype=float).reshape(-1)
 
     if len(X) < 40:
         raise ValueError("Not enough training windows for the gradient-boosted model.")
 
-    split = int(len(X) * 0.8)
-    train_end = split
-    if stamps is not None and purge_days > 0:
-        stamp_array = _to_utc_naive(stamps)
-        if len(stamp_array) != len(X):
-            raise ValueError("stamps must line up 1:1 with the training windows.")
-        cutoff = stamp_array[split] - np.timedelta64(int(purge_days), "D")
-        train_end = int(np.searchsorted(stamp_array[:split], cutoff, side="left"))
+    if len(y) != len(X) or not np.isfinite(X).all() or not np.isfinite(y).all():
+        raise ValueError("Training features and targets must be finite and line up 1:1.")
+    if stamps is None or label_end_stamps is None:
+        raise ValueError("Origin and label-end timestamps are required for validation.")
+    stamp_array = _to_utc_naive(stamps)
+    label_ends = _to_utc_naive(label_end_stamps)
+    if len(stamp_array) != len(X) or len(label_ends) != len(X):
+        raise ValueError("Timestamps must line up 1:1 with the training windows.")
+    if (
+        np.isnat(stamp_array).any()
+        or np.isnat(label_ends).any()
+        or (np.diff(stamp_array) < np.timedelta64(0, "ns")).any()
+        or (label_ends <= stamp_array).any()
+        or purge_days < 0
+    ):
+        raise ValueError("Origin timestamps must be sorted and labels must resolve later.")
 
-    # Raise rather than clamp. `max(1, ...)` meant a dataset barely past the
-    # 40-window guard trained on a couple of rows and still wrote an artifact,
-    # with a confidence derived from a handful of validation rows.
-    if train_end < MIN_TRAIN_ROWS:
+    # Keep every instrument on the same UTC calendar day in the same split,
+    # including exchanges whose session timestamps have different offsets.
+    validation_start = stamp_array[int(len(X) * 0.8)].astype("datetime64[D]").astype("datetime64[ns]")
+    split = int(np.searchsorted(stamp_array, validation_start, side="left"))
+    cutoff = validation_start - np.timedelta64(int(purge_days), "D")
+    train_mask = (stamp_array < cutoff) & (label_ends < validation_start)
+    train_rows = int(train_mask.sum())
+    if train_rows < MIN_TRAIN_ROWS:
         raise ValueError(
-            f"Purging {purge_days} days leaves {train_end} training rows "
+            f"Purging unresolved labels and {purge_days} days leaves {train_rows} training rows "
             f"(minimum {MIN_TRAIN_ROWS}). Supply more history."
         )
 
-    X_train, X_test = X[:train_end], X[split:]
-    y_train, y_test = y[:train_end], y[split:]
+    X_train, X_test = X[train_mask], X[split:]
+    y_train, y_test = y[train_mask], y[split:]
 
     estimator = build_estimator(n_estimators=n_estimators, max_depth=max_depth)
     estimator.fit(X_train, y_train)
 
-    predictions = np.asarray(estimator.predict(X_test), dtype=float)
+    predictions = np.asarray(estimator.predict(X_test), dtype=float).reshape(-1)
+    if len(predictions) != len(y_test) or not np.isfinite(predictions).all():
+        raise ValueError("Estimator returned invalid validation predictions.")
     mae = float(np.mean(np.abs(predictions - y_test)))
     rmse = float(np.sqrt(np.mean((predictions - y_test) ** 2)))
 
     # Baseline = predicting "no change". If the model cannot beat that, its
     # confidence should reflect it rather than reporting a flattering number.
     baseline_mae = float(np.mean(np.abs(y_test)))
-    skill = 0.0 if baseline_mae == 0 else max(0.0, 1.0 - (mae / baseline_mae))
+    skill = None if baseline_mae == 0 else 1.0 - (mae / baseline_mae)
 
+    def utc_string(stamp):
+        return pd.Timestamp(stamp).isoformat() + "Z"
+
+    artifact = GradientBoostArtifact(
+        estimator, n_features=X.shape[1], window_shape=windows.shape[1:]
+    )
     metrics = {
         "validation_mae": mae,
         "validation_rmse": rmse,
         "baseline_mae": baseline_mae,
         "skill_vs_no_change": skill,
-        "confidence": float(max(35.0, min(85.0, 40.0 + skill * 50.0))),
+        "confidence": 0.0 if skill is None else float(max(0.0, min(85.0, 40.0 + skill * 50.0))),
         "training_windows": int(len(X)),
         "train_rows": int(len(X_train)),
+        "train_origin_start": utc_string(stamp_array[train_mask].min()),
+        "train_origin_end": utc_string(stamp_array[train_mask].max()),
+        "train_label_end": utc_string(label_ends[train_mask].max()),
+        "validation_rows": int(len(X_test)),
+        "validation_start": utc_string(validation_start),
+        "validation_end": utc_string(stamp_array[-1]),
+        "validation_label_end": utc_string(label_ends[split:].max()),
+        "validation_method": "chronological-purged",
         "purge_days": int(purge_days),
-        "purged_rows": int(split - train_end),
+        "purged_rows": int(split - train_rows),
         "n_features": int(X.shape[1]),
-        "backend": "xgboost" if XGBOOST_AVAILABLE else "sklearn",
+        "backend": artifact.backend,
     }
 
-    return GradientBoostArtifact(estimator, n_features=X.shape[1]), metrics
+    return artifact, metrics
 
 
 def build_training_windows(
@@ -227,7 +319,7 @@ def build_training_windows(
     prepare,
     sequence_length: int,
     horizon_days: int,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Turn raw OHLCV frames into (windows, forward-return targets).
 
@@ -236,13 +328,16 @@ def build_training_windows(
     Targets stop `horizon_days` before the end of each frame -- beyond that the
     realised forward return does not exist yet and would be fabricated.
 
-    Returns (windows, targets, stamps), all sorted by window end date across all
-    frames. Appending frame after frame instead made row order mean "which
-    ticker", so the 80/20 split in `fit_windows` held out the last tickers rather
-    than the last years. The stamps go back out because `fit_windows` needs real
-    dates to purge by -- row counts do not survive pooling (see its docstring).
+    Returns (windows, targets, origins, label_ends), sorted across all frames.
+    Each window includes the origin close, matching the latest-window serving
+    call. The label is the return from that close to the close exactly
+    `horizon_days` observed sessions later. Actual dates survive pooling so
+    validation can exclude every training label unresolved at its start.
     """
+    if sequence_length < 1 or horizon_days < 1:
+        raise ValueError("Sequence length and forecast horizon must be positive.")
     stamps: list = []
+    label_ends: list = []
     windows: list[np.ndarray] = []
     targets: list[float] = []
 
@@ -250,26 +345,28 @@ def build_training_windows(
         if len(frame) < sequence_length + horizon_days + 30:
             continue
 
-        features = prepare(frame)
-        features = np.nan_to_num(
-            np.asarray(features, dtype=float), nan=0.0, posinf=0.0, neginf=0.0
-        )
+        if not frame.index.is_monotonic_increasing or not frame.index.is_unique:
+            raise ValueError("Training histories must have unique, sorted session timestamps.")
+        features = np.asarray(prepare(frame), dtype=float)
+        if features.ndim != 2 or len(features) != len(frame):
+            raise ValueError("Prepared features must line up 1:1 with history rows.")
         close = np.asarray(frame["Close"].values, dtype=float)
 
-        for idx in range(sequence_length, len(close) - horizon_days):
+        for idx in range(sequence_length - 1, len(close) - horizon_days):
             start, future = close[idx], close[idx + horizon_days]
 
             # Skip rather than impute: a non-finite price means the label would
             # be invented. Boosters reject NaN labels outright, and silently
             # zero-filling them would teach the model that gaps mean "no move".
-            if not np.isfinite(start) or not np.isfinite(future) or start <= 0:
+            if not np.isfinite(start) or not np.isfinite(future) or start <= 0 or future <= 0:
                 continue
 
-            window = features[idx - sequence_length : idx]
+            window = features[idx - sequence_length + 1 : idx + 1]
             if not np.isfinite(window).all():
                 continue
 
             stamps.append(frame.index[idx])
+            label_ends.append(frame.index[idx + horizon_days])
             windows.append(window)
             targets.append((future - start) / start)
 
@@ -282,6 +379,7 @@ def build_training_windows(
         np.asarray(windows, dtype=float)[order],
         np.asarray(targets, dtype=float)[order],
         stamp_array[order],
+        _to_utc_naive(label_ends)[order],
     )
 
 

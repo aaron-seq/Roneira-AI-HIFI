@@ -43,6 +43,11 @@ Railway and Render both work; the service is a standard uvicorn app.
 
 No training step at deploy — the trained artifacts are committed under
 `ml/artifacts/generated`, which is what keeps this deployable on a free tier.
+Ship model files and their metadata together. The current bundles are trained for
+30 observed sessions and use `origin-inclusive-v2`; older bundles fail compatibility
+checks and produce a disclosed no-change fallback. `/health` reports readiness only
+for a compatible loaded artifact. Deploy the API contract, UI and bundled artifacts
+together; rollback by reverting the complete change. TensorFlow training is disabled.
 
 **Required environment variable:**
 

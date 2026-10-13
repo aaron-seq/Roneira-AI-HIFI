@@ -715,15 +715,15 @@ class TestEnsemble:
         result = ensemble.combine(preds)
         assert result["predicted_price"] == 150
 
-    def test_confidence_boost_on_agreement(self, ensemble):
-        # All models agree → confidence boost
+    def test_agreement_does_not_inflate_heuristic_score(self, ensemble):
+        # Correlated agreement is descriptive, not evidence of calibration.
         preds = [
             {"predicted_price": 100, "confidence": 60, "indicators": [], "short_term_signal": {"signal": "BUY", "score": 7}, "long_term_signal": {"signal": "BUY", "score": 6}},
             {"predicted_price": 101, "confidence": 60, "indicators": [], "short_term_signal": {"signal": "BUY", "score": 7}, "long_term_signal": {"signal": "BUY", "score": 6}},
             {"predicted_price": 100.5, "confidence": 60, "indicators": [], "short_term_signal": {"signal": "BUY", "score": 7}, "long_term_signal": {"signal": "BUY", "score": 6}},
         ]
         result = ensemble.combine(preds)
-        assert result["confidence"] > 60  # Should get agreement bonus
+        assert result["confidence"] == 60
 
     def test_agreement_score_never_negative(self, ensemble):
         """A >10% relative spread used to report a negative agreement score."""
@@ -817,70 +817,165 @@ class TestPerformanceTracking:
 
 
 class _StubPredictorModel:
+    __module__ = "sklearn.test_stub"
+
     def __init__(self, value: float):
         self.value = value
+        self.calls = 0
 
-    def predict(self, *_args, **_kwargs):
-        return np.array([[self.value]])
+    def predict(self, inputs):
+        self.calls += 1
+        return np.full(len(inputs), self.value)
+
+
+def _sequence_predictor(factory, value=0.02):
+    from app.models.gradient_boost import GradientBoostArtifact, WINDOW_CONTRACT
+
+    predictor = factory()
+    stub = _StubPredictorModel(value)
+    shape = (predictor.sequence_length, predictor.features_per_session)
+    artifact = GradientBoostArtifact(stub, int(np.prod(shape)), shape, trained_horizon_sessions=30)
+    attribute = "_model" if factory is LSTMPredictor else "_generator"
+    setattr(predictor, attribute, artifact)
+    predictor._metadata = {
+        "confidence": 55.0,
+        "validation_mae": 0.02,
+        "backend": artifact.backend,
+        "horizon_days": 30,
+        "window_contract": WINDOW_CONTRACT,
+        "sequence_length": predictor.sequence_length,
+        "n_features": int(np.prod(shape)),
+    }
+    return predictor, stub
 
 
 class TestArtifactBackedDeepLearning:
     def test_gan_makes_one_call_and_reports_no_fake_spread(self, sample_data):
-        """
-        Five draws against a deterministic backend were five identical calls
-        and a "Prediction Std" that was always 0 (#143).
-        """
-        stub = _StubPredictorModel(0.02)
-        calls = []
-        stub.predict = lambda *a, **k: calls.append(1) or np.array([[0.02]])
-        predictor = GANPredictor()
-        predictor._generator = stub
-        predictor._metadata = {"confidence": 55.0}
-
+        predictor, stub = _sequence_predictor(GANPredictor)
         result = predictor.predict(sample_data, horizon_days=30)
-        assert len(calls) == 1
+        assert stub.calls == 1
         assert "Prediction Std" not in {i["name"] for i in result["indicators"]}
+        assert "Generator Loss" not in {i["name"] for i in result["indicators"]}
         assert result["confidence"] == 55.0
 
-    def test_lstm_fallback_without_artifact(self, sample_data):
-        predictor = LSTMPredictor()
-        predictor._model = None
-
+    @pytest.mark.parametrize("factory", [LSTMPredictor, GANPredictor])
+    def test_fallback_without_artifact_is_explicit_no_change(self, factory, sample_data):
+        predictor, _ = _sequence_predictor(factory)
+        setattr(predictor, "_model" if factory is LSTMPredictor else "_generator", None)
         result = predictor.predict(sample_data, horizon_days=30)
+        assert result["fallback_reason"] == "artifact_unavailable"
         assert result["fallback"] is True
-        assert result["predicted_price"] > 0
+        assert result["predicted_price"] == round(float(sample_data["Close"].iloc[-1]), 2)
+        assert result["confidence"] == 0.0
+        assert result["short_term_signal"] == {"signal": "HOLD", "score": 5.0}
+        assert result["backend"] is None
+        assert not predictor.is_ready()
 
-    def test_gan_fallback_without_artifact(self, sample_data):
-        predictor = GANPredictor()
-        predictor._generator = None
-
-        result = predictor.predict(sample_data, horizon_days=30)
-        assert result["fallback"] is True
-        assert result["predicted_price"] > 0
-
-    def test_lstm_uses_loaded_model_path(self, sample_data):
-        predictor = LSTMPredictor()
-        predictor._model = _StubPredictorModel(0.03)
-        predictor._metadata = {
-            "confidence": 60.0,
-            "validation_mae": 0.02,
-            "epochs_run": 8,
-        }
-
+    @pytest.mark.parametrize("factory", [LSTMPredictor, GANPredictor])
+    def test_compatible_artifact_uses_loaded_model(self, factory, sample_data):
+        predictor, stub = _sequence_predictor(factory, value=0.03)
         result = predictor.predict(sample_data, horizon_days=30)
         assert result.get("fallback") is None
+        assert stub.calls == 1
         assert result["short_term_signal"]["signal"] in ("BUY", "STRONG_BUY")
         assert result["predicted_price"] > float(sample_data["Close"].iloc[-1])
+        assert result["backend"] == "sklearn"
+        assert result["trained_horizon_sessions"] == 30
+        assert predictor.is_ready()
+        assert result["confidence_breakdown"]["fundamental"] == 0.0
+        assert result["confidence_breakdown"]["sentiment"] == 0.0
 
-    def test_gan_uses_loaded_generator_path(self, sample_data):
-        predictor = GANPredictor()
-        predictor._generator = _StubPredictorModel(0.02)
-        predictor._metadata = {
-            "confidence": 55.0,
-            "generator_loss": 0.2,
-        }
+    @pytest.mark.parametrize("factory", [LSTMPredictor, GANPredictor])
+    @pytest.mark.parametrize("requested", [1, 7, 90, 180, 365, 400])
+    def test_unsupported_horizon_does_not_call_fitted_model(self, factory, requested, sample_data):
+        predictor, stub = _sequence_predictor(factory)
+        result = predictor.predict(sample_data, horizon_days=requested)
+        assert stub.calls == 0
+        assert result["fallback_reason"] == "horizon_mismatch"
+        assert result["predicted_return"] == 0.0
+        assert result["confidence"] == 0.0
+        assert result["trained_horizon_sessions"] == 30
 
+    @pytest.mark.parametrize("factory", [LSTMPredictor, GANPredictor])
+    @pytest.mark.parametrize("key,value", [
+        ("window_contract", None),
+        ("window_contract", "legacy"),
+        ("horizon_days", None),
+        ("horizon_days", "30"),
+        ("horizon_days", True),
+        ("sequence_length", 100),
+        ("n_features", 1),
+        ("backend", "tensorflow"),
+    ])
+    def test_incompatible_metadata_is_not_ready_and_does_not_infer(self, factory, key, value, sample_data):
+        predictor, stub = _sequence_predictor(factory)
+        predictor._metadata[key] = value
+        assert not predictor.is_ready()
         result = predictor.predict(sample_data, horizon_days=30)
-        assert result.get("fallback") is None
-        assert result["short_term_signal"]["signal"] in ("BUY", "STRONG_BUY")
-        assert result["predicted_price"] > float(sample_data["Close"].iloc[-1])
+        assert result["fallback_reason"] == "artifact_incompatible"
+        assert stub.calls == 0
+
+    @pytest.mark.parametrize("factory", [LSTMPredictor, GANPredictor])
+    def test_nonfinite_latest_features_never_reach_estimator(self, factory, sample_data, monkeypatch):
+        predictor, stub = _sequence_predictor(factory)
+        features = np.zeros((len(sample_data), predictor.features_per_session))
+        features[-1, 0] = np.inf
+        monkeypatch.setattr(predictor, "_prepare_features" if factory is LSTMPredictor else "_prepare_data", lambda data: features)
+        result = predictor.predict(sample_data, horizon_days=30)
+        assert result["fallback_reason"] == "invalid_input"
+        assert stub.calls == 0
+        assert result["confidence"] == 0.0
+
+    @pytest.mark.parametrize("factory", [LSTMPredictor, GANPredictor])
+    def test_nonfinite_estimator_output_falls_back_safely(self, factory, sample_data):
+        predictor, _ = _sequence_predictor(factory, value=np.nan)
+        result = predictor.predict(sample_data, horizon_days=30)
+        assert result["fallback_reason"] == "inference_failed"
+        assert result["predicted_return"] == 0.0
+        assert result["confidence"] == 0.0
+
+    @pytest.mark.parametrize("factory", [LSTMPredictor, GANPredictor])
+    def test_failure_reason_does_not_expose_exception_text(self, factory, sample_data):
+        predictor, stub = _sequence_predictor(factory)
+
+        def fail(inputs):
+            raise RuntimeError("internal artifact details")
+
+        stub.predict = fail
+        result = predictor.predict(sample_data, horizon_days=30)
+        assert result["fallback_reason"] == "inference_failed"
+        assert "internal artifact details" not in str(result)
+
+    @pytest.mark.parametrize("factory", [LSTMPredictor, GANPredictor])
+    def test_legacy_tensorflow_model_is_not_served(self, factory, sample_data):
+        predictor, stub = _sequence_predictor(factory)
+        neural = type("LegacyNeuralModel", (_StubPredictorModel,), {"__module__": "tensorflow.keras.models"})(0.02)
+        setattr(predictor, "_model" if factory is LSTMPredictor else "_generator", neural)
+        result = predictor.predict(sample_data, horizon_days=30)
+        assert result["fallback_reason"] == "artifact_incompatible"
+        assert result["backend"] == "tensorflow"
+        assert neural.calls == 0
+
+    @pytest.mark.parametrize("factory", [LSTMPredictor, GANPredictor])
+    def test_mixed_artifact_and_metadata_horizons_are_incompatible(self, factory, sample_data):
+        predictor, stub = _sequence_predictor(factory)
+        artifact = predictor._model if factory is LSTMPredictor else predictor._generator
+        artifact.trained_horizon_sessions = 7
+        assert not predictor.is_ready()
+        result = predictor.predict(sample_data, horizon_days=30)
+        assert result["fallback_reason"] == "artifact_incompatible"
+        assert stub.calls == 0
+
+    @pytest.mark.parametrize("factory", [LSTMPredictor, GANPredictor])
+    def test_experimental_tensorflow_training_is_blocked(self, factory, sample_data):
+        with pytest.raises(RuntimeError, match="experimental"):
+            factory().train([sample_data], horizon_days=30)
+
+    @pytest.mark.parametrize("factory", [LSTMPredictor, GANPredictor])
+    @pytest.mark.parametrize("content", ["{", "[]", "null"])
+    def test_malformed_metadata_does_not_crash_startup(self, factory, content, tmp_path, monkeypatch):
+        monkeypatch.setenv("ML_MODEL_DIR", str(tmp_path))
+        (tmp_path / factory.metadata_filename).write_text(content)
+        predictor = factory()
+        assert predictor._metadata == {}
+        assert not predictor.is_ready()

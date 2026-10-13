@@ -10,14 +10,12 @@ const ML_SERVICE_TOKEN = process.env.ML_SERVICE_TOKEN || "";
 
 
 
-async function persistPrediction(prediction: PredictionResult) {
+async function persistPrediction(
+  prediction: PredictionResult,
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    const userId = user?.id ?? null;
-
     const cacheRow = {
       ticker: prediction.ticker,
       timeframe: prediction.timeframe,
@@ -54,12 +52,19 @@ async function persistPrediction(prediction: PredictionResult) {
         model_used: prediction.model_used,
         predicted_price: prediction.predicted_price,
         confidence: prediction.confidence,
+        fallback: prediction.fallback ?? null,
+        fallback_reason: prediction.fallback_reason ?? null,
+        excluded_components: prediction.excluded_components ?? [],
       },
     };
 
     await Promise.allSettled([
-      supabase.from("predictions_cache").insert(cacheRow),
-      supabase.from("prediction_history").insert(historyRow),
+      // An unavailable model returns a disclosed no-change reference. Saving
+      // it as a successful forecast would pollute later outcome evaluation.
+      ...(!prediction.fallback ? [
+        supabase.from("predictions_cache").insert(cacheRow),
+        supabase.from("prediction_history").insert(historyRow),
+      ] : []),
       supabase.from("audit_log").insert(auditRow),
     ]);
   } catch (error) {
@@ -75,6 +80,15 @@ export async function POST(request: Request) {
     const limit = await rateLimit("predict", request, 20, 60);
     if (!limit.ok) {
       return tooManyRequests(60);
+    }
+
+    // Prediction fits consume CPU and are part of the authenticated dashboard.
+    // Verify the session before contacting the private service, and reuse that
+    // same identity when saving the result.
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const parsed = predictRequestSchema.safeParse(await request.json());
@@ -124,7 +138,7 @@ export async function POST(request: Request) {
 
     const prediction = (await mlResponse.json()) as PredictionResult;
     // Persist prediction for historical outcome evaluation and audit logging
-    await persistPrediction(prediction);
+    await persistPrediction(prediction, supabase, user.id);
     return NextResponse.json(prediction);
   } catch (error) {
     console.error("Prediction API error:", error);

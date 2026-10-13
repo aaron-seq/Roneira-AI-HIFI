@@ -1,129 +1,70 @@
 """
-Artifact-backed GAN generator for stock price prediction.
+Artifact-backed second sequence regression slot for stock price prediction.
 
 Training is performed offline; runtime inference only loads the saved
-generator artifact on startup and falls back when unavailable.
+gradient-boosted artifact on startup. Optional TensorFlow GAN training is
+experimental and unavailable until its validation contract has been corrected.
 """
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
 from app.models.artifacts import artifact_path, load_metadata, save_metadata
 from app.models.gradient_boost import (
+    WINDOW_CONTRACT,
+    artifact_backend,
+    artifact_contract_reason,
     build_training_windows,
     fit_windows,
     load_artifact,
+    no_change_prediction,
     save_artifact,
+    trained_horizon,
 )
 
 logger = logging.getLogger("roneira-ml.gan")
 
-try:
-    import tensorflow as tf
-    from tensorflow import keras
-
-    TF_AVAILABLE = True
-    logger.info("TensorFlow %s loaded for GAN inference", tf.__version__)
-except ImportError:
-    TF_AVAILABLE = False
-    keras = None
-    logger.warning("TensorFlow not available — GAN model will use fallback")
-
 
 class GANPredictor:
-    """GAN-based price trajectory predictor backed by a saved generator artifact."""
+    """Second sequence slot backed by a fitted gradient-boosted artifact."""
 
-    model_filename = "gan_generator.keras"
+    features_per_session = 6
+
     gb_model_filename = "gan_gbm.joblib"
     metadata_filename = "gan_metadata.json"
 
     def __init__(self, sequence_length: int = 30, latent_dim: int = 32, epochs: int = 20, batch_size: int = 32):
         self.sequence_length = sequence_length
-        self.latent_dim = latent_dim
-        self.epochs = epochs
-        self.batch_size = batch_size
         self._generator = None
         self._metadata: dict[str, float | int | str | list[str]] = {}
         self._load_artifact_bundle()
 
     def is_ready(self) -> bool:
-        return self._generator is not None
-
-    def _load_model_from_disk(self, path: Path):
-        if keras is None:
-            return None
-        return keras.models.load_model(path, compile=False)
+        return artifact_contract_reason(
+            self._generator, self._metadata, self.sequence_length,
+            self.features_per_session, trained_horizon(self._metadata) or 0,
+        ) is None
 
     def _load_artifact_bundle(self):
         """
         Loads the GAN generator and metadata from artifacts on boot.
         This enables rapid scaling as inference nodes don't need to retrain.
 
-        Falls back to a gradient-boosted artifact when TensorFlow is absent --
-        it is not a declared dependency, and without this the slot served the
-        untrained heuristic in `_fallback_predict`.
+        The gradient-boosted bundle is the supported backend. Legacy Keras
+        artifacts have no validated origin/horizon contract and are not served.
         """
         self._metadata = load_metadata(self.metadata_filename)
-        path = artifact_path(self.model_filename)
-
-        if TF_AVAILABLE and path.exists():
-            try:
-                self._generator = self._load_model_from_disk(path)
-                self.sequence_length = int(self._metadata.get("sequence_length", self.sequence_length))
-                self.latent_dim = int(self._metadata.get("latent_dim", self.latent_dim))
-                logger.info("Loaded GAN artifact from %s", path)
-                return
-            except Exception as exc:
-                logger.error("Failed to load GAN artifact: %s", exc)
-                self._generator = None
-
         gb_path = artifact_path(self.gb_model_filename)
         gb_model = load_artifact(gb_path)
         if gb_model is not None:
             self._generator = gb_model
-            self.sequence_length = int(self._metadata.get("sequence_length", self.sequence_length))
+            sequence_length = self._metadata.get("sequence_length")
+            if isinstance(sequence_length, int) and not isinstance(sequence_length, bool) and sequence_length > 0:
+                self.sequence_length = sequence_length
             logger.info("Loaded gradient-boosted GAN-slot artifact from %s", gb_path)
-        elif path.exists():
-            logger.warning("GAN artifact found but TensorFlow is unavailable")
-
-    def _build_generator(self, n_features: int):
-        if keras is None:
-            return None
-
-        noise_input = keras.layers.Input(shape=(self.latent_dim,))
-        condition_input = keras.layers.Input(shape=(self.sequence_length, n_features))
-
-        condition = keras.layers.LSTM(64, return_sequences=False)(condition_input)
-        condition = keras.layers.Dense(32, activation="relu")(condition)
-        merged = keras.layers.Concatenate()([noise_input, condition])
-        x = keras.layers.Dense(64, activation="relu")(merged)
-        x = keras.layers.Dense(32, activation="relu")(x)
-        output = keras.layers.Dense(1, activation="linear")(x)
-        return keras.Model(inputs=[noise_input, condition_input], outputs=output)
-
-    def _build_discriminator(self, n_features: int):
-        if keras is None:
-            return None
-
-        seq_input = keras.layers.Input(shape=(self.sequence_length, n_features))
-        target_input = keras.layers.Input(shape=(1,))
-        x = keras.layers.LSTM(64, return_sequences=False)(seq_input)
-        x = keras.layers.Dense(32, activation="relu")(x)
-        merged = keras.layers.Concatenate()([x, target_input])
-        merged = keras.layers.Dense(32, activation="relu")(merged)
-        merged = keras.layers.Dropout(0.3)(merged)
-        output = keras.layers.Dense(1, activation="sigmoid")(merged)
-        model = keras.Model(inputs=[seq_input, target_input], outputs=output)
-        model.compile(
-            optimizer=keras.optimizers.Adam(0.0002),
-            loss="binary_crossentropy",
-            metrics=["accuracy"],
-        )
-        return model
 
     def _prepare_data(self, df: pd.DataFrame) -> np.ndarray:
         features = pd.DataFrame(index=df.index)
@@ -141,135 +82,40 @@ class GANPredictor:
         features["volatility"] = df["Close"].pct_change().rolling(10).std().fillna(0)
         return features.fillna(0).values
 
-    def _create_sequences(self, data: np.ndarray, target: np.ndarray):
-        features, labels = [], []
-        for idx in range(self.sequence_length, len(data)):
-            features.append(data[idx - self.sequence_length:idx])
-            labels.append(target[idx])
-        return np.array(features), np.array(labels).reshape(-1, 1)
-
     def train(self, datasets: list[pd.DataFrame], horizon_days: int = 30) -> dict:
-        """
-        Offline GAN training entrypoint. Called via cron or admin trigger.
-        Saves the generator component as a `.keras` artifact for inference.
-        """
-        if not TF_AVAILABLE:
-            raise RuntimeError("TensorFlow is required to train the GAN model.")
-
-        sequence_batches: list[np.ndarray] = []
-        label_batches: list[np.ndarray] = []
-
-        for frame in datasets:
-            if len(frame) < self.sequence_length + horizon_days + 30:
-                continue
-
-            features = self._prepare_data(frame)
-            close_prices = frame["Close"].values
-            target_returns = np.zeros(len(close_prices))
-            for idx in range(len(close_prices) - horizon_days):
-                target_returns[idx] = (
-                    close_prices[idx + horizon_days] - close_prices[idx]
-                ) / close_prices[idx]
-
-            valid_end = len(close_prices) - horizon_days
-            X_batch, y_batch = self._create_sequences(
-                features[:valid_end],
-                target_returns[:valid_end],
-            )
-
-            if len(X_batch) == 0:
-                continue
-
-            sequence_batches.append(X_batch)
-            label_batches.append(y_batch)
-
-        if not sequence_batches:
-            raise ValueError("No suitable training windows were created for the GAN model.")
-
-        X = np.concatenate(sequence_batches)
-        y = np.concatenate(label_batches)
-        n_features = X.shape[2]
-
-        generator = self._build_generator(n_features)
-        discriminator = self._build_discriminator(n_features)
-        if generator is None or discriminator is None:
-            raise RuntimeError("GAN generator/discriminator could not be constructed.")
-
-        batch_size = min(self.batch_size, max(8, len(X) // 5))
-        g_losses: list[float] = []
-        d_losses: list[float] = []
-
-        for _ in range(self.epochs):
-            idx = np.random.randint(0, len(X), batch_size)
-            real_seq = X[idx]
-            real_targets = y[idx]
-
-            noise = np.random.normal(0, 1, (batch_size, self.latent_dim))
-            fake_targets = generator.predict([noise, real_seq], verbose=0)
-
-            d_loss_real = discriminator.train_on_batch([real_seq, real_targets], np.ones((batch_size, 1)) * 0.9)
-            d_loss_fake = discriminator.train_on_batch([real_seq, fake_targets], np.zeros((batch_size, 1)))
-            d_loss = 0.5 * (np.array(d_loss_real) + np.array(d_loss_fake))
-
-            discriminator.trainable = False
-            noise_input = keras.layers.Input(shape=(self.latent_dim,))
-            seq_input = keras.layers.Input(shape=(self.sequence_length, n_features))
-            combined_output = discriminator([seq_input, generator([noise_input, seq_input])])
-            combined = keras.Model([noise_input, seq_input], combined_output)
-            combined.compile(optimizer=keras.optimizers.Adam(0.0002), loss="binary_crossentropy")
-            g_loss = combined.train_on_batch([noise, real_seq], np.ones((batch_size, 1)))
-            discriminator.trainable = True
-
-            g_losses.append(float(g_loss if isinstance(g_loss, (int, float)) else g_loss[0]))
-            d_losses.append(float(d_loss[0] if hasattr(d_loss, "__len__") else d_loss))
-
-        model_path = artifact_path(self.model_filename)
-        model_path.parent.mkdir(parents=True, exist_ok=True)
-        generator.save(model_path)
-
-        metadata = {
-            "sequence_length": self.sequence_length,
-            "latent_dim": self.latent_dim,
-            "epochs_run": self.epochs,
-            "generator_loss": float(g_losses[-1]) if g_losses else 0.0,
-            "discriminator_loss": float(d_losses[-1]) if d_losses else 0.0,
-            "confidence": 55.0,
-            "trained_on": len(datasets),
-        }
-        save_metadata(self.metadata_filename, metadata)
-
-        self._metadata = metadata
-        self._generator = generator
-        return metadata
+        """The optional TensorFlow path is experimental and unvalidated."""
+        raise RuntimeError(
+            "TensorFlow GAN training is experimental and has no validated "
+            "origin/horizon contract. Use train_gradient_boost instead."
+        )
 
     def train_gradient_boost(self, datasets: list[pd.DataFrame], horizon_days: int = 30) -> dict:
         """
         Train the gradient-boosted backend for this slot.
 
-        Used instead of `train()` when TensorFlow is unavailable, which is the
-        default for this project. A tree ignores the latent noise, so this
-        backend is a point estimate; confidence derives from validation error.
+        This backend is a deterministic point estimate; its heuristic score
+        derives from validation error against the no-change baseline.
         """
-        windows, targets, stamps = build_training_windows(
+        windows, targets, stamps, label_ends = build_training_windows(
             datasets,
             self._prepare_data,
             self.sequence_length,
             horizon_days,
         )
-        # Calendar days, not sessions: ~7/5 plus a few for market holidays, so
-        # the purge covers the whole label horizon rather than part of it.
         artifact, metrics = fit_windows(
             windows,
             targets,
             stamps=stamps,
-            purge_days=horizon_days * 7 // 5 + 5,
+            label_end_stamps=label_ends,
         )
+        artifact.trained_horizon_sessions = horizon_days
         save_artifact(artifact, artifact_path(self.gb_model_filename))
 
         metrics.update(
             {
                 "sequence_length": self.sequence_length,
                 "horizon_days": horizon_days,
+                "window_contract": WINDOW_CONTRACT,
                 "backend_slot": "gan",
                 "trained_on_frames": len(datasets),
             }
@@ -282,31 +128,42 @@ class GANPredictor:
 
     def predict(self, df: pd.DataFrame, horizon_days: int = 30) -> dict:
         """
-        Runs inference using the pre-loaded GAN generator artifact.
-        Falls back to heuristics if the artifact is missing or fails.
+        Infer only the origin-inclusive task described by the loaded bundle.
+        Missing, incompatible or unsupported bundles produce an explicit HOLD.
         """
-        if self._generator is None:
-            return self._fallback_predict(df, horizon_days)
+        reason = artifact_contract_reason(
+            self._generator, self._metadata, self.sequence_length,
+            self.features_per_session, horizon_days,
+        )
+        if reason:
+            return self._fallback_predict(df, horizon_days, reason)
 
         try:
             features = self._prepare_data(df)
             if len(features) < self.sequence_length:
-                return self._fallback_predict(df, horizon_days)
+                return self._fallback_predict(df, horizon_days, "invalid_input")
 
             latest_seq = features[-self.sequence_length:].reshape(1, self.sequence_length, features.shape[1])
-            # One call at the latent mean (zero noise): the central estimate.
-            # This used to average five random draws and report their std as
-            # "Prediction Std", but the deployed backend is a deterministic
-            # regressor that drops the noise, so the five calls were identical
-            # and the displayed spread was always exactly 0 (#143). Confidence
-            # comes from validation error, which is an actual measurement.
-            noise = np.zeros((1, self.latent_dim))
-            prediction = float(self._generator.predict([noise, latest_seq], verbose=0)[0][0])
+            current_price = float(df["Close"].iloc[-1])
+            if (
+                latest_seq.shape[2] != self.features_per_session
+                or not np.isfinite(latest_seq).all()
+                or not np.isfinite(current_price)
+                or current_price <= 0
+            ):
+                return self._fallback_predict(df, horizon_days, "invalid_input")
+            # One deterministic call. Multiple calls cannot measure a spread
+            # for this regressor; no stochastic interval is advertised.
+            prediction = float(self._generator.predict(latest_seq, verbose=0)[0][0])
+            if not np.isfinite(prediction):
+                return self._fallback_predict(df, horizon_days, "inference_failed")
 
             predicted_return = float(np.clip(prediction, -0.25, 0.25))
-            current_price = float(df["Close"].iloc[-1])
             predicted_price = current_price * (1 + predicted_return)
-            confidence = float(max(30, min(85, self._metadata.get("confidence", 55.0))))
+            confidence = float(self._metadata.get("confidence", 0.0))
+            if not np.isfinite(confidence):
+                return self._fallback_predict(df, horizon_days, "artifact_incompatible")
+            confidence = float(np.clip(confidence, 0.0, 85.0))
 
             if predicted_return > 0.04:
                 signal = "STRONG_BUY"
@@ -329,42 +186,24 @@ class GANPredictor:
                 "predicted_return": round(predicted_return * 100, 2),
                 "confidence": round(confidence, 1),
                 "confidence_breakdown": {
-                    "technical": round(confidence * 0.9, 1),
-                    "fundamental": round(confidence * 0.65, 1),
-                    "sentiment": round(confidence * 0.55, 1),
-                    "historical": round(confidence * 0.85, 1),
+                    "technical": 0.0,
+                    "fundamental": 0.0,
+                    "sentiment": 0.0,
+                    "historical": round(confidence, 1),
                 },
                 "short_term_signal": {"signal": signal, "score": round(score, 1)},
                 "long_term_signal": {"signal": signal, "score": round(min(10, score + 0.4), 1)},
                 "indicators": [
-                    {"name": "GAN Predicted Return", "value": round(predicted_return * 100, 4), "signal": "Buy" if predicted_return > 0 else "Sell"},
-                    {"name": "Generator Loss", "value": round(float(self._metadata.get("generator_loss", 0.0)), 4), "signal": "Neutral"},
+                    {"name": "Sequence Booster Return (%)", "value": round(predicted_return * 100, 4), "signal": "Buy" if predicted_return > 0 else "Sell"},
+                    {"name": "Validation MAE (% return)", "value": round(float(self._metadata.get("validation_mae", 0.0)) * 100, 4), "signal": "Neutral"},
                 ],
                 "training_info": self._metadata,
+                "backend": artifact_backend(self._generator),
+                "trained_horizon_sessions": trained_horizon(self._metadata),
             }
         except Exception as exc:
             logger.error("GAN prediction error: %s", exc)
-            return self._fallback_predict(df, horizon_days)
+            return self._fallback_predict(df, horizon_days, "inference_failed")
 
-    def _fallback_predict(self, df: pd.DataFrame, horizon_days: int) -> dict:
-        close = df["Close"]
-        current_price = float(close.iloc[-1])
-        trend = float(close.pct_change(20).iloc[-1]) / 20 if len(close) > 20 else 0
-        predicted_price = current_price * (1 + trend * horizon_days * 0.4)
-        predicted_return = (predicted_price - current_price) / current_price
-
-        return {
-            "predicted_price": round(predicted_price, 2),
-            "predicted_return": round(predicted_return * 100, 2),
-            "confidence": 30.0,
-            "confidence_breakdown": {
-                "technical": 30.0,
-                "fundamental": 20.0,
-                "sentiment": 15.0,
-                "historical": 25.0,
-            },
-            "short_term_signal": {"signal": "HOLD", "score": 5.0},
-            "long_term_signal": {"signal": "HOLD", "score": 5.0},
-            "indicators": [{"name": "GAN (Fallback)", "value": round(predicted_return * 100, 4), "signal": "Neutral"}],
-            "fallback": True,
-        }
+    def _fallback_predict(self, df: pd.DataFrame, horizon_days: int, reason: str = "artifact_unavailable") -> dict:
+        return no_change_prediction(df, self._generator, self._metadata, reason, "GAN slot")

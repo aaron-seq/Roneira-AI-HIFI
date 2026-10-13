@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import type { PredictionComponent } from "@/lib/market/types";
+import { backendName, modelName, trainedHorizon } from "./AnalysisMethod";
 
 /**
  * Where the constituent models landed, on a shared price axis.
@@ -9,8 +10,8 @@ import type { PredictionComponent } from "@/lib/market/types";
  * The blended number the ensemble returns is a single point estimate that hides
  * its own disagreement — four models clustered inside a dollar is a completely
  * different claim from one model calling BUY while another calls SELL, even when
- * the average is identical. The corrected walk-forward harness has not been
- * rerun, so dispersion must not be presented as measured forecasting accuracy.
+ * the average is identical. Dispersion measures agreement, and must not be
+ * presented as measured forecasting accuracy.
  *
  * Every value here is the model's own output (`components` from the ML service).
  * Nothing is interpolated or synthesised for visual effect.
@@ -36,16 +37,6 @@ const SIGNAL_LABEL: Record<string, string> = {
   HOLD: "hold",
   SELL: "sell",
   STRONG_SELL: "strong sell",
-};
-
-/** Human-facing model names. Users don't need our internal enum. */
-const LABELS: Record<string, string> = {
-  RANDOM_FOREST: "Random forest",
-  TECHNICAL: "Technical",
-  PVD_MOMENTUM: "PVD momentum",
-  LSTM: "Sequence model",
-  GAN: "Scenario model",
-  ENSEMBLE: "Ensemble",
 };
 
 interface ModelSpreadProps {
@@ -85,6 +76,7 @@ export function ModelSpread({
   const pct = (value: number) => ((value - lo) / (hi - lo)) * 100;
 
   const disagree = new Set(components.map((c) => c.signal)).size > 1;
+  const singleModel = components.length === 1;
   const sorted = [...components].sort(
     (a, b) => a.predicted_price - b.predicted_price
   );
@@ -107,19 +99,21 @@ export function ModelSpread({
               color: "var(--color-text-primary)",
             }}
           >
-            {disagree ? "The model calls differ" : "The model calls agree"}
+            {singleModel ? "One model contributed" : disagree ? "The model calls differ" : "The model calls agree"}
           </h2>
           <p
             className="mt-1 text-xs"
             style={{ color: "var(--color-text-muted)" }}
           >
-            {disagree
+            {singleModel
+              ? "The blend uses one compatible estimate. There is no cross-model comparison for this result."
+              : disagree
               ? "Each ran on the same history and reached a different call. Treat the blend as one view, not a consensus."
               : "Each ran on the same history and reached the same call. Shared inputs can produce shared errors."}
           </p>
         </div>
 
-        <dl className="flex items-baseline gap-6">
+        {!singleModel && <dl className="flex items-baseline gap-6">
           <div className="text-right">
             <dt
               className="text-[10px] uppercase tracking-[0.14em]"
@@ -150,7 +144,7 @@ export function ModelSpread({
                 : `${Math.round(Math.max(0, Math.min(1, agreementScore)) * 100)} of 100`}
             </dd>
           </div>
-        </dl>
+        </dl>}
       </header>
 
       {/* Axis. The "today" datum is the reference every mark is read against, so
@@ -195,8 +189,15 @@ export function ModelSpread({
                   className="truncate text-[13px]"
                   style={{ color: "var(--color-text-primary)" }}
                 >
-                  {LABELS[component.name] ?? component.name}
+                  {modelName(component.name)}
                 </p>
+                {(component.backend || component.trained_horizon_sessions != null) && (
+                  <p className="mt-1 text-[10px] leading-relaxed" style={{ color: "var(--color-text-muted)" }}>
+                    {component.backend ? backendName(component.backend) : ""}
+                    {component.backend ? " · " : ""}
+                    Trained horizon: {trainedHorizon(component.backend, component.trained_horizon_sessions)}
+                  </p>
+                )}
                 <p
                   className="font-mono text-[10px]"
                   style={{ color: "var(--color-text-faint)" }}
@@ -272,7 +273,7 @@ export function ModelSpread({
       </ol>
 
       <p className="mt-5 text-xs leading-relaxed" style={{ color: "var(--color-text-muted)" }}>
-        Target proximity measures how close the estimates are. It does not measure accuracy.
+        {!singleModel && "Target proximity measures how close the estimates are. It does not measure accuracy. "}
         Model scores are separate, uncalibrated heuristics, not probabilities or directly comparable ratings.
       </p>
 

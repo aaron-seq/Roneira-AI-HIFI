@@ -1,119 +1,70 @@
 """
-Artifact-backed LSTM model for stock price prediction.
+Artifact-backed sequence regression slot for stock price prediction.
 
 Training happens offline through `ml/train_models.py`; runtime inference only
-loads a bundled `.keras` artifact on startup and falls back when unavailable.
+loads a gradient-boosted artifact on startup. Optional TensorFlow training is
+experimental and unavailable until its validation contract has been corrected.
 """
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
 from app.models.artifacts import artifact_path, load_metadata, save_metadata
 from app.models.gradient_boost import (
-    GradientBoostArtifact,
+    WINDOW_CONTRACT,
+    artifact_backend,
+    artifact_contract_reason,
     build_training_windows,
     fit_windows,
     load_artifact,
+    no_change_prediction,
     save_artifact,
+    trained_horizon,
 )
 
 logger = logging.getLogger("roneira-ml.lstm")
 
-try:
-    import tensorflow as tf
-    from tensorflow import keras
-
-    TF_AVAILABLE = True
-    logger.info("TensorFlow %s loaded for LSTM inference", tf.__version__)
-except ImportError:
-    TF_AVAILABLE = False
-    keras = None
-    logger.warning("TensorFlow not available — LSTM model will use fallback")
-
 
 class LSTMPredictor:
-    """LSTM deep learning model backed by a saved Keras artifact."""
+    """Sequence model slot backed by a fitted gradient-boosted artifact."""
 
-    model_filename = "lstm_model.keras"
+    features_per_session = 11
+
     gb_model_filename = "lstm_gbm.joblib"
     metadata_filename = "lstm_metadata.json"
 
     def __init__(self, sequence_length: int = 60, epochs: int = 25, batch_size: int = 32):
         self.sequence_length = sequence_length
-        self.epochs = epochs
-        self.batch_size = batch_size
         self._model = None
         self._metadata: dict[str, float | int | str | list[str]] = {}
         self._load_artifact_bundle()
 
     def is_ready(self) -> bool:
-        return self._model is not None
-
-    def _load_model_from_disk(self, path: Path):
-        if keras is None:
-            return None
-        return keras.models.load_model(path, compile=False)
+        return artifact_contract_reason(
+            self._model, self._metadata, self.sequence_length,
+            self.features_per_session, trained_horizon(self._metadata) or 0,
+        ) is None
 
     def _load_artifact_bundle(self):
         """
         Loads model and metadata from `ml/artifacts/generated` on boot.
         This enables rapid scaling as inference nodes don't need to retrain.
 
-        Two backends are supported. The Keras artifact wins when TensorFlow is
-        installed; otherwise a gradient-boosted artifact is used, because
-        TensorFlow is deliberately not a declared dependency and this slot would
-        otherwise serve the untrained heuristic in `_fallback_predict`.
+        The gradient-boosted bundle is the supported backend. Legacy Keras
+        artifacts have no validated origin/horizon contract and are not served.
         """
         self._metadata = load_metadata(self.metadata_filename)
-        path = artifact_path(self.model_filename)
-
-        if TF_AVAILABLE and path.exists():
-            try:
-                self._model = self._load_model_from_disk(path)
-                self.sequence_length = int(
-                    self._metadata.get("sequence_length", self.sequence_length)
-                )
-                logger.info("Loaded LSTM artifact from %s", path)
-                return
-            except Exception as exc:
-                logger.error("Failed to load LSTM artifact: %s", exc)
-                self._model = None
-
         gb_path = artifact_path(self.gb_model_filename)
         gb_model = load_artifact(gb_path)
         if gb_model is not None:
             self._model = gb_model
-            self.sequence_length = int(
-                self._metadata.get("sequence_length", self.sequence_length)
-            )
+            sequence_length = self._metadata.get("sequence_length")
+            if isinstance(sequence_length, int) and not isinstance(sequence_length, bool) and sequence_length > 0:
+                self.sequence_length = sequence_length
             logger.info("Loaded gradient-boosted LSTM-slot artifact from %s", gb_path)
-        elif path.exists():
-            logger.warning("LSTM artifact found but TensorFlow is unavailable")
-
-    def _build_model(self, input_shape: tuple[int, int]):
-        if keras is None:
-            return None
-
-        model = keras.Sequential([
-            keras.layers.Input(shape=input_shape),
-            keras.layers.LSTM(96, return_sequences=True),
-            keras.layers.Dropout(0.2),
-            keras.layers.LSTM(48, return_sequences=False),
-            keras.layers.Dropout(0.15),
-            keras.layers.Dense(24, activation="relu"),
-            keras.layers.Dense(1),
-        ])
-
-        model.compile(
-            optimizer=keras.optimizers.Adam(learning_rate=0.001),
-            loss="mse",
-            metrics=["mae"],
-        )
-        return model
 
     def _prepare_features(self, df: pd.DataFrame) -> np.ndarray:
         features = pd.DataFrame(index=df.index)
@@ -148,141 +99,44 @@ class LSTMPredictor:
         features["volatility"] = df["Close"].pct_change().rolling(10).std()
         return features.fillna(0).values
 
-    def _normalize(self, data: np.ndarray) -> np.ndarray:
-        mins = data.min(axis=0)
-        maxs = data.max(axis=0)
-        ranges = maxs - mins
-        ranges[ranges == 0] = 1
-        return (data - mins) / ranges
-
-    def _create_sequences(self, data: np.ndarray, target: np.ndarray):
-        features, labels = [], []
-        for idx in range(self.sequence_length, len(data)):
-            features.append(data[idx - self.sequence_length:idx])
-            labels.append(target[idx])
-        return np.array(features), np.array(labels)
-
     def train(self, datasets: list[pd.DataFrame], horizon_days: int = 30) -> dict:
-        """
-        Offline model training entrypoint. Called via cron or admin trigger.
-        Produces `.keras` and `.json` artifacts that inference instances consume.
-        """
-        if not TF_AVAILABLE:
-            raise RuntimeError("TensorFlow is required to train the LSTM model.")
-
-        sequence_batches: list[np.ndarray] = []
-        label_batches: list[np.ndarray] = []
-
-        for frame in datasets:
-            if len(frame) < self.sequence_length + horizon_days + 30:
-                continue
-
-            features = self._normalize(self._prepare_features(frame))
-            close_prices = frame["Close"].values
-            target_returns = np.zeros(len(close_prices))
-            for idx in range(len(close_prices) - horizon_days):
-                target_returns[idx] = (
-                    close_prices[idx + horizon_days] - close_prices[idx]
-                ) / close_prices[idx]
-
-            valid_end = len(close_prices) - horizon_days
-            X_batch, y_batch = self._create_sequences(
-                features[:valid_end],
-                target_returns[:valid_end],
-            )
-
-            if len(X_batch) == 0:
-                continue
-
-            sequence_batches.append(X_batch)
-            label_batches.append(y_batch)
-
-        if not sequence_batches:
-            raise ValueError("No suitable training windows were created for the LSTM model.")
-
-        X = np.concatenate(sequence_batches)
-        y = np.concatenate(label_batches)
-
-        split = int(len(X) * 0.8)
-        X_train, X_test = X[:split], X[split:]
-        y_train, y_test = y[:split], y[split:]
-
-        model = self._build_model((self.sequence_length, X.shape[2]))
-        if model is None:
-            raise RuntimeError("Keras model could not be created for LSTM training.")
-
-        early_stop = keras.callbacks.EarlyStopping(
-            monitor="val_loss",
-            patience=5,
-            restore_best_weights=True,
+        """The optional TensorFlow path is experimental and unvalidated."""
+        raise RuntimeError(
+            "TensorFlow LSTM training is experimental and has no validated "
+            "origin/horizon contract. Use train_gradient_boost instead."
         )
-
-        history = model.fit(
-            X_train,
-            y_train,
-            validation_data=(X_test, y_test),
-            epochs=self.epochs,
-            batch_size=self.batch_size,
-            callbacks=[early_stop],
-            verbose=0,
-        )
-
-        loss, mae = model.evaluate(X_test, y_test, verbose=0)
-        model_path = artifact_path(self.model_filename)
-        model_path.parent.mkdir(parents=True, exist_ok=True)
-        model.save(model_path)
-
-        metadata = {
-            "sequence_length": self.sequence_length,
-            "epochs_requested": self.epochs,
-            "epochs_run": len(history.history.get("val_loss", [])),
-            "validation_loss": float(loss),
-            "validation_mae": float(mae),
-            "confidence": float(max(35, min(90, 75 - mae * 200))),
-            "trained_on": len(datasets),
-        }
-        save_metadata(self.metadata_filename, metadata)
-
-        self._metadata = metadata
-        self._model = model
-        return metadata
 
     def train_gradient_boost(self, datasets: list[pd.DataFrame], horizon_days: int = 30) -> dict:
         """
         Train the gradient-boosted backend for this slot.
 
-        Used instead of `train()` when TensorFlow is unavailable, which is the
-        default for this project. Produces a joblib artifact that
+        Produces a joblib artifact that
         `_load_artifact_bundle` picks up on the next boot.
 
-        No `normalize=`: `_normalize` is a frame-wide min-max, so it (a) scaled
-        every training window by statistics that include its own future and
-        (b) used a different divisor at serve time than at fit time, because the
-        frame is 25 years long in training and 1-2 years in production. The
-        remaining features are all ratios and returns, and a tree does not care
-        about monotone rescaling anyway -- only about being fed the same scale it
-        was fitted on. `_normalize` stays for the Keras path, which needs it.
+        Ratio and return features use the same scale at fit and serve time;
+        frame-wide normalization would include future statistics and change
+        scale whenever the caller fetched a different history depth.
         """
-        windows, targets, stamps = build_training_windows(
+        windows, targets, stamps, label_ends = build_training_windows(
             datasets,
             self._prepare_features,
             self.sequence_length,
             horizon_days,
         )
-        # Calendar days, not sessions: ~7/5 plus a few for market holidays, so
-        # the purge covers the whole label horizon rather than part of it.
         artifact, metrics = fit_windows(
             windows,
             targets,
             stamps=stamps,
-            purge_days=horizon_days * 7 // 5 + 5,
+            label_end_stamps=label_ends,
         )
+        artifact.trained_horizon_sessions = horizon_days
         save_artifact(artifact, artifact_path(self.gb_model_filename))
 
         metrics.update(
             {
                 "sequence_length": self.sequence_length,
                 "horizon_days": horizon_days,
+                "window_contract": WINDOW_CONTRACT,
                 "backend_slot": "lstm",
                 "trained_on_frames": len(datasets),
             }
@@ -295,27 +149,40 @@ class LSTMPredictor:
 
     def predict(self, df: pd.DataFrame, horizon_days: int = 30) -> dict:
         """
-        Runs model inference using the pre-loaded .keras artifact.
-        If artifact is missing or invalid, routes dynamically to the fallback heuristic.
+        Infer only the origin-inclusive task described by the loaded bundle.
+        Missing, incompatible or unsupported bundles produce an explicit HOLD.
         """
-        if self._model is None:
-            return self._fallback_predict(df, horizon_days)
+        reason = artifact_contract_reason(
+            self._model, self._metadata, self.sequence_length,
+            self.features_per_session, horizon_days,
+        )
+        if reason:
+            return self._fallback_predict(df, horizon_days, reason)
 
         try:
             features = self._prepare_features(df)
-            if not isinstance(self._model, GradientBoostArtifact):
-                # Keras path only -- see train_gradient_boost's docstring.
-                features = self._normalize(features)
             if len(features) < self.sequence_length:
-                return self._fallback_predict(df, horizon_days)
+                return self._fallback_predict(df, horizon_days, "invalid_input")
 
             latest_sequence = features[-self.sequence_length:].reshape(1, self.sequence_length, -1)
+            current_price = float(df["Close"].iloc[-1])
+            if (
+                latest_sequence.shape[2] != self.features_per_session
+                or not np.isfinite(latest_sequence).all()
+                or not np.isfinite(current_price)
+                or current_price <= 0
+            ):
+                return self._fallback_predict(df, horizon_days, "invalid_input")
             predicted_return = float(self._model.predict(latest_sequence, verbose=0)[0][0])
+            if not np.isfinite(predicted_return):
+                return self._fallback_predict(df, horizon_days, "inference_failed")
             predicted_return = float(np.clip(predicted_return, -0.25, 0.25))
 
-            current_price = float(df["Close"].iloc[-1])
             predicted_price = current_price * (1 + predicted_return)
-            confidence = float(self._metadata.get("confidence", 55.0))
+            confidence = float(self._metadata.get("confidence", 0.0))
+            if not np.isfinite(confidence):
+                return self._fallback_predict(df, horizon_days, "artifact_incompatible")
+            confidence = float(np.clip(confidence, 0.0, 85.0))
 
             if predicted_return > 0.05:
                 signal = "STRONG_BUY"
@@ -338,50 +205,24 @@ class LSTMPredictor:
                 "predicted_return": round(predicted_return * 100, 2),
                 "confidence": round(confidence, 1),
                 "confidence_breakdown": {
-                    "technical": round(confidence * 0.92, 1),
-                    "fundamental": round(confidence * 0.68, 1),
-                    "sentiment": round(confidence * 0.55, 1),
+                    "technical": 0.0,
+                    "fundamental": 0.0,
+                    "sentiment": 0.0,
                     "historical": round(confidence, 1),
                 },
                 "short_term_signal": {"signal": signal, "score": round(score, 1)},
                 "long_term_signal": {"signal": signal, "score": round(min(10, score + 0.3), 1)},
                 "indicators": [
-                    {"name": "LSTM Predicted Return", "value": round(predicted_return * 100, 4), "signal": "Buy" if predicted_return > 0 else "Sell"},
-                    {"name": "Validation MAE", "value": round(float(self._metadata.get("validation_mae", 0.0)), 6), "signal": "Buy"},
-                    {"name": "Epochs Run", "value": float(self._metadata.get("epochs_run", 0)), "signal": "Neutral"},
+                    {"name": "Sequence Booster Return (%)", "value": round(predicted_return * 100, 4), "signal": "Buy" if predicted_return > 0 else "Sell"},
+                    {"name": "Validation MAE (% return)", "value": round(float(self._metadata.get("validation_mae", 0.0)) * 100, 4), "signal": "Neutral"},
                 ],
-                "model_score": round(max(0.0, 1 - float(self._metadata.get("validation_mae", 0.0))), 4),
                 "training_info": self._metadata,
+                "backend": artifact_backend(self._model),
+                "trained_horizon_sessions": trained_horizon(self._metadata),
             }
         except Exception as exc:
             logger.error("LSTM prediction error: %s", exc)
-            return self._fallback_predict(df, horizon_days)
+            return self._fallback_predict(df, horizon_days, "inference_failed")
 
-    def _fallback_predict(self, df: pd.DataFrame, horizon_days: int) -> dict:
-        close = df["Close"]
-        current_price = float(close.iloc[-1])
-        recent_returns = close.pct_change(5).dropna()
-        avg_daily_return = float(recent_returns.mean()) / 5 if len(recent_returns) else 0
-        predicted_price = current_price * (1 + avg_daily_return * horizon_days * 0.5)
-        predicted_return = (predicted_price - current_price) / current_price
-
-        return {
-            "predicted_price": round(predicted_price, 2),
-            "predicted_return": round(predicted_return * 100, 2),
-            "confidence": 35.0,
-            "confidence_breakdown": {
-                "technical": 35.0,
-                "fundamental": 25.0,
-                "sentiment": 20.0,
-                "historical": 30.0,
-            },
-            "short_term_signal": {
-                "signal": "BUY" if predicted_return > 0.01 else ("SELL" if predicted_return < -0.01 else "HOLD"),
-                "score": 5.0,
-            },
-            "long_term_signal": {"signal": "HOLD", "score": 5.0},
-            "indicators": [
-                {"name": "LSTM (Fallback)", "value": round(predicted_return * 100, 4), "signal": "Neutral"},
-            ],
-            "fallback": True,
-        }
+    def _fallback_predict(self, df: pd.DataFrame, horizon_days: int, reason: str = "artifact_unavailable") -> dict:
+        return no_change_prediction(df, self._model, self._metadata, reason, "LSTM slot")

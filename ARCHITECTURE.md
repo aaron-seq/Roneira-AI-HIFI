@@ -48,7 +48,7 @@ graph TD
 ```
 
 The ML service is never exposed to the browser. All ML traffic goes through
-`src/app/api/predict`, which validates the payload before forwarding.
+`src/app/api/predict`, which checks the user session and validates the payload before forwarding.
 
 ## Canonical surfaces
 
@@ -97,24 +97,17 @@ src/lib/         client/ server/ market/ news/ stores/ supabase/ hooks/
 
 ### Design direction
 
-The Predict surface (`src/app/dashboard/predict/`) is the first to move off the original
-tokens, which were GitHub's dark palette + the 2013 Flat UI accent colors + a blue→purple
-hero gradient — three stacked defaults rather than choices made for this product. New
-tokens (`--color-brass*`, `--color-ink*` in `globals.css`) replace the purple gradient with
-brass drawn from the ₹ monogram, and tint the neutrals so large dark areas don't read as
-"off." `Instrument Serif` (`src/app/layout.tsx`) is a second, editorial display face used
-only for verdicts and section titles, never data — Geist alone reads as Vercel's default.
+Shared CSS tokens provide dark/light backgrounds, brass accents and semantic
+profit/loss/warning colors. Instrument Serif is used for titles, with Geist and
+monospace for interface labels and numeric data. The dashboard has a desktop sidebar,
+native mobile navigation dialog and reduced-motion behavior.
 
-Design-quality checks for anything touching these surfaces run via
-[Impeccable](https://github.com/pbakaus/impeccable)'s detector: `node
-<path-to-impeccable-checkout>/cli/bin/cli.js detect <files>`. It's a real static analyzer
-(60 deterministic rules — gradient text, bounce easing, untinted grays, card-in-card
-nesting, etc.), not a subjective pass; it's what caught `.gradient-text`
-(`background-clip: text` on the old Predict heading) as a common AI-generated-UI tell.
-
-The other six dashboard surfaces (Market Overview, Watchlist, Commodities & Forex,
-Portfolio, News, Audit Log) still carry the original tokens and are visually inconsistent
-with Predict until they're brought forward.
+Prediction selection uses labelled native controls and descriptions of each method.
+Results explain the actual backend, requested/trained horizon and input daily session.
+An unavailable model shows a neutral no-change reference and omits forecast/signal
+visualizations; excluded ensemble members are listed separately from the target axis.
+Component tests plus Chromium keyboard, mobile layout and axe checks validate the
+changed research states. Synthetic browser fixtures do not verify hosted authentication.
 
 ## API route handlers (`src/app/api/`)
 
@@ -122,7 +115,7 @@ with Predict until they're brought forward.
 |---|---|---|---|
 | `auth/username` GET | username availability | anon | 20/min |
 | `auth/username` POST | username + password login | anon | 10/min |
-| `predict` POST | forward to ML, persist result | optional | 20/min |
+| `predict` POST | forward to ML, persist eligible forecast/audit fallback | required | 20/min |
 | `market-data` GET | quotes by `group` or `symbols` | none | — |
 | `market-data/history` GET | OHLCV candles | none | — |
 | `stocks/search` GET | symbol search | none | 30/min |
@@ -130,8 +123,9 @@ with Predict until they're brought forward.
 | `audit-log` POST | write an audit row | required | — |
 | `admin/overview` GET | admin dashboard data | admin role | — |
 
-Validation lives in `src/lib/server/validation.ts`. Its enums intentionally mirror the
-Postgres `CHECK` constraints in `001_initial_schema.sql`, so bad input fails as a 400 at
+Validation lives in `src/lib/server/validation.ts`. Audit enums mirror the
+Postgres `CHECK` constraints; prediction selections match supported FastAPI models
+(the database also accepts the retired `FUNDAMENTAL` name). Bad input fails as a 400 at
 the edge instead of surfacing as a 500 from the database. Audit payloads are capped at
 16 KB — they are attacker-influenced JSON landing in an append-only table.
 
@@ -181,26 +175,38 @@ out first.
 
 | Model | Kind | Trained? |
 |---|---|---|
-| `RANDOM_FOREST` | sklearn RandomForest, refit per request with TimeSeriesSplit | yes, per request (~2.6s) |
+| `RANDOM_FOREST` | sklearn RandomForest, refit per request with label-resolution-purged TimeSeriesSplit | yes, requested session horizon |
 | `TECHNICAL` | rule-based indicators (RSI, MACD, Bollinger, EMA, Stochastic, ADX, Supertrend, Ichimoku, Anchored VWAP) | n/a — deterministic |
 | `PVD_MOMENTUM` | price/volume/divergence momentum engine | n/a — deterministic |
 | `LSTM` slot | gradient-boosted (xgboost), 60-step feature windows | yes, offline artifact |
 | `GAN` slot | gradient-boosted (xgboost), 30-step feature windows | yes, offline artifact |
-| `ENSEMBLE` | weighted combination (0.35 RF / 0.25 Technical / 0.25 PVD / 0.15 LSTM) | n/a |
+| `ENSEMBLE` | equal blend of compatible RF / Technical / PVD / LSTM members | n/a |
 
 `ENSEMBLE` returns a `components` array alongside the blended `predicted_price` — each
-constituent's own price target, confidence, weight, and signal — plus `agreement_score`
+constituent's own price target, heuristic score, weight, signal, backend and trained
+session horizon — plus `agreement_score`
 and `price_spread`. The blend alone hides disagreement between models; the Predict UI's
 `ModelSpread` component (`src/components/prediction/ModelSpread.tsx`) plots the
 constituents against spot so a case like "Technical says buy while targeting a price below
-spot" is visible rather than averaged away.
+spot" is visible rather than averaged away. `excluded_components` records failed or
+unsupported members, which receive no weight. Agreement/proximity is descriptive and
+does not increase confidence. Every response includes daily input provenance and
+fallback state; a fallback is audited but not inserted into forecast history/cache.
 
 **TensorFlow is not a dependency.** The LSTM and GAN slots were written against Keras;
 without TF they served an untrained heuristic. They are now backed by
 `app/models/gradient_boost.py`, which wraps an `XGBRegressor` in an adapter exposing the
 narrow Keras surface the existing inference code calls (`predict(x, verbose=0)[0][0]`), so
-each slot keeps its own feature engineering and signal thresholds. If TF is installed, a
-`.keras` artifact takes precedence.
+each slot keeps its own feature engineering and signal thresholds. Inference loads
+only gradient-boosted bundles; TensorFlow training is disabled pending corrected
+preprocessing and purged validation. Artifacts and metadata both bind the origin-inclusive
+window schema and training horizon. Feature shapes are rejected rather than padded.
+Readiness requires a compatible bundle; 30-session artifacts cannot forecast 7 sessions.
+
+The shared history policy is `max(504, 4 * horizon + 200)` observed sessions, fetched
+with a calendar-history buffer and bounded before inference. Sequence validation and
+RF validation purge by actual label-resolution timestamps. Details and the reproducible
+Indian-equity diagnostic are in [ml/MODELS.md](ml/MODELS.md).
 
 Artifacts live in `ml/artifacts/generated/` (override with `ML_MODEL_DIR`) and come from
 `python train_models.py`. Loading uses joblib/pickle, so it must only ever read artifacts
