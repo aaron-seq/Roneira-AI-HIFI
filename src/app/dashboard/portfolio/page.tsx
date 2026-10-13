@@ -17,8 +17,10 @@ import {
 } from "lucide-react";
 import { CardGridSkeleton, TableSkeleton } from "@/components/ui/Skeletons";
 import { Dialog } from "@/components/ui/Dialog";
+import { InsightsStories } from "@/components/insights/InsightsStories";
 import { usePortfolio } from "@/lib/hooks/use-portfolio";
 import { useStockSearch } from "@/lib/hooks/use-prediction";
+import { buildPortfolioStories } from "@/lib/insights/stories";
 import { cn, formatCurrency, formatPercent, getPriceColor } from "@/lib/utils";
 
 // The schema's CHECK constraint allows exactly these; a free-text field let
@@ -93,6 +95,16 @@ export default function PortfolioPage() {
   const base = summary.base;
   const money = (value: number) => formatCurrency(value, base, { compact: true });
   const topSector = summary.sectors[0];
+  const valuationAvailable = summary.rows.length === 0 || summary.rows.some((row) =>
+    row.weight !== null && Number.isFinite(row.weight) && row.currentValue !== null && row.currentValue > 0
+  );
+  const insights = buildPortfolioStories({ summary, quotes: portfolio.quotes ?? [] });
+  const exclusionLabels = {
+    "no-quote": "no usable quote",
+    "no-fx-rate": "no usable USD/INR rate",
+    "invalid-holding": "invalid holding quantity or cost",
+    "invalid-value": "invalid calculated value",
+  };
 
   function openAddModal() {
     setFormState(emptyFormState());
@@ -170,21 +182,26 @@ export default function PortfolioPage() {
             Portfolio
           </h1>
           <p className="mt-1 text-sm" style={{ color: "var(--color-text-muted)" }}>
-            {summary.rows.length} holdings across {summary.sectors.length} sectors
+            {summary.rows.length} recorded holdings · {summary.sectors.length} priced sectors
             {summary.usdInr && summary.rows.some((row) => row.currency !== base)
-              ? ` · USD converted at ${formatCurrency(summary.usdInr, "INR")}`
+              ? ` · USD/INR: ${formatCurrency(summary.usdInr, "INR")} per USD`
               : ""}
           </p>
         </div>
         <button
           onClick={openAddModal}
-          className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white transition-all hover:brightness-110"
-          style={{ background: "linear-gradient(135deg, #2ECC71, #27AE60)" }}
+          className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all hover:brightness-110"
+          style={{ background: "linear-gradient(135deg, #2ECC71, #27AE60)", color: "#07110C" }}
         >
           <Plus className="h-4 w-4" />
           Add Holding
         </button>
       </div>
+
+      {!portfolio.isError && <InsightsStories title="Portfolio insights" insights={insights}
+        state={portfolio.isLoading || portfolio.quotesLoading ? "loading" : portfolio.quotesError ? "error" : "ready"}
+        onRetry={() => { void portfolio.refetchQuotes(); }} isRetrying={portfolio.quotesFetching}
+        errorMessage="Holding prices could not be refreshed. Retry quotes to update valuation. You can still edit your holdings." />}
 
       {portfolio.isLoading ? (
         <div className="space-y-6" role="status" aria-label="Loading portfolio" aria-busy="true">
@@ -204,7 +221,7 @@ export default function PortfolioPage() {
         <>
           <motion.div
             variants={containerVariants}
-            initial="hidden"
+            initial={false}
             animate="visible"
             className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
           >
@@ -216,16 +233,16 @@ export default function PortfolioPage() {
                 </p>
               </div>
               <p className="font-mono text-2xl font-bold" data-financial style={{ color: "var(--color-text-primary)" }}>
-                {money(summary.current)}
+                {valuationAvailable ? money(summary.current) : "—"}
               </p>
               <p className="mt-1 text-xs" style={{ color: "var(--color-text-faint)" }}>
-                Invested: {money(summary.invested)}
+                Invested: {valuationAvailable ? money(summary.invested) : "—"} · Priced, convertible book
               </p>
             </motion.div>
 
             <motion.div variants={itemVariants} className="card p-5">
               <div className="mb-2 flex items-center gap-2">
-                {summary.pnl >= 0 ? (
+                {!valuationAvailable ? <BarChart3 className="h-4 w-4" style={{ color: "var(--color-text-muted)" }} /> : summary.pnl >= 0 ? (
                   <TrendingUp className="h-4 w-4 text-profit" />
                 ) : (
                   <TrendingDown className="h-4 w-4 text-loss" />
@@ -234,12 +251,11 @@ export default function PortfolioPage() {
                   Total P&amp;L
                 </p>
               </div>
-              <p className={cn("font-mono text-2xl font-bold", getPriceColor(summary.pnl))} data-financial>
-                {summary.pnl >= 0 ? "+" : ""}
-                {money(summary.pnl)}
+              <p className={cn("font-mono text-2xl font-bold", valuationAvailable ? getPriceColor(summary.pnl) : "")} data-financial style={!valuationAvailable ? { color: "var(--color-text-muted)" } : undefined}>
+                {valuationAvailable ? `${summary.pnl >= 0 ? "+" : ""}${money(summary.pnl)}` : "—"}
               </p>
-              <p className={cn("mt-1 font-mono text-xs font-medium", getPriceColor(summary.pnlPercent))} data-financial>
-                {formatPercent(summary.pnlPercent)}
+              <p className={cn("mt-1 font-mono text-xs font-medium", valuationAvailable && summary.pnlPercent !== null ? getPriceColor(summary.pnlPercent) : "")} data-financial style={!valuationAvailable || summary.pnlPercent === null ? { color: "var(--color-text-muted)" } : undefined}>
+                {valuationAvailable && summary.pnlPercent !== null ? formatPercent(summary.pnlPercent) : "—"}
               </p>
             </motion.div>
 
@@ -247,16 +263,16 @@ export default function PortfolioPage() {
               <div className="mb-2 flex items-center gap-2">
                 <BarChart3 className="h-4 w-4" style={{ color: "var(--color-warning)" }} />
                 <p className="text-xs font-medium" style={{ color: "var(--color-text-muted)" }}>
-                  Today&apos;s Change
+                  Quoted Session Change
                 </p>
               </div>
-              <p className={cn("font-mono text-2xl font-bold", getPriceColor(summary.dayChange))} data-financial>
-                {summary.dayChange >= 0 ? "+" : ""}
-                {money(summary.dayChange)}
+              <p className={cn("font-mono text-2xl font-bold", summary.dayChangeAvailable ? getPriceColor(summary.dayChange) : "")} data-financial style={!summary.dayChangeAvailable ? { color: "var(--color-text-muted)" } : undefined}>
+                {summary.dayChangeAvailable ? `${summary.dayChange >= 0 ? "+" : ""}${money(summary.dayChange)}` : "—"}
               </p>
-              <p className={cn("mt-1 font-mono text-xs font-medium", getPriceColor(summary.dayChangePercent))} data-financial>
-                {formatPercent(summary.dayChangePercent)}
+              <p className={cn("mt-1 font-mono text-xs font-medium", summary.dayChangeAvailable && summary.dayChangePercent !== null ? getPriceColor(summary.dayChangePercent) : "")} data-financial style={!summary.dayChangeAvailable || summary.dayChangePercent === null ? { color: "var(--color-text-muted)" } : undefined}>
+                {summary.dayChangeAvailable && summary.dayChangePercent !== null ? formatPercent(summary.dayChangePercent) : "—"}
               </p>
+              <p className="mt-1 text-xs" style={{ color: "var(--color-text-faint)" }}>Provider previous closes; sessions may differ</p>
             </motion.div>
 
             <motion.div variants={itemVariants} className="card p-5">
@@ -271,7 +287,7 @@ export default function PortfolioPage() {
               </p>
               <p className="mt-1 text-xs" style={{ color: "var(--color-text-faint)" }}>
                 {summary.largestPosition
-                  ? `in ${summary.largestPosition.ticker.replace(".NS", "")}`
+                  ? `in ${summary.largestPosition.ticker.replace(".NS", "")} · Priced book`
                   : "No priced holdings"}
                 {topSector ? ` · ${topSector.sector} ${(topSector.weight * 100).toFixed(0)}%` : ""}
               </p>
@@ -288,7 +304,7 @@ export default function PortfolioPage() {
               <p>
                 Left out of the totals:{" "}
                 {summary.excluded
-                  .map(({ ticker, reason }) => `${ticker.replace(".NS", "")} (${reason === "no-quote" ? "no live quote" : "no USD/INR rate"})`)
+                  .map(({ ticker, reason }) => `${ticker.replace(".NS", "")} (${exclusionLabels[reason]})`)
                   .join(", ")}
                 . Their rows still show what is known.
               </p>
@@ -299,11 +315,12 @@ export default function PortfolioPage() {
             <h3 className="mb-3 text-sm font-semibold" style={{ color: "var(--color-text-primary)" }}>
               Sector Allocation
             </h3>
+            <p className="mb-3 text-xs" style={{ color: "var(--color-text-muted)" }}>Weights use marked values in the priced, convertible book.</p>
             <div className="flex h-4 w-full overflow-hidden rounded-full" style={{ background: "var(--color-surface-offset)" }}>
               {summary.sectors.map(({ sector, weight }, index) => (
                 <div
                   key={sector}
-                  className="h-full transition-all duration-500"
+                  className="h-full transition-all duration-500 motion-reduce:transition-none"
                   style={{
                     width: `${weight * 100}%`,
                     background: sectorColors[index % sectorColors.length],
@@ -326,8 +343,8 @@ export default function PortfolioPage() {
           </div>
 
           <div className="card overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+            <div className="overflow-x-auto" role="region" aria-label="Portfolio holdings, scroll horizontally for all columns" tabIndex={0}>
+              <table className="w-full text-sm" aria-label="Portfolio holdings">
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--color-divider)", background: "var(--color-surface-2)" }}>
                     <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: "var(--color-text-faint)" }}>Stock</th>
@@ -338,7 +355,7 @@ export default function PortfolioPage() {
                     <th className="px-4 py-3 text-right text-xs font-medium" style={{ color: "var(--color-text-faint)" }}>Current</th>
                     <th className="px-4 py-3 text-right text-xs font-medium" style={{ color: "var(--color-text-faint)" }}>P&amp;L</th>
                     <th className="px-4 py-3 text-right text-xs font-medium" style={{ color: "var(--color-text-faint)" }}>P&amp;L %</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium" style={{ color: "var(--color-text-faint)" }}>Day</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium" style={{ color: "var(--color-text-faint)" }}>Session</th>
                     <th className="px-4 py-3 text-center text-xs font-medium" style={{ color: "var(--color-text-faint)" }}>Actions</th>
                   </tr>
                 </thead>
@@ -348,7 +365,7 @@ export default function PortfolioPage() {
                     const native = (value: number) => formatCurrency(value, currency);
                     const nativeCompact = (value: number) => formatCurrency(value, currency, { compact: true });
                     const missing = (
-                      <span title="No live quote" style={{ color: "var(--color-text-faint)" }}>
+                      <span title="Value unavailable" aria-label="Value unavailable" style={{ color: "var(--color-text-faint)" }}>
                         —
                       </span>
                     );
@@ -363,27 +380,27 @@ export default function PortfolioPage() {
                             <p className="ticker text-xs">{holding.ticker.replace(".NS", "")}</p>
                             <p className="text-[10px]" style={{ color: "var(--color-text-faint)" }}>
                               {holding.company_name}
-                              {row.weight !== null ? ` · ${(row.weight * 100).toFixed(1)}% of book` : ""}
+                              {row.weight !== null ? ` · ${(row.weight * 100).toFixed(1)}% of priced book` : ""}
                             </p>
                           </div>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-right font-mono text-xs" data-financial style={{ color: "var(--color-text-primary)" }}>
-                        {holding.quantity}
+                        {Number.isFinite(holding.quantity) && holding.quantity > 0 ? holding.quantity : missing}
                       </td>
                       <td className="px-4 py-3 text-right font-mono text-xs" data-financial style={{ color: "var(--color-text-muted)" }}>
-                        {native(holding.avg_buy_price)}
+                        {Number.isFinite(holding.avg_buy_price) && holding.avg_buy_price >= 0 ? native(holding.avg_buy_price) : missing}
                       </td>
                       <td className="px-4 py-3 text-right font-mono text-xs font-medium" data-financial style={{ color: "var(--color-text-primary)" }}>
                         {row.price !== null ? native(row.price) : missing}
                       </td>
                       <td className="px-4 py-3 text-right font-mono text-xs" data-financial style={{ color: "var(--color-text-muted)" }}>
-                        {nativeCompact(row.investedValue)}
+                        {row.investedValue !== null ? nativeCompact(row.investedValue) : missing}
                       </td>
                       <td className="px-4 py-3 text-right font-mono text-xs" data-financial style={{ color: "var(--color-text-primary)" }}>
                         {row.currentValue !== null ? nativeCompact(row.currentValue) : missing}
                       </td>
-                      <td className={cn("px-4 py-3 text-right font-mono text-xs font-semibold", getPriceColor(row.pnl ?? 0))} data-financial>
+                      <td className={cn("px-4 py-3 text-right font-mono text-xs font-semibold", row.pnl !== null ? getPriceColor(row.pnl) : "")} data-financial>
                         {row.pnl !== null ? `${row.pnl >= 0 ? "+" : ""}${nativeCompact(row.pnl)}` : missing}
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -395,7 +412,7 @@ export default function PortfolioPage() {
                           missing
                         )}
                       </td>
-                      <td className={cn("px-4 py-3 text-right font-mono text-xs", getPriceColor(row.dayChangePercent ?? 0))} data-financial>
+                      <td className={cn("px-4 py-3 text-right font-mono text-xs", row.dayChangePercent !== null ? getPriceColor(row.dayChangePercent) : "")} data-financial>
                         {row.dayChangePercent !== null ? formatPercent(row.dayChangePercent) : missing}
                       </td>
                       <td className="px-4 py-3">

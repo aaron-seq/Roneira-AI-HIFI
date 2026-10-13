@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import type { NewsArticle } from "@/lib/market/types";
+import { useAppStore } from "@/lib/stores/app-store";
 
 async function fetchJson<T>(url: string): Promise<T> {
   const response = await fetch(url, {
@@ -18,8 +19,9 @@ async function fetchJson<T>(url: string): Promise<T> {
 }
 
 export function useNewsFeed(market: "global" | "india", query: string) {
+  const userId = useAppStore((state) => state.user?.id ?? null);
   return useQuery({
-    queryKey: ["news", market, query],
+    queryKey: ["news", market, query, userId],
     queryFn: () =>
       fetchJson<{ articles: NewsArticle[]; totalResults: number }>(
         `/api/news?market=${encodeURIComponent(market)}&q=${encodeURIComponent(

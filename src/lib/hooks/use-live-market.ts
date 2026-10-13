@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import type { CandlePoint, MarketQuote, ScreenerResponse } from "@/lib/market/types";
+import { useAppStore } from "@/lib/stores/app-store";
 
 type MarketOverviewResponse = {
   data: MarketQuote[];
@@ -43,8 +44,11 @@ async function fetchJson<T>(url: string): Promise<T> {
 }
 
 export function useMarketOverviewData() {
+  const userId = useAppStore((state) => state.user?.id ?? null);
   return useQuery({
-    queryKey: ["market", "overview"],
+    // AuthSync clears all queries on identity changes. Including the current
+    // identity reattaches this public query after that clear, even mid-request.
+    queryKey: ["market", "overview", userId],
     queryFn: () =>
       fetchJson<MarketOverviewResponse>("/api/market-data?group=market-overview"),
     refetchInterval: 60_000,
@@ -52,8 +56,9 @@ export function useMarketOverviewData() {
 }
 
 export function useCommoditiesForexData() {
+  const userId = useAppStore((state) => state.user?.id ?? null);
   return useQuery({
-    queryKey: ["market", "commodities-forex"],
+    queryKey: ["market", "commodities-forex", userId],
     queryFn: () =>
       fetchJson<CommoditiesForexResponse>(
         "/api/market-data?group=commodities-forex"
@@ -63,12 +68,13 @@ export function useCommoditiesForexData() {
 }
 
 export function useLiveQuotes(symbols: string[]) {
+  const userId = useAppStore((state) => state.user?.id ?? null);
   const uniqueSymbols = Array.from(
     new Set(symbols.map((symbol) => symbol.trim()).filter(Boolean))
   );
 
   return useQuery({
-    queryKey: ["market", "quotes", uniqueSymbols.join(",")],
+    queryKey: ["market", "quotes", uniqueSymbols.join(","), userId],
     queryFn: () =>
       fetchJson<{ data: MarketQuote[] }>(
         `/api/market-data?symbols=${encodeURIComponent(uniqueSymbols.join(","))}`
@@ -83,8 +89,9 @@ export function useQuoteHistory(
   interval = "1day",
   range = "6month"
 ) {
+  const userId = useAppStore((state) => state.user?.id ?? null);
   return useQuery({
-    queryKey: ["market", "history", symbol, interval, range],
+    queryKey: ["market", "history", symbol, interval, range, userId],
     queryFn: () =>
       fetchJson<{ candles: CandlePoint[] }>(
         `/api/market-data/history?symbol=${encodeURIComponent(
@@ -99,8 +106,9 @@ export function useQuoteHistory(
 }
 
 export function useStockScreener() {
+  const userId = useAppStore((state) => state.user?.id ?? null);
   return useQuery({
-    queryKey: ["market", "screener"],
+    queryKey: ["market", "screener", userId],
     queryFn: () => fetchJson<ScreenerResponse>("/api/screener"),
     // The ML service itself caches this for 30 minutes; matching that here
     // avoids polling a mostly-static dataset every 60s like the price hooks.
@@ -110,8 +118,9 @@ export function useStockScreener() {
 }
 
 export function usePeerComparison(symbol: string | undefined) {
+  const userId = useAppStore((state) => state.user?.id ?? null);
   return useQuery({
-    queryKey: ["market", "peers", symbol],
+    queryKey: ["market", "peers", symbol, userId],
     queryFn: () =>
       fetchJson<{ peers: MarketQuote[] }>(
         `/api/market-data?group=peer-comparison&symbol=${encodeURIComponent(

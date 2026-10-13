@@ -60,7 +60,9 @@ export default function DashboardLayout({
               <motion.div
                 key={pathname}
                 variants={pageTransition}
-                initial={reducedMotion ? false : "initial"}
+                // Server rendering cannot know the browser's motion setting.
+                // Start visibly on both sides to keep hydration consistent.
+                initial={false}
                 animate={reducedMotion ? { opacity: 1, x: 0, transition: { duration: 0 } } : "animate"}
                 exit={reducedMotion ? { opacity: 1, x: 0, transition: { duration: 0 } } : "exit"}
                 className="min-w-0 p-4 sm:p-6"
