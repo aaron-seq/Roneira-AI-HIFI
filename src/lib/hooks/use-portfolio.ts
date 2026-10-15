@@ -75,8 +75,9 @@ export function usePortfolio() {
   // totalled in one currency instead of adding rupees to dollars.
   const symbols = holdings.map((row) => row.ticker);
   const quotesQuery = useLiveQuotes(symbols.length > 0 ? [...symbols, USD_INR] : []);
+  const quotes = (quotesQuery.data?.data ?? []) as MarketQuote[];
   const quotesBySymbol = new Map(
-    ((quotesQuery.data?.data ?? []) as MarketQuote[]).map((quote) => [
+    quotes.map((quote) => [
       quote.symbol,
       quote,
     ])
@@ -206,6 +207,11 @@ export function usePortfolio() {
   return {
     ...holdingsQuery,
     summary,
+    quotes,
+    quotesLoading: symbols.length > 0 && quotesQuery.isLoading,
+    quotesFetching: symbols.length > 0 && Boolean(quotesQuery.isFetching),
+    quotesError: symbols.length > 0 ? quotesQuery.error ?? null : null,
+    refetchQuotes: quotesQuery.refetch,
     upsertMutation,
     removeMutation,
     isLoading:

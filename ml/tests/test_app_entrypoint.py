@@ -170,6 +170,8 @@ def test_market_data_preserves_daily_session_and_deduplicates_symbols(monkeypatc
     assert row["timestamp"] is None
     assert row["price"] == 110.0
     assert row["change"] == 10.0
+    assert row["change_available"] is True
+    assert row["change_percent_available"] is True
 
 
 def test_market_data_empty_symbols_does_not_fetch(monkeypatch):
@@ -186,3 +188,22 @@ def test_market_data_empty_symbols_does_not_fetch(monkeypatch):
     )
     assert response.status_code == 200
     assert response.json()["data"] == []
+
+
+def test_single_session_quote_does_not_claim_an_observed_flat_move(monkeypatch):
+    import pandas as pd
+    import app.main as main
+
+    monkeypatch.setattr(main, "ML_SERVICE_TOKEN", "test-secret")
+    history = pd.DataFrame({"Close": [100.], "High": [101.], "Low": [99.], "Volume": [1000]},
+                           index=pd.date_range("2026-10-09", periods=1, tz="Asia/Kolkata"))
+    monkeypatch.setattr(main, "fetch_stock_data", lambda *args, **kwargs: history)
+    monkeypatch.setattr(main, "get_company_info", lambda symbol: {"name": symbol})
+    response = TestClient(main.app).get("/market-data?symbols=TCS.NS",
+                                      headers={"X-ML-Service-Token": "test-secret"})
+    assert response.status_code == 200
+    row = response.json()["data"][0]
+    assert row["change"] == 0
+    assert row["previous_close"] is None
+    assert row["change_available"] is False
+    assert row["change_percent_available"] is False

@@ -176,13 +176,16 @@ export function normalizeQuote(
     toNumber(raw.previous_close) ??
     toNumber(raw.prev_close) ??
     toNumber(raw.previousClose);
-  const change =
-    toNumber(raw.change) ??
-    (previousClose !== null ? price - previousClose : 0);
-  const changePercent =
-    toNumber(raw.percent_change) ??
-    toNumber(raw.change_percent) ??
-    (previousClose ? (change / previousClose) * 100 : 0);
+  const observedChange = toNumber(raw.change);
+  const observedPercent = toNumber(raw.percent_change) ?? toNumber(raw.change_percent);
+  const validPrevious = previousClose !== null && previousClose > 0;
+  const change = observedChange ?? (validPrevious ? price - previousClose : 0);
+  const changePercent = observedPercent ?? (validPrevious ? (change / previousClose) * 100 : 0);
+  // Numeric zero remains compatible with older quote consumers; stories and
+  // valuation use these flags so absent comparisons never become flat moves.
+  const changeAvailable = raw.change_available !== false && (observedChange !== null || validPrevious);
+  const changePercentAvailable = raw.change_percent_available !== false
+    && (observedPercent !== null || (validPrevious && changeAvailable));
 
   return {
     symbol: config.symbol,
@@ -198,6 +201,8 @@ export function normalizeQuote(
     price,
     change,
     changePercent,
+    changeAvailable,
+    changePercentAvailable,
     high: toNumber(raw.high),
     low: toNumber(raw.low),
     open: toNumber(raw.open),
@@ -357,7 +362,8 @@ function mapSectionQuotes(
  * Losers" on any broad up day.
  */
 export function splitMovers(quotes: MarketQuote[], count = 5) {
-  const ranked = [...quotes].sort((left, right) => right.changePercent - left.changePercent);
+  const ranked = quotes.filter((quote) => quote.changePercentAvailable !== false && Number.isFinite(quote.changePercent))
+    .sort((left, right) => right.changePercent - left.changePercent);
   return {
     gainers: ranked.filter((quote) => quote.changePercent > 0).slice(0, count),
     losers: ranked.filter((quote) => quote.changePercent < 0).reverse().slice(0, count),

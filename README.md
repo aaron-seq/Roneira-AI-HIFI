@@ -86,6 +86,15 @@ Roneira AI HIFI represents the convergence of advanced machine learning, real-ti
 
 ## Key Features
 
+### Market and portfolio insight stories
+
+Market Overview explains movement and coverage for the configured regional-index
+sample, separating higher/lower/unchanged from unknown comparisons. Portfolio
+explains priced-book coverage, unrealized P&L and position/sector exposure, with
+missing quotes, FX and invalid inputs excluded explicitly. Each section shows
+provider/session provenance and expandable calculations; refreshing does not imply
+fresh quotes. [Method and validation](docs/data-stories-2026-10-13.md).
+
 ### Machine Learning & Analytics
 
 The lists below describe what's actually implemented and verified working — not a

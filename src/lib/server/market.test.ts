@@ -134,6 +134,8 @@ describe("normalizeQuote", () => {
 
     expect(quote?.change).toBe(10);
     expect(quote?.changePercent).toBeCloseTo(10);
+    expect(quote?.changeAvailable).toBe(true);
+    expect(quote?.changePercentAvailable).toBe(true);
   });
 
   it("prefers explicitly provided change fields over derived ones", () => {
@@ -151,6 +153,8 @@ describe("normalizeQuote", () => {
     const noPrev = normalizeQuote(equityConfig, { close: "110" }, "twelve-data");
     expect(noPrev?.change).toBe(0);
     expect(noPrev?.changePercent).toBe(0);
+    expect(noPrev?.changeAvailable).toBe(false);
+    expect(noPrev?.changePercentAvailable).toBe(false);
 
     const zeroPrev = normalizeQuote(
       equityConfig,
@@ -158,6 +162,27 @@ describe("normalizeQuote", () => {
       "twelve-data"
     );
     expect(Number.isFinite(zeroPrev?.changePercent ?? NaN)).toBe(true);
+    expect(zeroPrev?.changeAvailable).toBe(false);
+    expect(zeroPrev?.changePercentAvailable).toBe(false);
+  });
+
+  it("preserves a reported flat percentage separately from an unknown move", () => {
+    const flat = normalizeQuote(equityConfig, { close: 110, change: 0, percent_change: 0 }, "twelve-data");
+    expect(flat?.changePercent).toBe(0);
+    expect(flat?.changeAvailable).toBe(true);
+    expect(flat?.changePercentAvailable).toBe(true);
+    const percentageOnly = normalizeQuote(equityConfig, { close: 110, percent_change: 5 }, "twelve-data");
+    expect(percentageOnly?.changeAvailable).toBe(false);
+    expect(percentageOnly?.changePercentAvailable).toBe(true);
+  });
+
+  it("retains explicit provider unavailability despite legacy numeric zeros", () => {
+    const unavailable = normalizeQuote(equityConfig, {
+      price: 110, change: 0, change_percent: 0,
+      change_available: false, change_percent_available: false,
+    }, "yfinance");
+    expect(unavailable?.changePercentAvailable).toBe(false);
+    expect(unavailable?.changeAvailable).toBe(false);
   });
 
   it("falls back to the configured metadata when the payload omits it", () => {
@@ -330,5 +355,13 @@ describe("splitMovers", () => {
 
   it("returns empty lists on a day when nothing moved that way", () => {
     expect(splitMovers([quote("A", 1), quote("B", 2)]).losers).toEqual([]);
+  });
+
+  it("does not rank unavailable or nonfinite moves", () => {
+    const result = splitMovers([
+      { ...quote("UNKNOWN", 5), changePercentAvailable: false },
+      quote("INVALID", Infinity), quote("KNOWN", 2),
+    ]);
+    expect(result.gainers.map((q) => q.symbol)).toEqual(["KNOWN"]);
   });
 });

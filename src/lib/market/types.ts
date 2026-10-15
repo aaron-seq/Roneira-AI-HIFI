@@ -28,6 +28,9 @@ export interface MarketQuote {
   price: number;
   change: number;
   changePercent: number;
+  /** Explicit availability distinguishes observed flat moves from numeric fallbacks. */
+  changeAvailable?: boolean;
+  changePercentAvailable?: boolean;
   high?: number | null;
   low?: number | null;
   open?: number | null;

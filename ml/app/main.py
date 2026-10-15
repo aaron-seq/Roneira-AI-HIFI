@@ -394,9 +394,10 @@ def market_data(symbols: str = "^NSEI,^BSESN,^IXIC,^GSPC"):
         try:
             hist = fetch_stock_data(symbol, period="5d")
             current = float(hist["Close"].iloc[-1])
-            prev = float(hist["Close"].iloc[-2]) if len(hist) > 1 else current
-            change = current - prev
-            change_pct = (change / prev) * 100 if prev else 0
+            prev = float(hist["Close"].iloc[-2]) if len(hist) > 1 else None
+            comparison_available = prev is not None and np.isfinite(prev) and prev > 0
+            change = current - prev if comparison_available else 0
+            change_pct = (change / prev) * 100 if comparison_available else 0
             company = get_company_info(symbol)
             bar_date = pd.Timestamp(hist.index[-1])
             session_date = None if pd.isna(bar_date) else bar_date.date().isoformat()
@@ -408,6 +409,9 @@ def market_data(symbols: str = "^NSEI,^BSESN,^IXIC,^GSPC"):
                 "price": round(current, 2),
                 "change": round(change, 2),
                 "change_percent": round(change_pct, 2),
+                "previous_close": prev if comparison_available else None,
+                "change_available": comparison_available,
+                "change_percent_available": comparison_available,
                 "volume": int(hist["Volume"].iloc[-1]) if "Volume" in hist.columns else 0,
                 "high": round(float(hist["High"].iloc[-1]), 2),
                 "low": round(float(hist["Low"].iloc[-1]), 2),

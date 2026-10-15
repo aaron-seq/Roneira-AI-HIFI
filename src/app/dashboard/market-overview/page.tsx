@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   Activity,
   BarChart3,
@@ -11,9 +11,12 @@ import {
 } from "lucide-react";
 import { Area, AreaChart, ResponsiveContainer, YAxis } from "recharts";
 import { CardGridSkeleton } from "@/components/ui/Skeletons";
+import { InsightsStories } from "@/components/insights/InsightsStories";
 import { useMarketOverviewData, useQuoteHistory } from "@/lib/hooks/use-live-market";
+import { buildMarketStories } from "@/lib/insights/stories";
+import { MARKET_OVERVIEW_SYMBOLS } from "@/lib/market/constants";
 import type { MarketQuote } from "@/lib/market/types";
-import { cn, formatPercent, formatPrice, getPriceColor } from "@/lib/utils";
+import { formatPercent, formatPrice } from "@/lib/utils";
 
 const container = {
   hidden: { opacity: 0 },
@@ -38,6 +41,32 @@ const HERO_RANGES = [
   { value: "3month", label: "3M" },
   { value: "1year", label: "1Y" },
 ] as const;
+
+// Older stored payloads have no availability flags. Keep their numeric displays,
+// while new payloads can explicitly distinguish an unknown change from zero.
+function percentAvailable(quote: MarketQuote) {
+  return quote.changePercentAvailable !== false && Number.isFinite(quote.changePercent);
+}
+
+function changeColor(value: number) {
+  return value > 0 ? "var(--color-profit)" : value < 0 ? "var(--color-loss)" : "var(--color-text-muted)";
+}
+
+function QuoteMovement({ quote }: { quote: MarketQuote }) {
+  const knownChange = quote.changeAvailable !== false && Number.isFinite(quote.change);
+  const knownPercent = percentAvailable(quote);
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2 font-mono text-sm">
+      {knownChange && <span data-financial style={{ color: changeColor(quote.change) }}>
+        {quote.change > 0 ? "+" : ""}{formatPrice(quote.change)}
+      </span>}
+      {knownPercent ? <span className="flex items-center gap-1 text-xs font-semibold" data-financial style={{ color: changeColor(quote.changePercent) }}>
+        {quote.changePercent > 0 ? <TrendingUp aria-hidden="true" className="h-3 w-3" /> : quote.changePercent < 0 ? <TrendingDown aria-hidden="true" className="h-3 w-3" /> : null}
+        {formatPercent(quote.changePercent)}
+      </span> : <span className="font-sans text-xs" style={{ color: "var(--color-text-muted)" }}>Change unavailable</span>}
+    </div>
+  );
+}
 
 function SectionHeader({
   title,
@@ -67,12 +96,12 @@ function SectionHeader({
  * range via useQuoteHistory -- they aren't static UI.
  */
 function HeroIndex({ quote }: { quote: MarketQuote | undefined }) {
+  const reducedMotion = useReducedMotion();
   const [range, setRange] = useState<(typeof HERO_RANGES)[number]["value"]>("1month");
   const historyQuery = useQuoteHistory(HERO_SYMBOL, "1day", range);
   const candles = historyQuery.data?.candles ?? [];
   const chartData = candles.map((candle) => ({ time: candle.time, close: candle.close }));
-  const isPositive = (quote?.change ?? 0) >= 0;
-  const strokeColor = isPositive ? "#2ECC71" : "#E74C3C";
+  const strokeColor = quote && percentAvailable(quote) ? changeColor(quote.changePercent) : "var(--color-text-muted)";
 
   return (
     <motion.div variants={item} className="card mb-6 grid grid-cols-1 gap-6 p-6 lg:grid-cols-[auto_1fr]">
@@ -89,28 +118,10 @@ function HeroIndex({ quote }: { quote: MarketQuote | undefined }) {
             >
               {formatPrice(quote.price)}
             </p>
-            <div className="mt-2 flex items-center gap-2">
-              <span
-                className={cn("font-mono text-sm font-semibold", getPriceColor(quote.change))}
-                data-financial
-              >
-                {quote.change >= 0 ? "+" : ""}
-                {formatPrice(quote.change)}
-              </span>
-              <span
-                className={cn(
-                  "flex items-center gap-0.5 rounded px-1.5 py-0.5 font-mono text-xs font-semibold",
-                  isPositive ? "bg-profit-subtle text-profit" : "bg-loss-subtle text-loss"
-                )}
-                data-financial
-              >
-                {isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                {formatPercent(quote.changePercent)}
-              </span>
-            </div>
+            <QuoteMovement quote={quote} />
           </>
         ) : (
-          <div className="mt-2 h-10 w-32 animate-pulse rounded" style={{ background: "var(--color-surface-offset)" }} />
+          <p className="mt-2 text-sm" style={{ color: "var(--color-text-muted)" }}>Quote unavailable</p>
         )}
 
         <div className="mt-5 flex gap-1">
@@ -118,6 +129,8 @@ function HeroIndex({ quote }: { quote: MarketQuote | undefined }) {
             <button
               key={r.value}
               onClick={() => setRange(r.value)}
+              aria-label={`NIFTY 50 history: ${r.value === "1month" ? "1 month" : r.value === "3month" ? "3 months" : "1 year"}`}
+              aria-pressed={range === r.value}
               className="rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
               style={{
                 background: range === r.value ? "var(--color-surface-offset)" : "transparent",
@@ -147,14 +160,14 @@ function HeroIndex({ quote }: { quote: MarketQuote | undefined }) {
                 stroke={strokeColor}
                 strokeWidth={2}
                 fill="url(#heroFill)"
-                isAnimationActive
+                isAnimationActive={!reducedMotion}
                 animationDuration={500}
               />
             </AreaChart>
           </ResponsiveContainer>
         ) : (
           <div className="flex h-full items-center justify-center text-xs" style={{ color: "var(--color-text-faint)" }}>
-            {historyQuery.isLoading ? "Loading chart..." : "No chart data for this range"}
+            {historyQuery.isPending ? "Loading chart..." : "No chart data for this range"}
           </div>
         )}
       </div>
@@ -163,7 +176,7 @@ function HeroIndex({ quote }: { quote: MarketQuote | undefined }) {
 }
 
 function IndexCard({ quote }: { quote: MarketQuote }) {
-  const isPositive = quote.change >= 0;
+  const knownPercent = percentAvailable(quote);
 
   return (
     <motion.div variants={item} className="card p-4">
@@ -198,69 +211,42 @@ function IndexCard({ quote }: { quote: MarketQuote }) {
         >
           {formatPrice(quote.price)}
         </p>
-        <div className="mt-1 flex items-center gap-2">
-          <span
-            className={cn(
-              "font-mono text-sm font-medium",
-              getPriceColor(quote.change)
-            )}
-            data-financial
-          >
-            {quote.change >= 0 ? "+" : ""}
-            {formatPrice(quote.change)}
-          </span>
-          <span
-            className={cn(
-              "flex items-center gap-0.5 rounded px-1.5 py-0.5 font-mono text-xs font-semibold",
-              isPositive ? "bg-profit-subtle text-profit" : "bg-loss-subtle text-loss"
-            )}
-            data-financial
-          >
-            {isPositive ? (
-              <TrendingUp className="h-3 w-3" />
-            ) : (
-              <TrendingDown className="h-3 w-3" />
-            )}
-            {formatPercent(quote.changePercent)}
-          </span>
-        </div>
+        <QuoteMovement quote={quote} />
       </div>
 
       <div
         className="mt-4 h-1.5 rounded-full"
         style={{ background: "var(--color-surface-offset)" }}
       >
-        <div
+        {knownPercent && <div
           className="h-full rounded-full"
           style={{
-            width: `${Math.min(100, Math.max(8, Math.abs(quote.changePercent) * 12))}%`,
-            background: isPositive ? "#2ECC71" : "#E74C3C",
+            width: `${Math.min(100, Math.abs(quote.changePercent) * 12)}%`,
+            background: changeColor(quote.changePercent),
           }}
-        />
+        />}
       </div>
     </motion.div>
   );
 }
 
 function MoverRow({ quote }: { quote: MarketQuote }) {
-  const isPositive = quote.changePercent >= 0;
+  const knownPercent = percentAvailable(quote);
   return (
     <div className="flex items-center justify-between rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.03]">
       <div className="flex items-center gap-3">
         <div
           className="flex h-8 w-8 items-center justify-center rounded-lg text-[10px] font-bold"
           style={{
-            background: isPositive
-              ? "rgba(46,204,113,0.12)"
-              : "rgba(231,76,60,0.12)",
-            color: isPositive ? "#2ECC71" : "#E74C3C",
+            background: "var(--color-surface-offset)",
+            color: knownPercent ? changeColor(quote.changePercent) : "var(--color-text-muted)",
           }}
         >
-          {isPositive ? (
+          {knownPercent && quote.changePercent > 0 ? (
             <TrendingUp className="h-3.5 w-3.5" />
-          ) : (
+          ) : knownPercent && quote.changePercent < 0 ? (
             <TrendingDown className="h-3.5 w-3.5" />
-          )}
+          ) : <Activity aria-hidden="true" className="h-3.5 w-3.5" />}
         </div>
         <div>
           <p className="ticker text-xs">{quote.symbol.replace(".NS", "")}</p>
@@ -278,10 +264,11 @@ function MoverRow({ quote }: { quote: MarketQuote }) {
           {formatPrice(quote.price)}
         </p>
         <p
-          className={cn("font-mono text-xs font-medium", getPriceColor(quote.changePercent))}
+          className="font-mono text-xs font-medium"
           data-financial
+          style={{ color: knownPercent ? changeColor(quote.changePercent) : "var(--color-text-muted)" }}
         >
-          {formatPercent(quote.changePercent)}
+          {knownPercent ? formatPercent(quote.changePercent) : "Change unavailable"}
         </p>
       </div>
     </div>
@@ -291,7 +278,7 @@ function MoverRow({ quote }: { quote: MarketQuote }) {
 export default function MarketOverviewPage() {
   const marketQuery = useMarketOverviewData();
   const allQuotes = marketQuery.data?.data ?? [];
-  const upCount = allQuotes.filter((quote) => quote.change >= 0).length;
+  const insights = buildMarketStories({ configs: MARKET_OVERVIEW_SYMBOLS, quotes: allQuotes });
   const heroQuote = allQuotes.find((quote) => quote.symbol === HERO_SYMBOL);
   const indiaRest = (marketQuery.data?.sections.india ?? []).filter(
     (quote) => quote.symbol !== HERO_SYMBOL
@@ -308,42 +295,28 @@ export default function MarketOverviewPage() {
             Market Overview
           </h1>
           <p className="mt-2 text-sm" style={{ color: "var(--color-text-muted)" }}>
-            Global indices, top movers, and live market breadth — refreshed every 60 seconds.
+            Tracked index snapshots and stock movers. Quotes refresh every 60 seconds; provider sessions may differ.
           </p>
         </div>
-        {allQuotes.length > 0 && (
-          <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
-            <span
-              className="font-mono font-semibold"
-              data-financial
-              style={{ color: upCount * 2 >= allQuotes.length ? "var(--color-profit)" : "var(--color-loss)" }}
-            >
-              {upCount} of {allQuotes.length}
-            </span>{" "}
-            tracked instruments higher today
-          </p>
-        )}
       </div>
 
-      {marketQuery.isLoading ? (
+      <InsightsStories title="Market insights" insights={insights}
+        state={marketQuery.isPending ? "loading" : marketQuery.isError ? "error" : "ready"}
+        onRetry={() => { void marketQuery.refetch(); }} isRetrying={marketQuery.isFetching}
+        errorMessage="Market quotes could not be refreshed. Retry to load the tracked instruments." />
+
+      {marketQuery.isPending ? (
         <div className="space-y-6">
           <CardGridSkeleton count={4} />
           <CardGridSkeleton count={4} />
           <CardGridSkeleton count={4} />
           <CardGridSkeleton count={4} />
         </div>
-      ) : marketQuery.isError ? (
-        <div className="card p-6">
-          <p style={{ color: "var(--color-text-muted)" }}>
-            Live market data is unavailable right now. Please try again in a
-            moment.
-          </p>
-        </div>
-      ) : (
+      ) : !marketQuery.isError || marketQuery.data ? (
         <>
           <HeroIndex quote={heroQuote} />
 
-          <motion.div variants={container} initial="hidden" animate="visible">
+          <motion.div variants={container} initial={false} animate="visible">
             <SectionHeader title="India" icon={Globe} />
             <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {indiaRest.map((quote) => (
@@ -374,9 +347,9 @@ export default function MarketOverviewPage() {
           </motion.div>
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <motion.div variants={item} initial="hidden" animate="visible" className="card p-5">
+            <motion.div variants={item} initial={false} animate="visible" className="card p-5">
               <div className="mb-4 flex items-center gap-2">
-                <TrendingUp className="h-4 w-4" style={{ color: "#2ECC71" }} />
+                <TrendingUp className="h-4 w-4" style={{ color: "var(--color-profit)" }} />
                 <h3
                   className="text-sm font-semibold"
                   style={{ color: "var(--color-text-primary)" }}
@@ -390,15 +363,15 @@ export default function MarketOverviewPage() {
                 ))}
                 {marketQuery.data && marketQuery.data.movers.gainers.length === 0 && (
                   <p className="px-3 py-2 text-xs" style={{ color: "var(--color-text-faint)" }}>
-                    Nothing on the tracked list is up today.
+                    No gainers are reported in the tracked stock snapshot.
                   </p>
                 )}
               </div>
             </motion.div>
 
-            <motion.div variants={item} initial="hidden" animate="visible" className="card p-5">
+            <motion.div variants={item} initial={false} animate="visible" className="card p-5">
               <div className="mb-4 flex items-center gap-2">
-                <TrendingDown className="h-4 w-4" style={{ color: "#E74C3C" }} />
+                <TrendingDown className="h-4 w-4" style={{ color: "var(--color-loss)" }} />
                 <h3
                   className="text-sm font-semibold"
                   style={{ color: "var(--color-text-primary)" }}
@@ -412,14 +385,14 @@ export default function MarketOverviewPage() {
                 ))}
                 {marketQuery.data && marketQuery.data.movers.losers.length === 0 && (
                   <p className="px-3 py-2 text-xs" style={{ color: "var(--color-text-faint)" }}>
-                    Nothing on the tracked list is down today.
+                    No losers are reported in the tracked stock snapshot.
                   </p>
                 )}
               </div>
             </motion.div>
           </div>
         </>
-      )}
+      ) : null}
     </div>
   );
 }
