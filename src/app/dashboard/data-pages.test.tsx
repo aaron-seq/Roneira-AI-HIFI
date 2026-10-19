@@ -10,6 +10,8 @@ const mock = vi.hoisted(() => ({
   portfolio: vi.fn(), watchlist: vi.fn(), search: vi.fn(), news: vi.fn(), refetch: vi.fn(),
   upsert: vi.fn(), remove: vi.fn(), add: vi.fn(), alert: vi.fn(), predict: vi.fn(),
 }));
+// The history section has its own account/query integration tests.
+vi.mock("@/components/portfolio/PortfolioHistory", () => ({ PortfolioHistory: () => null }));
 vi.mock("@/lib/hooks/use-portfolio", () => ({ usePortfolio: mock.portfolio }));
 vi.mock("@/lib/hooks/use-watchlist", () => ({ useWatchlist: mock.watchlist }));
 vi.mock("@/lib/hooks/use-prediction", () => ({

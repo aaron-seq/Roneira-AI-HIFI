@@ -149,8 +149,8 @@ An unset ML token returns 503 on protected endpoints; mismatched tokens return
 
 **3. Database Setup**
 
-Schema lives in `supabase/migrations/`: apply 001 through 012 in filename order;
-004 is absent. Migration 012 is required for atomic price-alert delivery. Pick one:
+Schema lives in `supabase/migrations/`: apply 001 through 013 in filename order;
+004 is absent. Migration 012 is required for atomic price-alert delivery; 013 adds private server-valued portfolio history and its ordered-save RPC. Pick one:
 
 *Local stack (recommended for development, needs Docker and disk space for images):*
 
