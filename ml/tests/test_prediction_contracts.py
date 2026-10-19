@@ -122,9 +122,11 @@ def test_random_forest_never_anchors_old_features_to_the_latest_close():
     index = pd.bdate_range("2022-01-03", periods=504)
     rng = np.random.default_rng(42)
     close = 100 * np.exp(np.cumsum(rng.normal(0, .01, len(index))))
-    close[-20:] = close[-21] * np.linspace(1.01, 1.2, 20)
     frame = pd.DataFrame({"Open": close, "High": close + 1, "Low": close - 1,
                           "Close": close, "Volume": 1000}, index=index)
+    # A rising-only RSI is now valid. Use genuinely missing current input to
+    # keep guarding against anchoring an older vector to the newest close.
+    frame.loc[index[-1], "High"] = np.nan
     predictor = RandomForestPredictor()
     features = predictor._create_features(frame)
     assert len(features) > 50  # Enough older rows; only the current origin is invalid.

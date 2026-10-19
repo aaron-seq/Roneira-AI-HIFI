@@ -121,6 +121,7 @@ def artifact_contract_reason(artifact, metadata: dict, sequence_length: int, n_f
     if (
         not isinstance(artifact, GradientBoostArtifact)
         or not isinstance(metadata, dict)
+        or metadata.get("research_only") is True
         or metadata.get("window_contract") != WINDOW_CONTRACT
         or getattr(artifact, "window_contract", None) != WINDOW_CONTRACT
         or artifact.backend not in ("xgboost", "sklearn")
@@ -171,7 +172,7 @@ def build_estimator(n_estimators: int = 300, max_depth: int = 4):
             colsample_bytree=0.9,
             reg_lambda=1.0,
             random_state=42,
-            n_jobs=-1,
+            n_jobs=2,
             objective="reg:squarederror",
             # Histogram splits instead of the default exact scan. On the real
             # training set (92k windows x 660 columns) exact took 502s for the

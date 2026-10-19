@@ -12,6 +12,7 @@ losing the whole analysis to the exception handler.
 import logging
 import numpy as np
 import pandas as pd
+from app.models.indicators import rolling_rsi
 
 logger = logging.getLogger("roneira-ml.technical")
 
@@ -285,11 +286,7 @@ class TechnicalAnalyzer:
         return self._wilder(tr, period)
 
     def _rsi(self, series: pd.Series, period: int = 14) -> pd.Series:
-        delta = series.diff()
-        gain = delta.where(delta > 0, 0).rolling(period).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(period).mean()
-        rs = gain / loss.replace(0, np.nan)
-        return 100 - (100 / (1 + rs))
+        return rolling_rsi(series, period)
 
     def _macd(self, series: pd.Series, fast=12, slow=26, signal_period=9):
         ema_fast = series.ewm(span=fast).mean()

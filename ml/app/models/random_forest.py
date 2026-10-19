@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import TimeSeriesSplit
+from app.models.indicators import rolling_rsi
 
 logger = logging.getLogger("roneira-ml.random_forest")
 
@@ -15,9 +16,12 @@ logger = logging.getLogger("roneira-ml.random_forest")
 class RandomForestPredictor:
     """Random Forest model for stock price prediction."""
 
-    def __init__(self, n_estimators: int = 200, max_depth: int = 12):
+    def __init__(self, n_estimators: int = 200, max_depth: int = 12, n_jobs: int = 2):
+        if type(n_jobs) is not int or n_jobs < 1:
+            raise ValueError("Random Forest n_jobs must be a positive integer.")
         self.n_estimators = n_estimators
         self.max_depth = max_depth
+        self.n_jobs = n_jobs
         self._ready = True
         logger.info(f"RandomForest initialized: n_estimators={n_estimators}, max_depth={max_depth}")
 
@@ -59,11 +63,7 @@ class RandomForestPredictor:
         features["volume_change"] = volume.pct_change(1, fill_method=None).fillna(0.0)
 
         # RSI
-        delta = df["Close"].diff()
-        gain = delta.where(delta > 0, 0).rolling(14).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
-        rs = gain / loss.replace(0, np.nan)
-        features["rsi_14"] = 100 - (100 / (1 + rs))
+        features["rsi_14"] = rolling_rsi(df["Close"], 14)
 
         # MACD
         ema12 = df["Close"].ewm(span=12).mean()
@@ -138,7 +138,7 @@ class RandomForestPredictor:
                 n_estimators=self.n_estimators,
                 max_depth=self.max_depth,
                 random_state=42,
-                n_jobs=-1,
+                n_jobs=self.n_jobs,
             )
 
             for train_idx, test_idx in tscv.split(X):

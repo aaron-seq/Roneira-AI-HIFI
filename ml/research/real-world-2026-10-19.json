@@ -1,0 +1,12 @@
+{
+  "name": "real-world-2026-10-19",
+  "tickers": ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "AAPL", "MSFT"],
+  "start": "2016-10-17",
+  "end_exclusive": "2026-10-17",
+  "horizons_sessions": [7, 30, 90, 180],
+  "folds": 3,
+  "min_history_sessions": 1500,
+  "max_origins_per_fold": 24,
+  "seed": 42,
+  "threads": 2
+}

@@ -1,0 +1,89 @@
+{
+  "purpose": "Numerical correction regression on the earlier fixed 96 RF origins; no parameter selection.",
+  "input_hashes": {
+    "HDFCBANK.NS_10y.csv": "f22bbe2970eac469adb89db3f597e43232df9c148605ff5e559133d78244c8d0",
+    "RELIANCE.NS_10y.csv": "773ed3b4b5d5435df1ae7c6154563be2b06e4d356db8fa7e2d8c217b56d47ccf",
+    "INFY.NS_10y.csv": "4cbcde069c8193f8a68feb7470fa28f8e4fd637f4f1987bfa2a814f06ef05eb0",
+    "TCS.NS_10y.csv": "c6c38b74d861e30ce7a3bbe85e0387de38f56b930f4c8add10763d9dc08339f5"
+  },
+  "horizons": {
+    "7": {
+      "origins": 48,
+      "coverage_before": 48,
+      "coverage_after": 48,
+      "changed_predictions": 0,
+      "max_abs_return_difference": 9.71445146547012e-17,
+      "before": {
+        "n": 48,
+        "mae": 0.03354855697127224,
+        "baseline_mae": 0.02792792814965156,
+        "skill": -0.2012547723376612,
+        "hit_rate": 0.5208333333333334,
+        "n_directional": 48,
+        "n_correct_direction": 25,
+        "n_predicted_no_change": 0,
+        "n_realised_up": 25,
+        "n_realised_down": 23,
+        "n_realised_flat": 0,
+        "base_up": 0.5208333333333334,
+        "base_down": 0.4791666666666667,
+        "base_flat": 0.0
+      },
+      "after": {
+        "n": 48,
+        "mae": 0.03354855697127227,
+        "baseline_mae": 0.02792792814965156,
+        "skill": -0.2012547723376621,
+        "hit_rate": 0.5208333333333334,
+        "n_directional": 48,
+        "n_correct_direction": 25,
+        "n_predicted_no_change": 0,
+        "n_realised_up": 25,
+        "n_realised_down": 23,
+        "n_realised_flat": 0,
+        "base_up": 0.5208333333333334,
+        "base_down": 0.4791666666666667,
+        "base_flat": 0.0
+      }
+    },
+    "30": {
+      "origins": 48,
+      "coverage_before": 48,
+      "coverage_after": 48,
+      "changed_predictions": 0,
+      "max_abs_return_difference": 9.71445146547012e-17,
+      "before": {
+        "n": 48,
+        "mae": 0.07294957391099073,
+        "baseline_mae": 0.06456206793000557,
+        "skill": -0.12991383717879668,
+        "hit_rate": 0.5208333333333334,
+        "n_directional": 48,
+        "n_correct_direction": 25,
+        "n_predicted_no_change": 0,
+        "n_realised_up": 24,
+        "n_realised_down": 24,
+        "n_realised_flat": 0,
+        "base_up": 0.5,
+        "base_down": 0.5,
+        "base_flat": 0.0
+      },
+      "after": {
+        "n": 48,
+        "mae": 0.07294957391099076,
+        "baseline_mae": 0.06456206793000557,
+        "skill": -0.12991383717879712,
+        "hit_rate": 0.5208333333333334,
+        "n_directional": 48,
+        "n_correct_direction": 25,
+        "n_predicted_no_change": 0,
+        "n_realised_up": 24,
+        "n_realised_down": 24,
+        "n_realised_flat": 0,
+        "base_up": 0.5,
+        "base_down": 0.5,
+        "base_flat": 0.0
+      }
+    }
+  }
+}
