@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "source_id": "roneira-synthetic",
+  "license": "MIT",
+  "generator": "data/generate_synthetic.py",
+  "real_market_data": false,
+  "purpose": "Numerical/schema tests only; not forecasting or investment evidence.",
+  "datasets": [
+    {
+      "instrument": "SYNTH_INR",
+      "currency": "INR",
+      "exchange_timezone": "Asia/Kolkata",
+      "file": "SYNTH_INR.csv",
+      "rows": 8,
+      "local_session_start": "2024-10-28",
+      "local_session_end": "2024-11-06",
+      "sha256": "0b1dd4a3d20129927964cd31e99adc8554170525315d4ea63108586536d2c70a"
+    },
+    {
+      "instrument": "SYNTH_USD",
+      "currency": "USD",
+      "exchange_timezone": "America/New_York",
+      "file": "SYNTH_USD.csv",
+      "rows": 8,
+      "local_session_start": "2024-10-28",
+      "local_session_end": "2024-11-06",
+      "sha256": "b7aefa90ec6f0ffb666c7e536c2d8e203ebee243154cbfb273a5bd13c04c2940"
+    }
+  ]
+}

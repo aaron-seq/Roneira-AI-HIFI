@@ -1,0 +1,26 @@
+name: Financial or application defect
+description: Report incorrect values, authorization failures or a reproducible workflow bug.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Do not include credentials, private holdings or restricted provider downloads. Use synthetic examples where possible.
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior
+      description: Describe the user action, incorrect result, currency/session/coverage context and practical impact.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction and evidence
+      description: Include steps, environment/version, a permitted minimal fixture and observed errors. Distinguish real-provider observations from synthetic tests.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Proposed acceptance and related work
+      description: State the invariant a fix should preserve and link an existing issue or product requirement. Unknowns are welcome.

@@ -1,0 +1,6 @@
+# Actual provider/user data is never part of the public data project.
+raw/
+private/
+quarantine/
+exports/
+.cache/

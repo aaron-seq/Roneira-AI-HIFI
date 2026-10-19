@@ -80,6 +80,24 @@ jobs:
       - name: Run tests
         run: python -m pytest tests -q
 
+  # Public metadata and authored fixtures are testable without provider access.
+  data:
+    name: Data project CI
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - name: Validate public dataset contracts and evidence
+        run: python data/validate.py --metadata-only
+      - name: Validate synthetic data
+        run: python data/validate.py
+      - name: Run offline data tests
+        run: python -m unittest discover -s data/tests -v
+
   # Repository-wide vulnerability scanning
   security:
     name: Security Scan
@@ -109,9 +127,9 @@ jobs:
 
   # Confirm the files required to deploy the canonical surfaces are present
   deployment-check:
-    name: Deployment Readiness
+    name: Deployment file checks
     runs-on: ubuntu-latest
-    needs: [web, ml]
+    needs: [web, ml, data]
     if: github.ref == 'refs/heads/main'
 
     steps:
@@ -130,11 +148,10 @@ jobs:
       - name: Validate environment template
         run: test -f .env.example
 
-      - name: Deployment ready notification
+      - name: Deployment file check summary
         run: |
-          echo "Canonical surfaces verified. Ready for deployment to:"
-          echo "- Web (src/): Vercel"
-          echo "- ML  (ml/):  Railway/Render"
+          echo "Required web/ML deployment files are present."
+          echo "Hosted runtime, authentication, provider rights and model quality require separate evidence."
 
 # Environment variables for the entire workflow
 env:

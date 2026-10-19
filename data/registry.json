@@ -1,0 +1,397 @@
+{
+  "schema_version": 1,
+  "updated_on": "2026-10-20",
+  "purpose": "Public metadata registry and local quality contracts; not an open market-data distribution service.",
+  "schemas": {
+    "daily-ohlcv-v1": {
+      "columns": [
+        "Date",
+        "Open",
+        "High",
+        "Low",
+        "Close",
+        "Volume"
+      ],
+      "timestamp_semantics": "utc-label-of-exchange-local-midnight",
+      "timestamp_is_observation_or_close_time": false,
+      "adjustment": "Provider snapshots use the explicit adjusted history request; synthetic bars have no corporate actions."
+    }
+  },
+  "currency_definitions": {
+    "INR": {
+      "name": "Indian rupee",
+      "iso4217_numeric": "356"
+    },
+    "USD": {
+      "name": "US dollar",
+      "iso4217_numeric": "840"
+    }
+  },
+  "sources": [
+    {
+      "id": "yahoo-finance-via-yfinance",
+      "kind": "provider_snapshot",
+      "provider": "Yahoo Finance via yfinance",
+      "provider_terms": "https://legal.yahoo.com/us/en/yahoo/terms/product-atos/apiforydn/index.html",
+      "library_notice": "https://github.com/ranaroussi/yfinance#readme",
+      "rights": {
+        "status": "unverified-for-redistribution-or-commercial-use",
+        "raw_redistribution": "not-established",
+        "trained_weights_redistribution": "not-established",
+        "public_contents": "Provenance metadata, hashes, methodology and aggregate research evidence only; no raw bars or candidate weights."
+      },
+      "access": "Operator-local ignored research cache; no public download endpoint.",
+      "retention": {
+        "policy": "Keep one bounded research snapshot only while needed for the active reproducibility/review task; reassess before each new study, delete local raw/candidate files when the need or permission ends. Provider rights may require earlier deletion.",
+        "automatic_enforcement": false
+      },
+      "deletion": "Remove the exact local experiment cache directory and copies/backups under operator control; verify absence. Preserve only permitted metadata/review records. Deletion cannot retract prior public copies, so raw files are never published."
+    },
+    {
+      "id": "roneira-synthetic",
+      "kind": "synthetic",
+      "provider": "Roneira authored numerical fixtures",
+      "rights": {
+        "status": "authored-synthetic",
+        "raw_redistribution": "MIT-authored-synthetic-only",
+        "trained_weights_redistribution": "not-applicable",
+        "license_path": "LICENSE"
+      },
+      "access": "Public source-controlled fixtures; no real instruments, provider bars or user accounts.",
+      "retention": {
+        "policy": "Retain versioned synthetic fixtures while tests require them.",
+        "automatic_enforcement": false
+      },
+      "deletion": "Remove or revise synthetic fixture files through normal version control; Git history remains public."
+    }
+  ],
+  "instruments": [
+    {
+      "id": "RELIANCE.NS",
+      "provider_symbol": "RELIANCE.NS",
+      "source_id": "yahoo-finance-via-yfinance",
+      "currency": "INR",
+      "exchange_timezone": "Asia/Kolkata",
+      "identity_note": "Preselected current listed equity; currency/timezone are instrument contracts, not cross-currency conversion."
+    },
+    {
+      "id": "TCS.NS",
+      "provider_symbol": "TCS.NS",
+      "source_id": "yahoo-finance-via-yfinance",
+      "currency": "INR",
+      "exchange_timezone": "Asia/Kolkata",
+      "identity_note": "Preselected current listed equity; currency/timezone are instrument contracts, not cross-currency conversion."
+    },
+    {
+      "id": "INFY.NS",
+      "provider_symbol": "INFY.NS",
+      "source_id": "yahoo-finance-via-yfinance",
+      "currency": "INR",
+      "exchange_timezone": "Asia/Kolkata",
+      "identity_note": "Preselected current listed equity; currency/timezone are instrument contracts, not cross-currency conversion."
+    },
+    {
+      "id": "HDFCBANK.NS",
+      "provider_symbol": "HDFCBANK.NS",
+      "source_id": "yahoo-finance-via-yfinance",
+      "currency": "INR",
+      "exchange_timezone": "Asia/Kolkata",
+      "identity_note": "Preselected current listed equity; currency/timezone are instrument contracts, not cross-currency conversion."
+    },
+    {
+      "id": "AAPL",
+      "provider_symbol": "AAPL",
+      "source_id": "yahoo-finance-via-yfinance",
+      "currency": "USD",
+      "exchange_timezone": "America/New_York",
+      "identity_note": "Preselected current listed equity; currency/timezone are instrument contracts, not cross-currency conversion."
+    },
+    {
+      "id": "MSFT",
+      "provider_symbol": "MSFT",
+      "source_id": "yahoo-finance-via-yfinance",
+      "currency": "USD",
+      "exchange_timezone": "America/New_York",
+      "identity_note": "Preselected current listed equity; currency/timezone are instrument contracts, not cross-currency conversion."
+    },
+    {
+      "id": "SYNTH_INR",
+      "provider_symbol": "SYNTH_INR",
+      "source_id": "roneira-synthetic",
+      "currency": "INR",
+      "exchange_timezone": "Asia/Kolkata",
+      "identity_note": "Fictional numerical fixture; not a security or simulated market performance."
+    },
+    {
+      "id": "SYNTH_USD",
+      "provider_symbol": "SYNTH_USD",
+      "source_id": "roneira-synthetic",
+      "currency": "USD",
+      "exchange_timezone": "America/New_York",
+      "identity_note": "Fictional numerical fixture; not a security or simulated market performance."
+    }
+  ],
+  "datasets": [
+    {
+      "id": "real-world-2026-10-19-reliance-ns",
+      "source_id": "yahoo-finance-via-yfinance",
+      "instrument_id": "RELIANCE.NS",
+      "currency": "INR",
+      "exchange_timezone": "Asia/Kolkata",
+      "schema_id": "daily-ohlcv-v1",
+      "csv_path": "ml/.cache/research/real-world-2026-10-19/dataset/RELIANCE.NS.csv",
+      "sha256": "9967ecc384ad2e2118b8be1521647559bb9a867c682595bd876780c65d2240cd",
+      "rows": 2473,
+      "local_session_start": "2016-10-17",
+      "local_session_end": "2026-10-16",
+      "requested_range": {
+        "start": "2016-10-17",
+        "end_exclusive": "2026-10-17"
+      },
+      "lineage": {
+        "retrieved_at_utc": "2026-10-19T13:57:14.290580+00:00",
+        "history_request": {
+          "start": "2016-10-17",
+          "end": "2026-10-17",
+          "interval": "1d",
+          "auto_adjust": true,
+          "back_adjust": false,
+          "actions": false,
+          "repair": false,
+          "keepna": true
+        },
+        "invalid_rows_excluded": 0,
+        "source_manifest": "ml/.cache/research/real-world-2026-10-19/dataset/manifest.json",
+        "source_manifest_sha256": "2935211abeb4dc893f0ccb8843af350c393b8577b13a8eea9286a5b3a18d6d9e"
+      }
+    },
+    {
+      "id": "real-world-2026-10-19-tcs-ns",
+      "source_id": "yahoo-finance-via-yfinance",
+      "instrument_id": "TCS.NS",
+      "currency": "INR",
+      "exchange_timezone": "Asia/Kolkata",
+      "schema_id": "daily-ohlcv-v1",
+      "csv_path": "ml/.cache/research/real-world-2026-10-19/dataset/TCS.NS.csv",
+      "sha256": "bfc9498931fc542d15a202ff900d41290baf188ebdc7fdea39c2f3a1094c8814",
+      "rows": 2473,
+      "local_session_start": "2016-10-17",
+      "local_session_end": "2026-10-16",
+      "requested_range": {
+        "start": "2016-10-17",
+        "end_exclusive": "2026-10-17"
+      },
+      "lineage": {
+        "retrieved_at_utc": "2026-10-19T13:57:14.290580+00:00",
+        "history_request": {
+          "start": "2016-10-17",
+          "end": "2026-10-17",
+          "interval": "1d",
+          "auto_adjust": true,
+          "back_adjust": false,
+          "actions": false,
+          "repair": false,
+          "keepna": true
+        },
+        "invalid_rows_excluded": 0,
+        "source_manifest": "ml/.cache/research/real-world-2026-10-19/dataset/manifest.json",
+        "source_manifest_sha256": "2935211abeb4dc893f0ccb8843af350c393b8577b13a8eea9286a5b3a18d6d9e"
+      }
+    },
+    {
+      "id": "real-world-2026-10-19-infy-ns",
+      "source_id": "yahoo-finance-via-yfinance",
+      "instrument_id": "INFY.NS",
+      "currency": "INR",
+      "exchange_timezone": "Asia/Kolkata",
+      "schema_id": "daily-ohlcv-v1",
+      "csv_path": "ml/.cache/research/real-world-2026-10-19/dataset/INFY.NS.csv",
+      "sha256": "46e7607814a64a3fcf52ac75eaad0d6b5ced026ee0cb4870be84e15b338fd217",
+      "rows": 2473,
+      "local_session_start": "2016-10-17",
+      "local_session_end": "2026-10-16",
+      "requested_range": {
+        "start": "2016-10-17",
+        "end_exclusive": "2026-10-17"
+      },
+      "lineage": {
+        "retrieved_at_utc": "2026-10-19T13:57:14.290580+00:00",
+        "history_request": {
+          "start": "2016-10-17",
+          "end": "2026-10-17",
+          "interval": "1d",
+          "auto_adjust": true,
+          "back_adjust": false,
+          "actions": false,
+          "repair": false,
+          "keepna": true
+        },
+        "invalid_rows_excluded": 0,
+        "source_manifest": "ml/.cache/research/real-world-2026-10-19/dataset/manifest.json",
+        "source_manifest_sha256": "2935211abeb4dc893f0ccb8843af350c393b8577b13a8eea9286a5b3a18d6d9e"
+      }
+    },
+    {
+      "id": "real-world-2026-10-19-hdfcbank-ns",
+      "source_id": "yahoo-finance-via-yfinance",
+      "instrument_id": "HDFCBANK.NS",
+      "currency": "INR",
+      "exchange_timezone": "Asia/Kolkata",
+      "schema_id": "daily-ohlcv-v1",
+      "csv_path": "ml/.cache/research/real-world-2026-10-19/dataset/HDFCBANK.NS.csv",
+      "sha256": "daebaa0419fbf576af89d7e4f9e445b0831d635fb8e5560856d51adfb854f078",
+      "rows": 2473,
+      "local_session_start": "2016-10-17",
+      "local_session_end": "2026-10-16",
+      "requested_range": {
+        "start": "2016-10-17",
+        "end_exclusive": "2026-10-17"
+      },
+      "lineage": {
+        "retrieved_at_utc": "2026-10-19T13:57:14.290580+00:00",
+        "history_request": {
+          "start": "2016-10-17",
+          "end": "2026-10-17",
+          "interval": "1d",
+          "auto_adjust": true,
+          "back_adjust": false,
+          "actions": false,
+          "repair": false,
+          "keepna": true
+        },
+        "invalid_rows_excluded": 0,
+        "source_manifest": "ml/.cache/research/real-world-2026-10-19/dataset/manifest.json",
+        "source_manifest_sha256": "2935211abeb4dc893f0ccb8843af350c393b8577b13a8eea9286a5b3a18d6d9e"
+      }
+    },
+    {
+      "id": "real-world-2026-10-19-aapl",
+      "source_id": "yahoo-finance-via-yfinance",
+      "instrument_id": "AAPL",
+      "currency": "USD",
+      "exchange_timezone": "America/New_York",
+      "schema_id": "daily-ohlcv-v1",
+      "csv_path": "ml/.cache/research/real-world-2026-10-19/dataset/AAPL.csv",
+      "sha256": "696a476e9f73688cdf421462e154b9c71a75d8af2acd4f17275774f3ccf56681",
+      "rows": 2514,
+      "local_session_start": "2016-10-17",
+      "local_session_end": "2026-10-16",
+      "requested_range": {
+        "start": "2016-10-17",
+        "end_exclusive": "2026-10-17"
+      },
+      "lineage": {
+        "retrieved_at_utc": "2026-10-19T13:57:14.290580+00:00",
+        "history_request": {
+          "start": "2016-10-17",
+          "end": "2026-10-17",
+          "interval": "1d",
+          "auto_adjust": true,
+          "back_adjust": false,
+          "actions": false,
+          "repair": false,
+          "keepna": true
+        },
+        "invalid_rows_excluded": 0,
+        "source_manifest": "ml/.cache/research/real-world-2026-10-19/dataset/manifest.json",
+        "source_manifest_sha256": "2935211abeb4dc893f0ccb8843af350c393b8577b13a8eea9286a5b3a18d6d9e"
+      }
+    },
+    {
+      "id": "real-world-2026-10-19-msft",
+      "source_id": "yahoo-finance-via-yfinance",
+      "instrument_id": "MSFT",
+      "currency": "USD",
+      "exchange_timezone": "America/New_York",
+      "schema_id": "daily-ohlcv-v1",
+      "csv_path": "ml/.cache/research/real-world-2026-10-19/dataset/MSFT.csv",
+      "sha256": "c459ef9a55b62126564c17eb97a41038a28b27653c36fc8302dbfb47d04aa2f1",
+      "rows": 2514,
+      "local_session_start": "2016-10-17",
+      "local_session_end": "2026-10-16",
+      "requested_range": {
+        "start": "2016-10-17",
+        "end_exclusive": "2026-10-17"
+      },
+      "lineage": {
+        "retrieved_at_utc": "2026-10-19T13:57:14.290580+00:00",
+        "history_request": {
+          "start": "2016-10-17",
+          "end": "2026-10-17",
+          "interval": "1d",
+          "auto_adjust": true,
+          "back_adjust": false,
+          "actions": false,
+          "repair": false,
+          "keepna": true
+        },
+        "invalid_rows_excluded": 0,
+        "source_manifest": "ml/.cache/research/real-world-2026-10-19/dataset/manifest.json",
+        "source_manifest_sha256": "2935211abeb4dc893f0ccb8843af350c393b8577b13a8eea9286a5b3a18d6d9e"
+      }
+    },
+    {
+      "id": "synthetic-v1-synth-inr",
+      "source_id": "roneira-synthetic",
+      "instrument_id": "SYNTH_INR",
+      "currency": "INR",
+      "exchange_timezone": "Asia/Kolkata",
+      "schema_id": "daily-ohlcv-v1",
+      "csv_path": "data/synthetic/SYNTH_INR.csv",
+      "sha256": "0b1dd4a3d20129927964cd31e99adc8554170525315d4ea63108586536d2c70a",
+      "rows": 8,
+      "local_session_start": "2024-10-28",
+      "local_session_end": "2024-11-06",
+      "requested_range": {
+        "start": "2024-10-28",
+        "end_exclusive": "2024-11-07"
+      },
+      "lineage": {
+        "generator": "data/generate_synthetic.py",
+        "generator_sha256": "8ce3f5831a7df7fe5e46b81add42f3966ef2c953dea057e8a1aa8e2aaf679828",
+        "manifest": "data/synthetic/manifest.json",
+        "manifest_sha256": "86d65c321e83aff08b6a6cafd0fe3455de502790e2816692cd31bc970fe01472"
+      }
+    },
+    {
+      "id": "synthetic-v1-synth-usd",
+      "source_id": "roneira-synthetic",
+      "instrument_id": "SYNTH_USD",
+      "currency": "USD",
+      "exchange_timezone": "America/New_York",
+      "schema_id": "daily-ohlcv-v1",
+      "csv_path": "data/synthetic/SYNTH_USD.csv",
+      "sha256": "b7aefa90ec6f0ffb666c7e536c2d8e203ebee243154cbfb273a5bd13c04c2940",
+      "rows": 8,
+      "local_session_start": "2024-10-28",
+      "local_session_end": "2024-11-06",
+      "requested_range": {
+        "start": "2024-10-28",
+        "end_exclusive": "2024-11-07"
+      },
+      "lineage": {
+        "generator": "data/generate_synthetic.py",
+        "generator_sha256": "8ce3f5831a7df7fe5e46b81add42f3966ef2c953dea057e8a1aa8e2aaf679828",
+        "manifest": "data/synthetic/manifest.json",
+        "manifest_sha256": "86d65c321e83aff08b6a6cafd0fe3455de502790e2816692cd31bc970fe01472"
+      }
+    }
+  ],
+  "research_evidence": {
+    "config": {
+      "path": "ml/research/real-world-2026-10-19.json",
+      "sha256": "ef8c6e08175a6f39f08a6644f50bc3329396d2ecca1198f371097d03ca3b6615"
+    },
+    "aggregate_report": {
+      "path": "ml/research/results-2026-10-19.json",
+      "sha256": "d9ac3c25c4e7e0d66ccc0290a41c3ee11c10f2e695b4c1f6a1d09b51e646b14e"
+    },
+    "methodology": "ml/research/results-2026-10-19.md",
+    "model_artifacts_promoted": false
+  },
+  "private_data_boundary": {
+    "public_registry_contains": "No customer identities, holdings, cost bases, auth tokens, portfolio snapshots or raw provider bars.",
+    "private_storage": "Supabase authenticated user tables/RLS, governed separately from this research registry.",
+    "join_to_research": "No implicit or automated join of customer portfolios to public research."
+  }
+}

@@ -2,7 +2,7 @@
   "name": "roneira-ai-hifi",
   "version": "4.0.0",
   "private": true,
-  "description": "Roneira AI HIFI — AI-powered financial intelligence platform",
+  "description": "Roneira AI HIFI \u2014 AI-powered financial intelligence platform",
   "scripts": {
     "prepare": "git config core.hooksPath .husky",
     "dev": "next dev",
@@ -18,7 +18,8 @@
     "export:stocks": "cd ml && python export_stock_screener.py",
     "test:ml": "cd ml && pytest -v --tb=short",
     "ml:dev": "cd ml && uvicorn app.main:app --reload --port 8000",
-    "ml:test": "cd ml && pytest tests/ -v --cov=app --cov-report=term-missing"
+    "ml:test": "cd ml && pytest tests/ -v --cov=app --cov-report=term-missing",
+    "test:data": "python data/validate.py --metadata-only && python data/validate.py && python -m unittest discover -s data/tests -v"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",

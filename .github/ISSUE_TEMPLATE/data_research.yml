@@ -1,0 +1,30 @@
+name: Dataset or model research
+description: Propose a governed dataset change, evaluation or model experiment.
+labels: ["area:data", "status:backlog"]
+body:
+  - type: textarea
+    id: decision
+    attributes:
+      label: Research question and product decision
+      description: Link the PRD and explain what a result would change. Define the target and horizon rather than an undefined accuracy percentage.
+    validations:
+      required: true
+  - type: textarea
+    id: data
+    attributes:
+      label: Data rights, lineage and privacy
+      description: Name the source/purpose, dates, universe, currency/timezones, adjustment policy, access/redistribution permissions and missing or revised data. Do not attach restricted raw bars or private accounts.
+    validations:
+      required: true
+  - type: textarea
+    id: protocol
+    attributes:
+      label: Frozen protocol and acceptance
+      description: Define baselines, temporal/unseen splits, label availability, metrics and denominators, coverage, resource limits and permitted outputs. Keep a final untouched assessment; candidates are not serving models.
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies and release limits
+      description: Link blocking issues, expected artifacts, rollback/promotion policy and unresolved permissions.
