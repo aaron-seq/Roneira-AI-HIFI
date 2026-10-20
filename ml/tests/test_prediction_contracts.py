@@ -144,3 +144,100 @@ def test_entirely_invalid_blend_never_raises_or_invents_a_price(invalid):
     assert result["fallback_reason"] == "no_eligible_models"
     assert result["predicted_price"] == 0  # API refuses an absent numeric reference.
     assert result["components"] == []
+
+
+@pytest.mark.parametrize("model_type,owner,method", [
+    ("TECHNICAL", "ta_analyzer", "_rsi"),
+    ("PVD_MOMENTUM", "pdm_engine", "_compute_price_momentum"),
+])
+def test_rule_exceptions_are_disclosed_neutral_api_references(
+    prediction_api, monkeypatch, model_type, owner, method,
+):
+    main, client, _, _ = prediction_api
+
+    def fail(*_):
+        raise RuntimeError("internal-only diagnostic")
+
+    monkeypatch.setattr(getattr(main, owner), method, fail)
+    response = request(client, model_type=model_type)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["fallback"] is True
+    assert body["fallback_reason"] == "inference_failed"
+    assert body["model_status"]["fallback"] is True
+    assert body["confidence"] == 0
+    assert body["predicted_price"] == body["current_price"]
+    assert body["price_target_low"] == body["price_target_high"] == body["current_price"]
+    assert body["short_term_signal"] == body["long_term_signal"] == {"signal": "HOLD", "score": 5.0}
+    assert body["indicators"] == []
+    assert "internal-only" not in response.text
+
+
+@pytest.mark.parametrize("model_type", ["TECHNICAL", "PVD_MOMENTUM"])
+def test_rule_failures_cannot_enter_the_served_ensemble(prediction_api, monkeypatch, model_type):
+    main, client, _, _ = prediction_api
+    monkeypatch.setattr(main.rf_predictor, "predict", lambda *_: {"predicted_price": 210., "confidence": 40.})
+    monkeypatch.setattr(main.lstm_predictor, "predict", lambda *_: {
+        "predicted_price": 200., "confidence": 0., "fallback": True,
+        "fallback_reason": "artifact_unavailable", "backend": "xgboost"})
+    failed_owner, failed_method = (
+        (main.ta_analyzer, "_rsi") if model_type == "TECHNICAL"
+        else (main.pdm_engine, "_compute_price_momentum")
+    )
+    other_owner, other_method = (
+        (main.pdm_engine, "analyze") if model_type == "TECHNICAL"
+        else (main.ta_analyzer, "analyze")
+    )
+    monkeypatch.setattr(other_owner, other_method, lambda *_: {"predicted_price": 230., "confidence": 60.})
+
+    def fail(*_):
+        raise RuntimeError("internal-only diagnostic")
+
+    monkeypatch.setattr(failed_owner, failed_method, fail)
+    body = request(client, model_type="ENSEMBLE").json()
+    assert body["fallback"] is False
+    assert body["predicted_price"] == 220
+    assert len(body["components"]) == 2
+    assert all(c["name"] != model_type for c in body["components"])
+    assert all(c["weight"] == .5 for c in body["components"])
+    assert any(c["name"] == model_type and c["reason"] == "inference_failed"
+               for c in body["excluded_components"])
+
+
+def test_one_session_pvd_failure_is_not_a_successful_no_change_forecast():
+    from app.models.pdm_momentum import PVDMomentumEngine
+    from backtest import predicted_return
+
+    frame = pd.DataFrame({"Open": [100.], "High": [101.], "Low": [99.],
+                          "Close": [100.], "Volume": [1000.]},
+                         index=pd.bdate_range("2026-01-01", periods=1))
+    result = PVDMomentumEngine().analyze(frame, "NEW.NS", 30)
+    assert result["fallback"] is True
+    assert result["fallback_reason"] == "inference_failed"
+    assert result["confidence"] == 0
+    assert result["predicted_price"] == 100.
+    assert np.isnan(predicted_return(result, 100.))
+
+
+def test_rule_schema_failures_are_counted_as_unavailable_in_evaluation():
+    from backtest import Backtester, summarise
+
+    index = pd.bdate_range("2025-01-01", periods=250)
+    close = np.linspace(100., 120., len(index))
+    # The valid price still provides a reference, but missing Volume prevents
+    # either rule engine from completing its analysis.
+    frame = pd.DataFrame({"Open": close, "High": close + 1, "Low": close - 1,
+                          "Close": close}, index=index)
+    tester = Backtester({"SYNTH": frame}, horizon=30)
+    models = ["TECHNICAL", "PVD_MOMENTUM"]
+    outputs = tester._predict_all(frame, "SYNTH", len(frame) - 1, models)
+    for name in models:
+        assert np.isnan(outputs[name])
+        assert outputs[f"{name}:fallback"] is True
+        assert outputs[f"{name}:fallback_reason"] == "inference_failed"
+        assert np.isnan(outputs[f"{name}:signal"])
+    records = pd.DataFrame([{"fold": 0, "date": "2025-12-16", "realised": .01, **outputs}])
+    summary = summarise(records, models)
+    for name in models:
+        assert summary[name]["coverage"] == {"origins": 1, "scored": 0, "unavailable": 1, "fraction": 0.0}
+        assert summary[name]["pooled"]["n"] == 0

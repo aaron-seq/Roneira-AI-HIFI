@@ -32,6 +32,12 @@ members receive no weight, and eligible weights are renormalised. It reports
 excluded members and the resulting component weights. Agreement does not earn
 an extra confidence bonus: closely clustered forecasts can all be wrong.
 
+If a Technical or PVD Momentum analysis raises an exception, its last valid
+price is only a reference: the result has zero confidence, neutral signals and
+`fallback_reason="inference_failed"`. Serving discloses the failure, the
+Ensemble excludes that member, and evaluation records an unavailable forecast
+rather than scoring the reference as a successful no-change prediction.
+
 The confidence/model scores are **heuristics**, not the probability of an
 upward move or profitable trade. Scores from different model families use
 different formulas and are not calibrated for comparison. Fundamental and

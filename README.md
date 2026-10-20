@@ -161,7 +161,7 @@ npx supabase start
 npx supabase status
 ```
 
-Use its local URL/keys in `.env.local`. The committed seed contains synthetic local test accounts and holdings; see [supabase/seed.sql](supabase/seed.sql). Apply all migrations in filename order, including `013_portfolio_valuation_snapshots.sql`; `004` is absent. Never seed a hosted project with local fixture accounts. Review [CONTRIBUTING.md](CONTRIBUTING.md) for the hosted-development alternative.
+Use its local URL/keys in `.env.local`. The committed seed contains synthetic local test accounts and holdings; see [supabase/seed.sql](supabase/seed.sql). Apply all migrations in filename order through `014_trusted_audit_writes.sql`; `004` is absent. Migration014 blocks direct client audit insertion; deploy the trusted server-writing routes before or with it. Never seed a hosted project with local fixture accounts. Review [CONTRIBUTING.md](CONTRIBUTING.md) for the hosted-development alternative.
 
 ### Configuration
 
@@ -222,6 +222,6 @@ SQL regression instructions are in [supabase/tests/README.md](supabase/tests/REA
 
 Start with [CONTRIBUTING.md](CONTRIBUTING.md) and the [issue tracker](https://github.com/aaron-seq/Roneira-AI-HIFI/issues). Changes should include focused financial/security regressions and reproducible evidence. Never submit credentials, private portfolios or provider data without redistribution rights. Do not improve reported accuracy by excluding hard outcomes, shuffling temporal splits or tuning on the final test period.
 
-Current follow-ups include transaction-aware accounting/attribution [#147](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/147), forecast date contracts [#157](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/157), Auth audit-reference deletion [#174](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/174), same-null profile/query recovery [#176](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/176), and dependency/deprecation follow-up [#149](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/149). Risk budgeting, calibrated probabilities, reliable prediction intervals and automated portfolio management are not implemented.
+Current follow-ups include transaction-aware accounting/attribution [#147](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/147), forecast date contracts [#157](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/157), Auth audit-reference deletion [#174](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/174), and dependency/deprecation follow-up [#149](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/149). The [reliability review](docs/reviews/2026-10-20-reliability.md) records the public-query recovery, rule-failure, Redis and audit-write refinements. Risk budgeting, calibrated probabilities, reliable prediction intervals and automated portfolio management are not implemented.
 
 [Architecture](ARCHITECTURE.md), [deployment guidance](DEPLOYMENT.md), [model behavior](ml/MODELS.md), [data-story calculations](docs/data-stories-2026-10-13.md) and [ADRs](docs/adr) provide deeper context. Published screenshots and research numbers describe their recorded dates, rather than a live service guarantee.

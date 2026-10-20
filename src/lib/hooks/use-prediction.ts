@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type { PredictionResult, StockSearchResult } from "@/lib/market/types";
+import { useAppStore } from "@/lib/stores/app-store";
 
 async function fetchJson<T>(url: string): Promise<T> {
   const response = await fetch(url, {
@@ -19,9 +20,10 @@ async function fetchJson<T>(url: string): Promise<T> {
 
 export function useStockSearch(query: string) {
   const trimmed = query.trim();
+  const authCacheEpoch = useAppStore((state) => state.authCacheEpoch);
 
   return useQuery({
-    queryKey: ["stocks", "search", trimmed],
+    queryKey: ["stocks", "search", trimmed, authCacheEpoch],
     queryFn: () =>
       fetchJson<{ results: StockSearchResult[] }>(
         `/api/stocks/search?q=${encodeURIComponent(trimmed)}`

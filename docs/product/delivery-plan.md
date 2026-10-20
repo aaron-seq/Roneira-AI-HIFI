@@ -42,7 +42,7 @@ The 2026-10-19 study is historical evidence, not these future product KPIs. Its 
 | Risk | Current exposure | Control and decision owner role |
 |---|---|---|
 | Misleading portfolio returns | Editable holdings/current FX and incomplete cash ledger | Portfolio owner: show unrealized P&L/value captures; require P4/P5 before returns/attribution |
-| Account privacy/lifecycle | Known deletion/audit conflict; asynchronous identity changes | Backend/security reviewer: deny cross-user reads/writes, preserve stale-response guards, resolve #174 and #176 |
+| Account privacy/lifecycle | Known deletion/audit conflict; asynchronous identity changes | Backend/security reviewer: deny cross-user reads/writes, preserve stale-response guards, resolve #174. The [reliability review](../reviews/2026-10-20-reliability.md) covers #176 recovery and #194 trusted audit insertion. |
 | Data entitlement failure | Personal/development plans may not permit public/derived commercial display | Data steward/product owner: complete #184 before expanding feeds/audience |
 | False forecasting confidence | Heuristic scores, historical labels and poor candidate skill | ML reviewer: disclose actual methods, address #180, preserve negative metrics and use M4/M5 |
 | Leakage/selection/data revision | Revised adjusted histories, surviving large caps, correlated regimes | Research owner: freeze protocol/hashes, exact purging, unseen data and documented limitations |

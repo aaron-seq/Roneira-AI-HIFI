@@ -120,7 +120,7 @@ changed research states. Synthetic browser fixtures do not verify hosted authent
 | `market-data/history` GET | OHLCV candles | none | — |
 | `stocks/search` GET | symbol search | none | 30/min |
 | `news` GET | headlines + sentiment | none | 30/min |
-| `audit-log` POST | write an audit row | required | — |
+| `audit-log` POST | append validated client-reported activity for the verified actor | required | 30/min |
 | `admin/overview` GET | admin dashboard data | admin role | — |
 
 Validation lives in `src/lib/server/validation.ts`. Audit enums mirror the
@@ -323,8 +323,14 @@ RLS is enabled on every `public` table. Two constraints worth knowing:
   anon; without the policy anon sees zero rows, so every username looks free and every
   login looks like a wrong password.
 
-`audit_log` has no DELETE policy, which is what makes it append-only for `anon` and
-`authenticated`. Note `service_role` bypasses RLS entirely.
+Migration014 removes the permissive audit INSERT policy and direct INSERT grants
+from `anon` and `authenticated`. Session-verified server routes use the admin client
+to append actor-bound records; signup/portfolio/watchlist triggers write as their
+owner. SELECT RLS remains account-scoped. Migration009 rejects UPDATE/DELETE even
+for `service_role`, which otherwise bypasses RLS. This immutability still conflicts
+with account-deletion referential maintenance (#174); insertion hardening does not
+resolve that lifecycle defect. Client-reported events are not independent proof
+that the named operation occurred.
 
 ## Auth
 

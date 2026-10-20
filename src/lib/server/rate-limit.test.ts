@@ -80,3 +80,68 @@ describe("rateLimit (in-process fallback)", () => {
     }
   });
 });
+
+describe("rateLimit (Redis response validation)", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.stubEnv("UPSTASH_REDIS_URL", "https://redis.example.test");
+    vi.stubEnv("UPSTASH_REDIS_TOKEN", "test-only-placeholder");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it("uses valid Redis counts to allow and block requests", async () => {
+    const fetchMock = vi.fn();
+    for (const count of [1, 2, 3]) {
+      fetchMock.mockResolvedValueOnce(Response.json([{ result: count }, { result: 1 }]));
+    }
+    vi.stubGlobal("fetch", fetchMock);
+    const { rateLimit: redisLimit } = await import("@/lib/server/rate-limit");
+    const results = [];
+    for (let hit = 0; hit < 3; hit++) results.push(await redisLimit("valid-redis", req("192.0.2.1"), 2, 60));
+    expect(results).toEqual([
+      { ok: true, remaining: 1, local: false },
+      { ok: true, remaining: 0, local: false },
+      { ok: false, remaining: 0, local: false },
+    ]);
+  });
+
+  it.each([
+    ["null count", [{ result: null }, { result: 1 }]],
+    ["boolean count", [{ result: false }, { result: 1 }]],
+    ["empty count", [{ result: "" }, { result: 1 }]],
+    ["string count", [{ result: "1" }, { result: 1 }]],
+    ["zero count", [{ result: 0 }, { result: 1 }]],
+    ["negative count", [{ result: -1 }, { result: 1 }]],
+    ["fractional count", [{ result: 1.5 }, { result: 1 }]],
+    ["unsafe count", [{ result: Number.MAX_SAFE_INTEGER + 1 }, { result: 1 }]],
+    ["increment error", [{ error: "ERR increment failed" }, { result: 1 }]],
+    ["expiry error", [{ result: 1 }, { error: "ERR expiry failed" }]],
+    ["unsuccessful expiry", [{ result: 1 }, { result: 0 }]],
+    ["missing expiry", [{ result: 1 }]],
+    ["missing response", null],
+    ["object response", { result: 1 }],
+    ["empty response", []],
+  ])("enforces the local limit after a %s response", async (name, payload) => {
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(() => Promise.resolve(Response.json(payload))));
+    const { rateLimit: redisLimit } = await import("@/lib/server/rate-limit");
+    const bucket = `invalid-redis-${name}`;
+    expect(await redisLimit(bucket, req("192.0.2.2"), 1, 60)).toEqual({ ok: true, remaining: 0, local: true });
+    expect(await redisLimit(bucket, req("192.0.2.2"), 1, 60)).toEqual({ ok: false, remaining: 0, local: true });
+  });
+
+  it.each(["http", "json", "network"])("enforces the local limit after a %s failure", async (failure) => {
+    const fetchMock = vi.fn().mockImplementation(() => {
+      if (failure === "network") return Promise.reject(new Error("Network unavailable"));
+      return Promise.resolve(failure === "http" ? new Response(null, { status: 503 }) : new Response("not-json"));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const { rateLimit: redisLimit } = await import("@/lib/server/rate-limit");
+    const bucket = `failed-redis-${failure}`;
+    expect((await redisLimit(bucket, req("192.0.2.3"), 1, 60)).local).toBe(true);
+    expect(await redisLimit(bucket, req("192.0.2.3"), 1, 60)).toEqual({ ok: false, remaining: 0, local: true });
+  });
+});

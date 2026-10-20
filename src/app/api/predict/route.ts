@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { PredictionResult } from "@/lib/market/types";
 import { getTargetDate } from "@/lib/market/timeframe";
 import { formatIssues, predictRequestSchema } from "@/lib/server/validation";
@@ -58,15 +59,23 @@ async function persistPrediction(
       },
     };
 
-    await Promise.allSettled([
+    const persisted = await Promise.allSettled([
       // An unavailable model returns a disclosed no-change reference. Saving
       // it as a successful forecast would pollute later outcome evaluation.
       ...(!prediction.fallback ? [
         supabase.from("predictions_cache").insert(cacheRow),
         supabase.from("prediction_history").insert(historyRow),
       ] : []),
-      supabase.from("audit_log").insert(auditRow),
+      // The public Data API cannot append audit records (migration014). Keep
+      // this privileged write separate so an audit failure cannot skip the
+      // user-scoped history/cache writes above.
+      Promise.resolve().then(() => createAdminClient().from("audit_log").insert(auditRow)),
     ]);
+    for (const result of persisted) {
+      if (result.status === "rejected" || result.value.error) {
+        console.warn("Prediction persistence write failed");
+      }
+    }
   } catch (error) {
     console.warn("Prediction persistence warning:", error);
   }

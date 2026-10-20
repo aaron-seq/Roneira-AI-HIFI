@@ -20,8 +20,9 @@ async function fetchJson<T>(url: string): Promise<T> {
 
 export function useNewsFeed(market: "global" | "india", query: string) {
   const userId = useAppStore((state) => state.user?.id ?? null);
+  const authCacheEpoch = useAppStore((state) => state.authCacheEpoch);
   return useQuery({
-    queryKey: ["news", market, query, userId],
+    queryKey: ["news", market, query, userId, authCacheEpoch],
     queryFn: () =>
       fetchJson<{ articles: NewsArticle[]; totalResults: number }>(
         `/api/news?market=${encodeURIComponent(market)}&q=${encodeURIComponent(

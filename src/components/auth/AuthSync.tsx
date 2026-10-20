@@ -114,9 +114,16 @@ export function AuthSync() {
     let generation = 0;
     let active = true;
 
+    function clearAuthQueries() {
+      queryClient.clear();
+      // Existing observers need a new key after their cache entry is removed,
+      // including same-null failures and account changes batched by React.
+      useAppStore.getState().advanceAuthCacheEpoch();
+    }
+
     function clearIdentity() {
       setUser(null);
-      queryClient.clear();
+      clearAuthQueries();
     }
 
     async function hydrateUser() {
@@ -131,7 +138,7 @@ export function AuthSync() {
       // An older profile request must never restore an account after logout
       // or overwrite a newer account's hydration.
       if (!active || requestGeneration !== generation) return;
-      if (useAppStore.getState().user?.id !== profile?.id) queryClient.clear();
+      if (useAppStore.getState().user?.id !== profile?.id) clearAuthQueries();
       setUser(profile);
       if (profile) {
         setTheme(profile.preferences.theme);

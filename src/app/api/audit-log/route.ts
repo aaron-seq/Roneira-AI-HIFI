@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { auditEventSchema, formatIssues } from "@/lib/server/validation";
 import { rateLimit, tooManyRequests } from "@/lib/server/rate-limit";
 
@@ -24,10 +25,10 @@ export async function POST(request: Request) {
     const body = parsed.data;
     const supabase = await createClient();
     const {
-      data: { user },
+      data: { user }, error: authError,
     } = await supabase.auth.getUser();
 
-    if (!user) {
+    if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -35,7 +36,9 @@ export async function POST(request: Request) {
     const userAgent = request.headers.get("user-agent");
     const ipAddress = forwardedFor?.split(",")[0]?.trim() ?? null;
 
-    const { error } = await supabase.from("audit_log").insert({
+    // Direct client INSERT is denied by migration014. Only this validated,
+    // throttled path may append client-reported activity for the verified actor.
+    const { error } = await createAdminClient().from("audit_log").insert({
       user_id: user.id,
       action_type: body.action_type,
       entity_type: body.entity_type,
