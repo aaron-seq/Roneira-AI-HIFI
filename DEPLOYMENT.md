@@ -18,7 +18,7 @@ the Next.js route handlers, never directly by the client.
 ## 1. Supabase
 
 1. Create a project at https://supabase.com.
-2. Apply `supabase/migrations/*.sql` **in filename order**, 001 through 012
+2. Apply `supabase/migrations/*.sql` **in filename order**, 001 through 013
    (`004` is absent). For CLI deployment, link the intended project with
    `npx supabase link --project-ref <project-ref>` before `npx supabase db push`.
    Migrations 007–009 fix bugs found after `001` was already live — 007 RLS
@@ -26,7 +26,7 @@ the Next.js route handlers, never directly by the client.
    009 makes `audit_log` append-only via triggers, which hold even against a
    `service_role` connection. Migration 010 locks self-edits of the user role;
    011 adds price-alert state; 012 delivers an armed alert and notification
-   atomically, with retry and privilege checks. Never apply `supabase/seed.sql`
+   atomically, with retry and privilege checks. Migration 013 adds private portfolio valuation snapshots and a service-only ordered-save function; apply it before deploying portfolio history routes. Never apply `supabase/seed.sql`
    or the disposable `supabase/tests/bootstrap.sql` to a hosted project.
 3. From Settings → API, copy the project URL, the `anon` key, and the
    `service_role` key.

@@ -1,0 +1,23 @@
+name: Product requirement
+description: Propose a useful portfolio or analyst workflow with clear acceptance criteria.
+labels: [enhancement, "status:backlog"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: User and problem
+      description: Who needs this, which task fails today, and what outcome matters?
+    validations:
+      required: true
+  - type: textarea
+    id: requirements
+    attributes:
+      label: Scope, acceptance and non-goals
+      description: Link the applicable PRD; describe observable acceptance, financial/data/privacy contracts, dependencies and failure recovery. Separate proposed targets from measured results.
+    validations:
+      required: true
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risks, rollout and rollback
+      description: Identify data permissions, migrations, model evidence and how to reverse the feature without deleting user history. No billing or broker execution is implied by a feature request.

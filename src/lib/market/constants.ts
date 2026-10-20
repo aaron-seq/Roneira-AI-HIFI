@@ -79,8 +79,10 @@ export const KNOWN_EQUITIES: QuoteConfig[] = [
   { symbol: "AMZN", name: "Amazon", exchange: "NASDAQ", assetType: "equity", currency: "USD", providerSymbol: "AMZN" },
 ];
 
-const EQUITY_NAME_MAP = new Map<string, QuoteConfig>(
-  KNOWN_EQUITIES.map((config) => [config.symbol, config])
+const SYMBOL_CONFIG_MAP = new Map<string, QuoteConfig>(
+  [...INDIA_INDICES, ...US_INDICES, ...EUROPE_INDICES, ...SPECIAL_MARKETS,
+    ...COMMODITIES, ...FOREX, ...CRYPTO, ...KNOWN_EQUITIES]
+    .map((config) => [config.symbol, config])
 );
 
 export const MARKET_OVERVIEW_SECTIONS = {
@@ -128,6 +130,11 @@ export function inferCurrency(symbol: string): string {
     return "INR";
   }
 
+  // An FX price is quoted in the denominator currency: USDINR is INR per USD.
+  // Yahoo also uses three-letter shorthand such as JPY=X for USD/JPY.
+  const forex = /^([A-Z]{3})?([A-Z]{3})=X$/.exec(symbol);
+  if (forex) return forex[2];
+
   if (symbol.includes("JPY")) return "JPY";
   if (symbol.includes("CHF")) return "CHF";
   if (symbol.includes("GBP")) return "GBP";
@@ -136,7 +143,7 @@ export function inferCurrency(symbol: string): string {
 }
 
 export function createSymbolConfig(symbol: string, overrides: Partial<QuoteConfig> = {}): QuoteConfig {
-  const base = EQUITY_NAME_MAP.get(symbol);
+  const base = SYMBOL_CONFIG_MAP.get(symbol);
   if (base) {
     return {
       ...base,
@@ -159,9 +166,5 @@ export function createSymbolConfig(symbol: string, overrides: Partial<QuoteConfi
 
 export function getPeerConfigs(symbol: string): QuoteConfig[] {
   const peers = symbol.endsWith(".NS") || symbol.endsWith(".BO") ? INDIA_PEERS : US_PEERS;
-  return peers.map((peerSymbol) =>
-    createSymbolConfig(peerSymbol, {
-      name: EQUITY_NAME_MAP.get(peerSymbol)?.name ?? peerSymbol,
-    })
-  );
+  return peers.map((peerSymbol) => createSymbolConfig(peerSymbol));
 }

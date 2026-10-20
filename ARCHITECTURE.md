@@ -287,13 +287,30 @@ Migrations in `supabase/migrations/`, applied in filename order (there is no `00
 |---|---|
 | `users` | profile keyed to `auth.users.id`; `role` is `admin`/`user` |
 | `watchlist` | unique per `(user_id, ticker)` |
-| `portfolio_holdings` | unique per `(user, ticker)` so buys/sells upsert atomically |
-| `portfolio_transactions` | `total_value` is a generated column |
+| `portfolio_holdings` | unique per `(user, ticker)`; editable current positions, not a complete transaction/cash-flow ledger |
+| `portfolio_transactions` | `total_value` is a generated column; the current holdings UI does not maintain a complete ledger |
+| `portfolio_valuation_snapshots` | private per-user/currency/UTC-day aggregate captures; server-calculated value/cost, coverage and source metadata |
 | `audit_log` | append-only |
 | `predictions_cache` | short-lived, `expires_at` |
-| `prediction_history` | durable records for realized-outcome evaluation |
+| `prediction_history` | durable forecast records; exchange-session outcome dates remain tracked in issue157 |
 | `news_preferences` | per-user feed configuration |
 | `market_data.stock_prices` | OHLCV cache; backend-only, RLS off by design |
+
+Portfolio history uses authenticated `GET/POST /api/portfolio/history`. Reads
+are filtered to the signed-in owner under RLS. A POST accepts only currency,
+reads that user's current holdings, fetches quotes/FX, rechecks for edits and
+values the book with the shared finite-value calculator. Service-only
+`save_portfolio_valuation_snapshot` guards same-day writes by capture time so
+an older delayed request cannot replace a newer one. A separate holdings
+observation time records which current book was read; this is an observation,
+not an atomic broker ledger. Aggregate captures do not retain each historical
+position's quantity/price/basis. Missing days and partial valuation stay explicit.
+
+The client scopes queries/mutations to account identity and checks the active
+session before and after requests. Opening the portfolio attempts a capture
+once when the current UTC day is missing; explicit saving updates today's row.
+There is no unattended daily scheduler or backfill. Recorded cost/current value
+and unrealized P&L exclude realized gains and cash-flow-adjusted returns.
 
 RLS is enabled on every `public` table. Two constraints worth knowing:
 
@@ -380,4 +397,4 @@ cache; `market_data.stock_prices` holds historical OHLCV only.
 - [README.md](./README.md) — project overview and setup
 - [CONTRIBUTING.md](./CONTRIBUTING.md) — contribution guidelines
 - [DEPLOYMENT.md](./DEPLOYMENT.md) — deployment instructions
-- [CLAUDE.md](./CLAUDE.md) — working notes for AI agents on this repo
+- [Product plan and PRDs](docs/product/README.md) — current scope, acceptance gates and delivery decisions

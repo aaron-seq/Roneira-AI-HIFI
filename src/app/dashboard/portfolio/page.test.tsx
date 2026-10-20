@@ -9,6 +9,7 @@ import PortfolioPage from "./page";
 const mock = vi.hoisted(() => ({ portfolio: vi.fn(), refetch: vi.fn(), refetchQuotes: vi.fn(), upsert: vi.fn(), remove: vi.fn() }));
 vi.mock("@/lib/hooks/use-portfolio", () => ({ usePortfolio: mock.portfolio }));
 vi.mock("@/lib/hooks/use-prediction", () => ({ useStockSearch: () => ({ data: { results: [] }, isLoading: false, isError: false }) }));
+vi.mock("@/components/portfolio/PortfolioHistory", () => ({ PortfolioHistory: ({ defaultCurrency }: { defaultCurrency: Currency }) => <section aria-label="Portfolio history">History currency: {defaultCurrency}</section> }));
 
 const india = { id: "india", ticker: "TCS.NS", company_name: "Tata Consultancy Services", exchange: "NSE", quantity: 2, avg_buy_price: 100, buy_date: null, sector: "Technology" };
 const us = { id: "us", ticker: "AAPL", company_name: "Apple", exchange: "NASDAQ", quantity: 1, avg_buy_price: 80, buy_date: null, sector: "Technology" };
@@ -55,7 +56,7 @@ describe("portfolio stories and valuation states", () => {
     render(<PortfolioPage />);
     expect(card("Total Value").getByText("—")).toBeTruthy();
     expect(card("Total Value").queryByText(formatCurrency(0, "INR", { compact: true }))).toBeNull();
-    expect(card("Total P&L").getAllByText("—")).toHaveLength(2);
+    expect(card("Unrealized P&L").getAllByText("—")).toHaveLength(2);
     expect(screen.getByRole("region", { name: "Portfolio insights" }).textContent).toContain("Valuation unavailable");
     expect(screen.getByRole("button", { name: "Edit TCS.NS" })).toBeTruthy();
   });
@@ -68,6 +69,7 @@ describe("portfolio stories and valuation states", () => {
     expect(within(insights).getByRole("status").textContent).toContain("Loading insights");
     expect(screen.getByRole("status", { name: "Loading portfolio" })).toBeTruthy();
     expect(screen.queryByText("Total Value")).toBeNull();
+    expect(screen.queryByRole("region", { name: "Portfolio history" })).toBeNull();
   });
 
   it("exposes a quote-specific retry after failure and preserves holdings separately from holdings errors", () => {
@@ -90,6 +92,7 @@ describe("portfolio stories and valuation states", () => {
     fireEvent.click(screen.getByRole("button", { name: "Retry portfolio" }));
     expect(mock.refetch).toHaveBeenCalledOnce();
     expect(mock.refetchQuotes).not.toHaveBeenCalled();
+    expect(screen.queryByRole("region", { name: "Portfolio history" })).toBeNull();
   });
 
   it("uses legitimate zero valuation for an empty book and explains how to begin", () => {
@@ -113,6 +116,7 @@ describe("portfolio stories and valuation states", () => {
     expect(insights.textContent).toContain("$102.75");
     expect(insights.textContent).toContain("cost basis use the same supplied current rate of ₹80.00 per USD");
     expect(screen.getByText(/USD\/INR: ₹80\.00 per USD/)).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Portfolio history" }).textContent).toContain("History currency: USD");
   });
 
   it("labels quote session changes and distinguishes an unknown comparison from a flat observed change", () => {
@@ -129,7 +133,7 @@ describe("portfolio stories and valuation states", () => {
   it("leaves a zero-cost percentage unavailable and explains invalid holding exclusions", () => {
     mock.portfolio.mockReturnValue(result([{ ...india, avg_buy_price: 0 }]));
     const { rerender } = render(<PortfolioPage />);
-    expect(card("Total P&L").getByText("—")).toBeTruthy();
+    expect(card("Unrealized P&L").getByText("—")).toBeTruthy();
     expect(screen.getByRole("region", { name: "Portfolio insights" }).textContent).toContain("percentage return is unavailable");
     mock.portfolio.mockReturnValue(result([{ ...india, avg_buy_price: Number.NaN }]));
     rerender(<PortfolioPage />);

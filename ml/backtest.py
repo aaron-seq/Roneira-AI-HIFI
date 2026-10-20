@@ -59,7 +59,10 @@ def score(predicted: np.ndarray, realised: np.ndarray) -> dict:
         raise ValueError("Score only finite returns; report unavailable predictions separately.")
     n = len(realised)
     if n == 0:
-        return {"n": 0, "mae": np.nan, "baseline_mae": np.nan, "skill": np.nan, "hit_rate": np.nan}
+        return {"n": 0, "mae": np.nan, "baseline_mae": np.nan, "skill": np.nan, "hit_rate": np.nan,
+                "n_directional": 0, "n_correct_direction": 0, "n_predicted_no_change": 0,
+                "n_realised_up": 0, "n_realised_down": 0, "n_realised_flat": 0,
+                "base_up": np.nan, "base_down": np.nan, "base_flat": np.nan}
     mae = float(np.mean(np.abs(predicted - realised)))
     baseline = float(np.mean(np.abs(realised)))
     # Hit rate only over calls that took a side: a prediction of exactly 0 is
@@ -72,6 +75,15 @@ def score(predicted: np.ndarray, realised: np.ndarray) -> dict:
         "baseline_mae": baseline,
         "skill": float(1.0 - mae / baseline) if baseline > 0 else np.nan,
         "hit_rate": float(hits.mean()) if sided.any() else np.nan,
+        "n_directional": int(sided.sum()),
+        "n_correct_direction": int(hits.sum()),
+        "n_predicted_no_change": int((~sided).sum()),
+        "n_realised_up": int((realised > 0).sum()),
+        "n_realised_down": int((realised < 0).sum()),
+        "n_realised_flat": int((realised == 0).sum()),
+        "base_up": float(np.mean(realised > 0)),
+        "base_down": float(np.mean(realised < 0)),
+        "base_flat": float(np.mean(realised == 0)),
     }
 
 
@@ -137,6 +149,8 @@ def signal_precision(direction: np.ndarray, realised: np.ndarray) -> dict:
     buys, sells = direction > 0, direction < 0
     return {
         "base_up": float(np.mean(realised > 0)) if len(realised) else np.nan,
+        "base_down": float(np.mean(realised < 0)) if len(realised) else np.nan,
+        "base_flat": float(np.mean(realised == 0)) if len(realised) else np.nan,
         "n_buy": int(buys.sum()),
         "p_up_given_buy": float(np.mean(realised[buys] > 0)) if buys.any() else np.nan,
         "n_sell": int(sells.sum()),
@@ -156,14 +170,18 @@ def predicted_return(result: dict, current: float) -> float:
 
 
 class Backtester:
-    def __init__(self, frames: dict[str, pd.DataFrame], horizon: int, purge_days: int | None = None):
+    def __init__(self, frames: dict[str, pd.DataFrame], horizon: int, purge_days: int | None = None, n_jobs: int | None = None):
         self.frames = frames
         self.horizon = horizon
         self.lookback = serving_lookback(horizon)
         # Optional additional embargo. Label availability itself is exact:
         # frames contain only sessions strictly before the fold start.
         self.purge_days = purge_days if purge_days is not None else 0
-        self.rf = RandomForestPredictor()
+        if n_jobs is not None and (type(n_jobs) is not int or n_jobs < 1):
+            raise ValueError("n_jobs must be positive when supplied.")
+        self.n_jobs = n_jobs
+        self.fit_records: list[dict] = []
+        self.rf = RandomForestPredictor(n_jobs=n_jobs if n_jobs is not None else 2)
         self.ta = TechnicalAnalyzer()
         self.pdm = PVDMomentumEngine()
         self.lstm = LSTMPredictor()
@@ -190,7 +208,18 @@ class Backtester:
             raise ValueError(f"only {int(keep.sum())} training windows before {cutoff.date()}")
         X = windows[keep].reshape(int(keep.sum()), -1)
         estimator = build_estimator()
+        if self.n_jobs is not None and estimator.__class__.__module__.startswith("xgboost"):
+            estimator.set_params(n_jobs=self.n_jobs)
         estimator.fit(X, targets[keep])
+        self.fit_records.append({
+            "sequence_length": sequence_length,
+            "horizon_sessions": self.horizon,
+            "train_rows": int(keep.sum()),
+            "train_origin_start": pd.Timestamp(stamps[keep].min(), tz="UTC").isoformat(),
+            "train_origin_end": pd.Timestamp(stamps[keep].max(), tz="UTC").isoformat(),
+            "train_label_end": pd.Timestamp(label_ends[keep].max(), tz="UTC").isoformat(),
+            "evaluation_start": cutoff_utc.isoformat(),
+        })
         return GradientBoostArtifact(
             estimator, n_features=X.shape[1], window_shape=windows.shape[1:],
             trained_horizon_sessions=self.horizon,
@@ -383,7 +412,7 @@ def print_report(summary: dict, horizon: int) -> None:
         for name, sig in with_signals.items():
             print(
                 f"{name:<22}{sig['base_up'] * 100:>7.1f}%{sig['n_buy']:>7}{sig['p_up_given_buy'] * 100:>10.1f}%"
-                f"{(1 - sig['base_up']) * 100:>8.1f}%{sig['n_sell']:>7}{sig['p_down_given_sell'] * 100:>11.1f}%"
+                f"{sig['base_down'] * 100:>8.1f}%{sig['n_sell']:>7}{sig['p_down_given_sell'] * 100:>11.1f}%"
             )
         print()
     for name, s in summary.items():

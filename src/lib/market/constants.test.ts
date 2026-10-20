@@ -39,3 +39,30 @@ describe("market symbol helpers", () => {
     expect(indiaPeers.map((peer) => peer.symbol)).toContain("INFY.NS");
   });
 });
+
+describe("direct-symbol quote currency contracts", () => {
+  it.each([
+    ["USDINR=X", "INR", "USD/INR"],
+    ["EURUSD=X", "USD", "EUR/USD"],
+    ["GBPUSD=X", "USD", "GBP/USD"],
+    ["USDJPY=X", "JPY", "USD/JPY"],
+    ["EURINR=X", "INR", "EUR/INR"],
+    ["GBPINR=X", "INR", "GBP/INR"],
+    ["USDCHF=X", "CHF", "USD/CHF"],
+  ])("preserves canonical metadata for %s instead of guessing from its base currency", (symbol, currency, providerSymbol) => {
+    expect(createSymbolConfig(symbol)).toMatchObject({ currency, providerSymbol, assetType: "forex", exchange: "FX" });
+    expect(inferCurrency(symbol)).toBe(currency);
+  });
+
+  it("uses quote denominations for generic pairs and Yahoo USD-base shorthand", () => {
+    expect(createSymbolConfig("NZDCAD=X").currency).toBe("CAD");
+    expect(createSymbolConfig("JPY=X").currency).toBe("JPY");
+  });
+
+  it("retains configured index metadata, explicit overrides and ordinary equity behavior", () => {
+    expect(createSymbolConfig("^FTSE")).toMatchObject({ currency: "GBP", assetType: "index" });
+    expect(createSymbolConfig("USDINR=X", { name: "Conversion rate" })).toMatchObject({ currency: "INR", name: "Conversion rate" });
+    expect(createSymbolConfig("TCS.NS")).toMatchObject({ currency: "INR", exchange: "NSE" });
+    expect(createSymbolConfig("UNCONFIGURED")).toMatchObject({ currency: "USD", exchange: "NASDAQ", providerSymbol: "UNCONFIGURED" });
+  });
+});

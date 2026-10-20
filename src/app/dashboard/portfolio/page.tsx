@@ -18,6 +18,7 @@ import {
 import { CardGridSkeleton, TableSkeleton } from "@/components/ui/Skeletons";
 import { Dialog } from "@/components/ui/Dialog";
 import { InsightsStories } from "@/components/insights/InsightsStories";
+import { PortfolioHistory } from "@/components/portfolio/PortfolioHistory";
 import { usePortfolio } from "@/lib/hooks/use-portfolio";
 import { useStockSearch } from "@/lib/hooks/use-prediction";
 import { buildPortfolioStories } from "@/lib/insights/stories";
@@ -248,7 +249,7 @@ export default function PortfolioPage() {
                   <TrendingDown className="h-4 w-4 text-loss" />
                 )}
                 <p className="text-xs font-medium" style={{ color: "var(--color-text-muted)" }}>
-                  Total P&amp;L
+                  Unrealized P&amp;L
                 </p>
               </div>
               <p className={cn("font-mono text-2xl font-bold", valuationAvailable ? getPriceColor(summary.pnl) : "")} data-financial style={!valuationAvailable ? { color: "var(--color-text-muted)" } : undefined}>
@@ -257,6 +258,7 @@ export default function PortfolioPage() {
               <p className={cn("mt-1 font-mono text-xs font-medium", valuationAvailable && summary.pnlPercent !== null ? getPriceColor(summary.pnlPercent) : "")} data-financial style={!valuationAvailable || summary.pnlPercent === null ? { color: "var(--color-text-muted)" } : undefined}>
                 {valuationAvailable && summary.pnlPercent !== null ? formatPercent(summary.pnlPercent) : "—"}
               </p>
+              <p className="mt-1 text-xs" style={{ color: "var(--color-text-faint)" }}>Current holdings; excludes realized gains and fees</p>
             </motion.div>
 
             <motion.div variants={itemVariants} className="card p-5">
@@ -293,6 +295,8 @@ export default function PortfolioPage() {
               </p>
             </motion.div>
           </motion.div>
+
+          <PortfolioHistory defaultCurrency={base} />
 
           {summary.excluded.length > 0 && (
             <div

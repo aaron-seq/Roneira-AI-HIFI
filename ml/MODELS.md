@@ -6,6 +6,15 @@ deterministic gradient-boosted regressors. TensorFlow is not an installed
 runtime dependency. Neither deployed slot produces a distribution of future
 prices, and the selection names alone do not establish prediction quality.
 
+The [frozen real-market research workflow](research/README.md) trains and
+assesses separate 7/30/90/180-session candidates without changing deployed
+artifacts. Its [checked configuration](research/real-world-2026-10-19.json)
+pins six tickers, fixed historical dates, folds, seed and two workers. The
+[completed real-data assessment](research/results-2026-10-19.md) reports all four
+horizons, including negative skill and the separate final temporal assessment. Research
+candidate metadata is explicitly rejected by serving; use a reviewed promotion
+change rather than pointing the application at an assessment output directory.
+
 ## What each selection does
 
 | Selection | Current implementation | Training | Useful information | Limits |
@@ -95,6 +104,12 @@ purge by each label's actual resolution timestamp. Features can drop rows, so
 source-session timestamps are used rather than counting retained feature rows.
 No scaler is fitted on validation data. Folds without resolved training data
 cannot contribute an invented validation score.
+Random Forest and gradient boosting use two workers by default; research can
+set a validated positive worker count. RF and Technical rules share simple
+rolling RSI: after 14 finite changes, gains without losses give 100, losses
+without gains give 0 and no movement gives 50. Missing inputs and warm-up remain
+unavailable. Persisted sequence feature definitions remain unchanged so this
+correction cannot silently change inputs to existing bundles.
 If feature preparation cannot supply the latest input session, the predictor
 returns an explicit fallback instead of anchoring an older feature row to the
 latest price.
@@ -125,7 +140,10 @@ A fallback, invalid price or inference error is an **unavailable model
 prediction**. Its return is missing and its reason is recorded; it cannot be
 scored as a fitted model that successfully forecast no change. Reports include
 scored/total origin coverage. The production ensemble renormalises eligible
-members, reports degraded blends, and is evaluated with those actual weights.
+members and reports degraded blends. The harness recombines recorded member
+returns with those weights and eligibility rules; it omits the combiner's final
+cent rounding, so ensemble rows are an offline comparison rather than exact
+bit-for-bit API outputs.
 Full-member equal-weight and inverse-MAE variants require complete predictions.
 The fixed RF + Technical + PVD Momentum blend is also reported. With a bundled
 30-session sequence artifact it matches the live seven-session ensemble's
@@ -140,7 +158,8 @@ Metrics are:
 - Skill `1 - MAE / baseline_MAE`, including negative results.
 - Per-fold skill and the number of folds beating no change.
 - Directional hit rate among nonzero forecasts, and BUY/SELL precision compared
-  with the observed up/down base rate.
+  with the observed up/down/flat base rates, explicit directional-call and
+  correct-direction counts. Flat outcomes are not counted as down moves.
 - Prediction coverage and degraded ensemble count.
 
 No transaction costs, liquidity, position sizing or realised trading P&L are

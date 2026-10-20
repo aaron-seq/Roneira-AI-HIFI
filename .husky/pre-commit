@@ -30,4 +30,11 @@ else
   echo "  🐍 pytest (ml/) — skipped, no ml/ changes staged"
 fi
 
+if git diff --cached --name-only | grep -q '^data/'; then
+  echo "  📊 data contracts and synthetic fixtures"
+  python data/validate.py --metadata-only
+  python data/validate.py
+  python -m unittest discover -s data/tests -q
+fi
+
 echo "✅ All pre-commit checks passed!"
