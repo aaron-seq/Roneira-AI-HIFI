@@ -201,8 +201,12 @@ class TechnicalAnalyzer:
             logger.error(f"Technical analysis error: {e}")
             return {
                 "predicted_price": float(df["Close"].iloc[-1]),
-                "confidence": 25.0,
+                "confidence": 0.0,
                 "indicators": [],
+                "fallback": True,
+                "fallback_reason": "inference_failed",
+                "short_term_signal": {"signal": "HOLD", "score": 5.0},
+                "long_term_signal": {"signal": "HOLD", "score": 5.0},
             }
 
     @staticmethod

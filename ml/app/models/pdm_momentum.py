@@ -106,8 +106,12 @@ class PVDMomentumEngine:
             logger.error(f"PVD Momentum analysis error: {e}")
             return {
                 "predicted_price": float(df["Close"].iloc[-1]),
-                "confidence": 20.0,
+                "confidence": 0.0,
                 "indicators": [],
+                "fallback": True,
+                "fallback_reason": "inference_failed",
+                "short_term_signal": {"signal": "HOLD", "score": 5.0},
+                "long_term_signal": {"signal": "HOLD", "score": 5.0},
             }
 
     def _compute_price_momentum(self, close: pd.Series) -> float:
