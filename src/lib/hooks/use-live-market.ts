@@ -45,10 +45,10 @@ async function fetchJson<T>(url: string): Promise<T> {
 
 export function useMarketOverviewData() {
   const userId = useAppStore((state) => state.user?.id ?? null);
+  const authCacheEpoch = useAppStore((state) => state.authCacheEpoch);
   return useQuery({
-    // AuthSync clears all queries on identity changes. Including the current
-    // identity reattaches this public query after that clear, even mid-request.
-    queryKey: ["market", "overview", userId],
+    // Reattach after every auth cache clear, even when the final ID is unchanged.
+    queryKey: ["market", "overview", userId, authCacheEpoch],
     queryFn: () =>
       fetchJson<MarketOverviewResponse>("/api/market-data?group=market-overview"),
     refetchInterval: 60_000,
@@ -57,8 +57,9 @@ export function useMarketOverviewData() {
 
 export function useCommoditiesForexData() {
   const userId = useAppStore((state) => state.user?.id ?? null);
+  const authCacheEpoch = useAppStore((state) => state.authCacheEpoch);
   return useQuery({
-    queryKey: ["market", "commodities-forex", userId],
+    queryKey: ["market", "commodities-forex", userId, authCacheEpoch],
     queryFn: () =>
       fetchJson<CommoditiesForexResponse>(
         "/api/market-data?group=commodities-forex"
@@ -69,12 +70,13 @@ export function useCommoditiesForexData() {
 
 export function useLiveQuotes(symbols: string[]) {
   const userId = useAppStore((state) => state.user?.id ?? null);
+  const authCacheEpoch = useAppStore((state) => state.authCacheEpoch);
   const uniqueSymbols = Array.from(
     new Set(symbols.map((symbol) => symbol.trim()).filter(Boolean))
   );
 
   return useQuery({
-    queryKey: ["market", "quotes", uniqueSymbols.join(","), userId],
+    queryKey: ["market", "quotes", uniqueSymbols.join(","), userId, authCacheEpoch],
     queryFn: () =>
       fetchJson<{ data: MarketQuote[] }>(
         `/api/market-data?symbols=${encodeURIComponent(uniqueSymbols.join(","))}`
@@ -90,8 +92,9 @@ export function useQuoteHistory(
   range = "6month"
 ) {
   const userId = useAppStore((state) => state.user?.id ?? null);
+  const authCacheEpoch = useAppStore((state) => state.authCacheEpoch);
   return useQuery({
-    queryKey: ["market", "history", symbol, interval, range, userId],
+    queryKey: ["market", "history", symbol, interval, range, userId, authCacheEpoch],
     queryFn: () =>
       fetchJson<{ candles: CandlePoint[] }>(
         `/api/market-data/history?symbol=${encodeURIComponent(
@@ -107,8 +110,9 @@ export function useQuoteHistory(
 
 export function useStockScreener() {
   const userId = useAppStore((state) => state.user?.id ?? null);
+  const authCacheEpoch = useAppStore((state) => state.authCacheEpoch);
   return useQuery({
-    queryKey: ["market", "screener", userId],
+    queryKey: ["market", "screener", userId, authCacheEpoch],
     queryFn: () => fetchJson<ScreenerResponse>("/api/screener"),
     // The ML service itself caches this for 30 minutes; matching that here
     // avoids polling a mostly-static dataset every 60s like the price hooks.
@@ -119,8 +123,9 @@ export function useStockScreener() {
 
 export function usePeerComparison(symbol: string | undefined) {
   const userId = useAppStore((state) => state.user?.id ?? null);
+  const authCacheEpoch = useAppStore((state) => state.authCacheEpoch);
   return useQuery({
-    queryKey: ["market", "peers", symbol, userId],
+    queryKey: ["market", "peers", symbol, userId, authCacheEpoch],
     queryFn: () =>
       fetchJson<{ peers: MarketQuote[] }>(
         `/api/market-data?group=peer-comparison&symbol=${encodeURIComponent(

@@ -53,6 +53,9 @@ interface AppState {
   // User
   user: UserProfile | null;
   setUser: (user: UserProfile | null) => void;
+  // A full auth cache clear can occur without changing the current user ID.
+  authCacheEpoch: number;
+  advanceAuthCacheEpoch: () => void;
 
   // Sidebar
   sidebarCollapsed: boolean;
@@ -101,6 +104,8 @@ export const useAppStore = create<AppState>((set) => ({
   // User
   user: null,
   setUser: (user) => set({ user }),
+  authCacheEpoch: 0,
+  advanceAuthCacheEpoch: () => set((state) => ({ authCacheEpoch: state.authCacheEpoch + 1 })),
 
   // Sidebar
   sidebarCollapsed: false,
