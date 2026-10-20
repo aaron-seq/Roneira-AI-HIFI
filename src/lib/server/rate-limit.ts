@@ -114,10 +114,15 @@ export async function rateLimit(
       return bumpLocal(key, windowSeconds, limit);
     }
 
-    const payload = (await response.json()) as Array<{ result?: unknown }>;
-    const count = Number(payload?.[0]?.result);
-
-    if (!Number.isFinite(count)) {
+    const payload: unknown = await response.json();
+    // HTTP success does not guarantee command success. Trust only the exact
+    // INCR/EXPIRE contract; coercion would turn null/false into an allowed0.
+    if (!Array.isArray(payload) || payload.length !== 2
+      || payload.some((command) => !command || typeof command !== "object" || "error" in command)) {
+      return bumpLocal(key, windowSeconds, limit);
+    }
+    const count: unknown = payload[0].result;
+    if (typeof count !== "number" || !Number.isSafeInteger(count) || count < 1 || payload[1].result !== 1) {
       return bumpLocal(key, windowSeconds, limit);
     }
 
