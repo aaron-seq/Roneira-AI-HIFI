@@ -98,6 +98,46 @@ jobs:
       - name: Run offline data tests
         run: python -m unittest discover -s data/tests -v
 
+  # Empty disposable database only; never use hosted credentials here.
+  database:
+    name: Database CI
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+        env:
+          POSTGRES_DB: roneira_tests
+          POSTGRES_PASSWORD: disposable-ci-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d roneira_tests"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGDATABASE: roneira_tests
+      PGPASSWORD: disposable-ci-only
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Apply prerequisites and application migrations
+        run: |
+          psql -v ON_ERROR_STOP=1 -f supabase/tests/bootstrap.sql
+          for migration in supabase/migrations/*.sql; do
+            psql -v ON_ERROR_STOP=1 -f "$migration"
+          done
+      - name: Run database regressions
+        run: |
+          for regression in supabase/tests/*.sql; do
+            if [ "$regression" != "supabase/tests/bootstrap.sql" ]; then
+              psql -v ON_ERROR_STOP=1 -f "$regression"
+            fi
+          done
+
   # Repository-wide vulnerability scanning
   security:
     name: Security Scan
@@ -129,7 +169,7 @@ jobs:
   deployment-check:
     name: Deployment file checks
     runs-on: ubuntu-latest
-    needs: [web, ml, data]
+    needs: [web, ml, data, database]
     if: github.ref == 'refs/heads/main'
 
     steps:
