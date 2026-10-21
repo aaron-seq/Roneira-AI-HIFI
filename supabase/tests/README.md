@@ -37,10 +37,51 @@ read access, signup/portfolio/watchlist trigger-generated records, trusted
 service-role insertion and continued hard UPDATE/DELETE rejection. It requires
 migration 014. The authenticated Next audit endpoint remains the supported path
 for bounded, actor-bound client-reported activity; such reports do not establish
-that a business operation occurred. Audit UPDATE/DELETE rules and the known
-account-deletion conflict in issue #174 are unchanged.
+that a business operation occurred. Event UPDATE/DELETE protections remain.
+
+`account-deletion.sql` requires migration 015. It verifies parent-first and
+child-first deletion, unchanged historical event fields, cascade audit writers,
+surviving accounts, email/username reuse, caller RLS and temporary-schema attacks,
+and service-role/owner tamper denial. Its temporary attack policies, triggers and
+fixtures roll back. It does not define personal-data erasure; see
+[ADR 0002](../../docs/adr/0002-audit-retention-on-account-deletion.md).
 
 Every regression uses a transaction and rolls its fixtures back. CI runs the
 bootstrap, filename-ordered migrations and these SQL files on disposable
 PostgreSQL 17; real Supabase Auth HTTP behavior requires separate local-stack
 validation.
+
+## Real GoTrue hard-delete regression
+
+With Docker running and Python 3.11, from the repository root:
+
+```sh
+python supabase/tests/run-gotrue-deletion.py --pull
+```
+
+The standard-library runner creates its own disposable PostgreSQL 17 and GoTrue
+v2.197.0 containers from pinned official digests. It accepts no external URL or
+credentials. Password/JWT material is generated in memory; the database has no
+published port and Auth binds only a random loopback port. Owned containers and
+network are removed on completion or handled interruption. Omit `--pull` when
+the exact images are already cached; pull failures do not disable verification.
+
+It applies all migrations and uses real signup/admin DELETE endpoints for two
+synthetic accounts: signup-only and active holdings/watchlist/related data. It
+checks retained audit fields/cascade events, removal of operational rows, existing
+unlinked prediction-history retention, denied anonymous/non-admin deletes,
+GoTrue user/refresh/password rejection after deletion, and an unaffected survivor.
+It does not test a complete Supabase stack, global JWT revocation or hosted data.
+CI runs this command separately from the SQL-only job.
+
+To reproduce the old failure on a separate disposable stack:
+
+```sh
+python supabase/tests/run-gotrue-deletion.py --through-migration 14
+# Expected: exit 1, admin DELETE reports HTTP 500 rather than 200.
+```
+
+With migration 015 the expected result is exit 0 and a JSON summary containing
+`status: passed` and `hard_deleted_accounts: 2`. Never run the SQL bootstrap or
+owner-level fixtures on a hosted project. The runner deliberately provides no
+hosted-target override.

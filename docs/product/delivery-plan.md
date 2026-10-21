@@ -42,7 +42,7 @@ The 2026-10-19 study is historical evidence, not these future product KPIs. Its 
 | Risk | Current exposure | Control and decision owner role |
 |---|---|---|
 | Misleading portfolio returns | Editable holdings/current FX and incomplete cash ledger | Portfolio owner: show unrealized P&L/value captures; require P4/P5 before returns/attribution |
-| Account privacy/lifecycle | Known deletion/audit conflict; asynchronous identity changes | Backend/security reviewer: deny cross-user reads/writes, preserve stale-response guards, resolve #174. The [reliability review](../reviews/2026-10-20-reliability.md) covers #176 recovery and #194 trusted audit insertion. |
+| Account privacy/lifecycle | Retained audit/forecast data requires an explicit erasure policy; asynchronous identity changes | Backend/security reviewer: preserve stale-response guards and [ADR 0002](../adr/0002-audit-retention-on-account-deletion.md)'s #174 repair. Product owner must resolve #196 before promising erasure or self-service deletion. |
 | Data entitlement failure | Personal/development plans may not permit public/derived commercial display | Data steward/product owner: complete #184 before expanding feeds/audience |
 | False forecasting confidence | Heuristic scores, historical labels and poor candidate skill | ML reviewer: disclose actual methods, address #180, preserve negative metrics and use M4/M5 |
 | Leakage/selection/data revision | Revised adjusted histories, surviving large caps, correlated regimes | Research owner: freeze protocol/hashes, exact purging, unseen data and documented limitations |
@@ -88,7 +88,7 @@ These work items are live GitHub issues. Their acceptance criteria describe rema
 | [M3 — Transaction-aware performance](https://github.com/aaron-seq/Roneira-AI-HIFI/milestone/3) | Reconciled events/cash/basis before returns and attribution |
 | [M4 — Evidence-gated public pilot](https://github.com/aaron-seq/Roneira-AI-HIFI/milestone/4) | Reliability, provider permissions, usability and release evidence |
 
-At refinement, the five ready items are #174 (deletion/audit references), #157 (forecast session dates), #182 (ledger), #184 (provider entitlement enforcement) and #168 (public pipeline regressions, labelled good first issue). Choose an item, volunteer as its named owner and link its focused PR; no individual is assigned or delivery date promised here.
+After the #174 compatibility repair, ready items include #157 (forecast session dates), #182 (ledger), #184 (provider entitlement enforcement) and #168 (public pipeline regressions, labelled good first issue). Policy decision #196 remains blocked on product ownership. Choose an item, volunteer as its named owner and link its focused PR; no individual is assigned or delivery date promised here.
 
 Labels are `area:portfolio/ml/data/platform/product`, `priority:P0/P1/P2` and `status:ready/blocked/backlog/in-progress`. P0 is reserved for immediate security/data-integrity incidents, P1 for foundations/release blockers and P2 for important dependent improvements. Closed GitHub state records completion. Keep implementation work in progress small and re-triage dependencies before starting.
 

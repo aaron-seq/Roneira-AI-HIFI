@@ -40,7 +40,7 @@ The current change targets P1–P3. Passing them does not satisfy P4–P5.
 
 ## Dependencies, risks and rollout
 
-Dependencies include quote quality/currency contracts, migration 013 and private Auth/RLS. [#174](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/174) blocks a complete account-deletion contract. Data revisions, edited holdings and current FX can change what users infer; surface those limits rather than smoothing the series.
+Dependencies include quote quality/currency contracts, migration 013 and private Auth/RLS. Migration 015 repairs [#174](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/174)'s audit/delete compatibility under [ADR 0002](../adr/0002-audit-retention-on-account-deletion.md). Erasure and retained-data policy remain unresolved in [#196](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/196). Data revisions, edited holdings and current FX can change what users infer; surface those limits rather than smoothing the series.
 
 Apply the additive migration to a verified development target, run disposable SQL/Auth checks, then release capture UI after review. To roll back, revert/disable UI and capture routing while retaining private saved rows; do not drop history or weaken RLS. Future accounting should launch with a reconciled test/import cohort and an exportable correction trail; stop new imports/calculation display if reconciliation fails.
 

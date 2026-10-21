@@ -17,7 +17,7 @@ The initial product stays free and the software uses [MIT](../../LICENSE). Goals
 
 ## Data, privacy and operating requirements
 
-No private account data becomes an open-data contribution by default. Product measurements should use explicit events, minimal identifiers and a retention policy; research reuse or public examples require separate permission. Verify account isolation, export/erasure and incident procedures before expanding a hosted audience. Resolve the audit-retention deletion conflict rather than weakening append-only records.
+No private account data becomes an open-data contribution by default. Product measurements should use explicit events, minimal identifiers and a retention policy; research reuse or public examples require separate permission. Verify account isolation, export/erasure and incident procedures before expanding a hosted audience. [ADR 0002](../adr/0002-audit-retention-on-account-deletion.md) resolves deletion compatibility without weakening immutable event fields; [#196](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/196) remains the product decision for retained personal data and erasure promises.
 
 A data-rights inventory must cover public display, commercial usage, caching, export and derived artifacts. Approved training access is not automatically approved public redistribution. Free access does not make staging/production use lawful under a development-only provider plan.
 

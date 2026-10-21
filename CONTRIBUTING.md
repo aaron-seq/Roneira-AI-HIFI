@@ -149,8 +149,8 @@ An unset ML token returns 503 on protected endpoints; mismatched tokens return
 
 **3. Database Setup**
 
-Schema lives in `supabase/migrations/`: apply 001 through 014 in filename order;
-004 is absent. Migration 012 is required for atomic price-alert delivery; 013 adds private server-valued portfolio history and its ordered-save RPC; 014 restricts audit insertion to trusted server/database writers. The audit endpoint verifies the session and derives its actor before using a server-only client. Pick one:
+Schema lives in `supabase/migrations/`: apply 001 through 015 in filename order;
+004 is absent. Migration 012 is required for atomic price-alert delivery; 013 adds private server-valued portfolio history and its ordered-save RPC; 014 restricts audit insertion to trusted server/database writers. Migration 015 permits narrowly scoped account-deletion FK cleanup while retaining immutable audit event fields. The [database guide](supabase/tests/README.md) includes SQL and real disposable GoTrue regressions. The audit endpoint verifies the session and derives its actor before using a server-only client. Pick one:
 
 *Local stack (recommended for development, needs Docker and disk space for images):*
 

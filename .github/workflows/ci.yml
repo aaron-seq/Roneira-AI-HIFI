@@ -138,6 +138,21 @@ jobs:
             fi
           done
 
+  # Real Auth entry point, with its own generated credentials and disposable DB.
+  auth-deletion:
+    name: GoTrue deletion CI
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - name: Verify real Auth hard-delete and retained audit evidence
+        run: python supabase/tests/run-gotrue-deletion.py --pull
+
   # Repository-wide vulnerability scanning
   security:
     name: Security Scan
@@ -169,7 +184,7 @@ jobs:
   deployment-check:
     name: Deployment file checks
     runs-on: ubuntu-latest
-    needs: [web, ml, data, database]
+    needs: [web, ml, data, database, auth-deletion]
     if: github.ref == 'refs/heads/main'
 
     steps:
