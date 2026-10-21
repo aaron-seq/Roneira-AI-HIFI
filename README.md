@@ -6,7 +6,7 @@ For portfolio owners, the goal is to make three questions clear: **What is my po
 
 **Free to use and contribute to. No subscription or license-fee flow is implemented.** The software uses the [MIT license](LICENSE). Market-data permissions and private account data are separate from the software license.
 
-[Architecture](ARCHITECTURE.md) · [Model guide](ml/MODELS.md) · [Contributing](CONTRIBUTING.md) · [Deployment](DEPLOYMENT.md) · [Issues](https://github.com/aaron-seq/Roneira-AI-HIFI/issues) · [Product plan and PRDs](docs/product/README.md) · [Data project](data/README.md)
+[Architecture](ARCHITECTURE.md) · [Decision records and review queue](docs/adr/README.md) · [Model guide](ml/MODELS.md) · [Contributing](CONTRIBUTING.md) · [Deployment](DEPLOYMENT.md) · [Issues](https://github.com/aaron-seq/Roneira-AI-HIFI/issues) · [Product plan and PRDs](docs/product/README.md) · [Data project](data/README.md)
 
 ## What you can do
 
@@ -107,6 +107,8 @@ The [product pack](docs/product/README.md) contains the vision, four PRDs and an
 The [data project](data/README.md) reuses the frozen research pipeline. It provides a versioned dataset registry, public lineage/hash metadata, synthetic fixtures and a standard-library validator. Actual provider CSVs stay in ignored local caches. Validate fixture and registry changes before research; dataset hashes prove byte identity, not data rights or forecasting value.
 
 [Delivery tracker #189](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/189) and [repository milestones](https://github.com/aaron-seq/Roneira-AI-HIFI/milestones) track delivery. Pick a ready issue with its linked PRD, state the acceptance criteria and evidence, and link the review PR. No roadmap date, usability metric or future fee is presented as an achieved result.
+
+The [2026-10-21 delivery audit](docs/product/delivery-audit-2026-10-21.md) records every original issue, PR and unresolved review thread. The [ADR catalog](docs/adr/README.md) separates implemented decisions from proposals needing human review. High-priority follow-ups include [prediction-history write integrity #202](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/202); earlier passing tests do not establish that every authorization path is safe. The live tracker carries current review and implementation status.
 
 ## Architecture & technology stack
 
