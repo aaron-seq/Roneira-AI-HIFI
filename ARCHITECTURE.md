@@ -326,11 +326,15 @@ RLS is enabled on every `public` table. Two constraints worth knowing:
 Migration014 removes the permissive audit INSERT policy and direct INSERT grants
 from `anon` and `authenticated`. Session-verified server routes use the admin client
 to append actor-bound records; signup/portfolio/watchlist triggers write as their
-owner. SELECT RLS remains account-scoped. Migration009 rejects UPDATE/DELETE even
-for `service_role`, which otherwise bypasses RLS. This immutability still conflicts
-with account-deletion referential maintenance (#174); insertion hardening does not
-resolve that lifecycle defect. Client-reported events are not independent proof
-that the named operation occurred.
+owner. SELECT RLS remains account-scoped. Migration 015 permits only nested
+nonnull→null live-profile unlinking when the actual parent is absent and every
+other event field is unchanged. Normal portfolio/watchlist deletes retain their
+live actor; account cascades record a null link and unchanged OLD evidence.
+Other UPDATE/DELETE operations remain rejected even for `service_role`, which
+otherwise bypasses RLS. This repairs #174; it is not erasure of audit JSON or
+existing unlinked forecast history. [ADR 0002](docs/adr/0002-audit-retention-on-account-deletion.md)
+records the contract and unresolved policy #196. Client-reported events are not
+independent proof that the named operation occurred.
 
 ## Auth
 
