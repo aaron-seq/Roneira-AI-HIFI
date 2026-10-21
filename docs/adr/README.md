@@ -4,6 +4,8 @@ Reviewed inventory: **2026-10-21**, implementation baseline `9049f8c`. [Live das
 
 ADRs group coherent decisions; the issue ledger maps every original issue (including retired-stack fixes) to a governing topic. This catalog covers ordinary-user portfolio valuation/history, financial accounting, Indian swing planning, analyst models/training, prospective evidence, data stories/UX, provider rights/open data, identity/audit/deletion, runtime/setup, testing/release, free software/future hosting and delivery management.
 
+The catalog is presented in [PR #208](https://github.com/aaron-seq/Roneira-AI-HIFI/pull/208) for human review. Independent agent review of documentation accuracy found no remaining blockers; this is separate from human decision acceptance.
+
 ## Review contract
 
 Existing 0001/0002 keep their recorded Accepted status and implemented technical contracts. Neither their authors' status labels nor merged PRs establish named human acceptance. All 15 new records are **Proposed**, including retrospective descriptions of current code. Documentation merge is not approval for a new retention policy, financial method, data entitlement, model promotion or fee flow.

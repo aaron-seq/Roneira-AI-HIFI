@@ -10,7 +10,7 @@ The repository previously contained several disconnected application trees. The 
 
 ## Decision proposed
 
-Record the implemented boundaries: browser requests use Next.js routes; private ML calls use the server-side service token; Supabase owns authentication and RLS-backed records. Keep canonical configuration and generated disposable local credentials separate from hosted configuration. Do not introduce another backend, worker or orchestration layer without a measured need.
+Record the implemented boundaries: browser market-data and inference requests use Next.js routes; private ML calls use the server-side service token. Browser Supabase clients also call Supabase directly for authentication and private records under RLS, so database permissions remain an independent access boundary. Keep canonical configuration and generated disposable local credentials separate from hosted configuration. Do not introduce another backend, worker or orchestration layer without a measured need.
 
 ## Alternatives
 

@@ -11,7 +11,7 @@ This is a dated audit, not a hosted readiness declaration. All original 74 issue
 | Original issues | 74: 19 open, 55 closed |
 | Follow-up issues added by this audit | 10 (#198–#207); total 84 issues, 29 open / 55 closed |
 | Original PRs | 123: 47 merged, 76 closed without merge, zero open |
-| New documentation review PR | <!-- delivery-review-pr -->See the live dashboard for the review link; excluded from the original PR snapshot |
+| New documentation review PR | [PR #208](https://github.com/aaron-seq/Roneira-AI-HIFI/pull/208), kept open for human review; excluded from the original snapshot (current total: 124 PRs, one open) |
 | Formal review records | 27 COMMENTED across 24 PRs: 20 Codex bot, six security bot, one repository-owner comment; zero APPROVED or CHANGES_REQUESTED |
 | GitHub unresolved review threads | 60 across 23 closed PRs; 15 fixed later, 39 superseded/removed, six verified residual findings now #202–#207 |
 | ADRs | Two existing author-declared Accepted/implemented records; 15 new Proposed records, all requiring human review; named acceptance unverified |
