@@ -10,8 +10,10 @@ the deleted legacy Docker Compose services.
 | `ml/` | **Railway** or **Render** | `uvicorn app.main:app` — the FastAPI ML service. |
 | `supabase/` | **Supabase** (hosted) | Postgres, Auth, RLS policies, audit triggers. |
 
-The browser only ever talks to Vercel. The ML service is reached server-side by
-the Next.js route handlers, never directly by the client.
+Browser market-data and inference requests go through Vercel's Next.js routes.
+Browser Supabase clients also call Supabase directly for authentication and
+private records under RLS. The ML service is reached server-side by the Next.js
+route handlers, never directly by the client.
 
 ---
 

@@ -14,7 +14,7 @@
 | 6 | Compare horizons and plan portfolio risk clearly | Independent availability/latency per horizon, validated instrument/rupee risk math | #146/#163 |
 | 7 | Reconsider an optional hosted commercial offering | Open-source O2–O4; explicit future product decision, not a metric-triggered launch | No billing implementation scheduled |
 
-Current history and research implementations are available in this change; completion/release requires the PR's final evidence. Historical issue descriptions can contain superseded numbers or implementation assumptions: use the current PRD, code and linked dated report when refining acceptance criteria.
+History and the frozen research study shipped in merged PR191; reliability and account-deletion repairs followed in PR195/197. The [2026-10-21 full audit](delivery-audit-2026-10-21.md) records current follow-ups and review debt, including prediction-history write integrity #202. Historical issue descriptions can contain superseded numbers or implementation assumptions: use the current PRD, code and linked dated report when refining acceptance criteria.
 
 ## Measurement dictionary
 
@@ -70,7 +70,7 @@ These work items are live GitHub issues. Their acceptance criteria describe rema
 
 | Issue | Actionable title | Acceptance/dependencies |
 |---|---|---|
-| #182 | Add transaction/cash-flow ledger and reconcile portfolio balances | Idempotent events/corrections; buys/partial sells/re-entry/dividends/splits/fees and opening balances; document basis; reconcile before returns. Child/dependency of #147. |
+| #182 | Add transaction/cash-flow ledger and reconcile portfolio balances | Idempotent events/corrections; buys/partial sells/re-entry/dividends/splits/fees and opening balances; review basis in ADR0005; reconcile before #147. Both are separate children of master #189. |
 | #183 | Record forward predictions and resolve outcomes by actual sessions | Immutable issuance/input/model evidence, correct #157 semantics, delayed/suspended sessions, revision policy, coverage/base-rate reports; private reads. Extends #145. |
 | #184 | Audit provider entitlements and enforce permitted public feed/export use | Provider/plan/use/retention/attribution evidence for every enabled path; reject or disable unverified public use; no raw/private-data commits. |
 | #185 | Version dataset manifests and validate corporate-action/session quality | Canonical schema, symbols/currencies/timezones/adjustments, hash/range validation, duplicate/missing/split/dividend fixtures; explicit revised datasets. Builds on #179/#168. |
@@ -88,8 +88,10 @@ These work items are live GitHub issues. Their acceptance criteria describe rema
 | [M3 — Transaction-aware performance](https://github.com/aaron-seq/Roneira-AI-HIFI/milestone/3) | Reconciled events/cash/basis before returns and attribution |
 | [M4 — Evidence-gated public pilot](https://github.com/aaron-seq/Roneira-AI-HIFI/milestone/4) | Reliability, provider permissions, usability and release evidence |
 
-After the #174 compatibility repair, ready items include #157 (forecast session dates), #182 (ledger), #184 (provider entitlement enforcement) and #168 (public pipeline regressions, labelled good first issue). Policy decision #196 remains blocked on product ownership. Choose an item, volunteer as its named owner and link its focused PR; no individual is assigned or delivery date promised here.
+The live dashboard now organizes all open work as native sub-issues. Prioritize #202 (prediction-history write integrity), #205 (truthful sign-in preview), #201 (credential-remediation evidence) and the existing foundation tasks. #157 (session dates), #182 (ledger) and #190 (source contracts) are ready for ADR review before unresolved choices are coded. #184/#185/#180/#181/#188/#149 have scoped implementation steps; public use and promotion remain separately gated. #168 is the bounded public-pipeline regression good first issue. Policy #196 remains blocked on product ownership. Choose an item, volunteer as its named owner and link its focused PR; no individual is assigned or delivery date promised here.
 
 Labels are `area:portfolio/ml/data/platform/product`, `priority:P0/P1/P2` and `status:ready/blocked/backlog/in-progress`. P0 is reserved for immediate security/data-integrity incidents, P1 for foundations/release blockers and P2 for important dependent improvements. Closed GitHub state records completion. Keep implementation work in progress small and re-triage dependencies before starting.
+
+`review:adr`, `review:pr` and `decision:needed` distinguish review queues and unresolved choices from implementation status. Use the [ADR index](../adr/README.md) and [issue-to-decision map](issue-decision-map.md); merging an ADR proposal does not approve a future financial/privacy policy or a new model. The original snapshot had no open PRs; the live tracker links the new documentation PR for human review.
 
 Additional linked tasks cover the actual invalid Technical projection #181, net-of-cost paper study #186, consented usability pilot #187, release/promotion automation #188 and source freshness/currency contracts #190. New code/model proposals use the repository issue forms and PR template.

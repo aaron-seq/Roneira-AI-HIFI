@@ -15,6 +15,9 @@ The initial software is free and open source under [MIT](../../LICENSE). There i
 | [Market-data PRD](market-data-prd.md) | A governed data project covering rights, provenance, quality and reproducibility |
 | [Open-source and hosting PRD](open-source-hosting-prd.md) | Contribution, free initial access and evidence required before considering paid hosting |
 | [Delivery plan](delivery-plan.md) | Priorities, dependencies, metrics, risks and the issue-to-release workflow |
+| [Decision records](../adr/README.md) | Implemented versus proposed contracts and choices requiring explicit human review |
+| [Complete delivery audit](delivery-audit-2026-10-21.md) | Every original issue/PR and historical unresolved review thread, with verified dispositions |
+| [Issue-to-decision map](issue-decision-map.md) | The governing topic for every issue, including review follow-ups |
 
 The repository [README](../../README.md) is the setup and capability entry point. [Model behavior](../../ml/MODELS.md), [real-market research](../../ml/research/README.md), [architecture](../../ARCHITECTURE.md) and [data-story calculations](../data-stories-2026-10-13.md) carry technical detail.
 
@@ -45,4 +48,4 @@ There are no delivery-date promises in this plan. Work advances through the gate
 
 ## Pick up work
 
-Start with the [live delivery tracker](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/189), [milestones](https://github.com/aaron-seq/Roneira-AI-HIFI/milestones) and the five ready issues in the [delivery plan](delivery-plan.md#live-project-tracking). The [data project](../../data/README.md) includes concrete validation commands and reproducible fictional fixtures for contributors. GitHub issue state remains current; this dated PRD pack is the requirements and decision record.
+Start with the [live delivery tracker](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/189), [milestones](https://github.com/aaron-seq/Roneira-AI-HIFI/milestones) and [decision review #198](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/198). A ready issue can mean its next design review is ready; read its coding-readiness and dependency notes before implementing. The [data project](../../data/README.md) includes concrete validation commands and reproducible fictional fixtures for contributors. GitHub issue state remains current; this dated PRD pack is the requirements and decision record.
