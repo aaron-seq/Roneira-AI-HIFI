@@ -46,23 +46,42 @@ Railway and Render both work; the service is a standard uvicorn app.
 ### Railway dashboard setup
 
 Open the existing Railway project and select the service connected to this
-repository. Check these settings before deploying `main`:
+repository. Set these dashboard values before deploying `main`:
 
 | Setting | Value |
 |---|---|
 | Repository / branch | `aaron-seq/Roneira-AI-HIFI` / `main` |
 | Root Directory | `/ml` |
-| Railway Config File | `/ml/railway.json` |
-| Builder | Railpack, selected by the config file |
+| Builder | Railpack |
 | Python | `3.11.9`, read from `ml/runtime.txt` |
 | Build/install override | Leave automatic; Railpack installs `requirements.txt` |
-| Start command | From the config: `uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
-| Health check | `/health`, configured in the same file |
+| Start command | `uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
+| Health check | `/health` |
 
-Railway's config-file path is **relative to the repository root**, independently
-of Root Directory. Set both paths explicitly; the retired `ml-service/` tree is
-not the current service. The recipe uses the currently documented Railpack
-builder; it no longer selects Nixpacks.
+The retired `ml-service/` tree is not the current service. Railpack supports
+`runtime.txt`; an existing `RAILPACK_PYTHON_VERSION` or mise-compatible version
+file takes precedence, so check for an old override if the build selects another
+Python version.
+
+**Legacy config-file compatibility:** Railway has deprecated `railway.json` /
+`railway.toml`. New services cannot opt into that mechanism; legacy services
+that already use it retain support only until **2026-12-01**, according to the
+current [migration guide](https://docs.railway.com/infrastructure-as-code#migrating-from-config-as-code).
+For an eligible existing service, its Railway Config File path is
+`/ml/railway.json`, independently of Root Directory. That compatibility recipe
+now selects Railpack and the same start/health settings as the table. A config
+file overrides dashboard values while it is active. Set the dashboard values
+explicitly and verify the deployment's effective settings; do not rely solely
+on a file that will stop being read. Leave the config-file setting unset for a
+dashboard-managed service.
+
+For durable managed configuration, import the existing target into Railway's
+current Infrastructure as Code workflow and review its plan before applying it.
+Preserve service/domain/environment identities and secret bindings; do not
+replace the project or rotate credentials as part of an unreviewed import.
+The migration is tracked in [#209](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/209).
+This connection-repair guide does not provision an IaC stack or accept a paid
+resource plan.
 
 Add `ML_SERVICE_TOKEN` under the service's Variables using a newly generated
 secret. Generate it privately with `openssl rand -hex 32`; copy the same value
