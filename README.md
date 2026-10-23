@@ -127,7 +127,7 @@ flowchart LR
 - **Web:** Next.js 16, React 19, TypeScript, TanStack Query, Zustand and Recharts.
 - **ML:** Python 3.11, FastAPI, scikit-learn and XGBoost.
 - **Persistence:** Supabase Auth/PostgreSQL with row-level security; server-calculated snapshot writes use a server-only service credential after authentication.
-- **Runtime:** Vercel for the web app; Railway/Render-compatible ML deployment. Cached provider data and optional Upstash-backed rate limits have environment-dependent limits.
+- **Runtime:** Vercel for the web app; [Render prototype setup](DEPLOYMENT.md#render-setup-for-the-vercel-prototype) for the ML service, with Railway also supported. The root [render.yaml](render.yaml) selects a free instance and generates a private service token; deployment and Vercel's URL/token binding still require account configuration. Free instances can have cold starts. Cached provider data and optional Upstash-backed rate limits have environment-dependent limits.
 
 ### Repository layout
 

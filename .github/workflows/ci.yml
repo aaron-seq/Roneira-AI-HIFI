@@ -196,6 +196,7 @@ jobs:
           test -f package.json
           test -f vercel.json
           test -f next.config.ts
+          test -f render.yaml
           test -f ml/requirements.txt
           test -f ml/app/main.py
           test -f README.md

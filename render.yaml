@@ -1,0 +1,16 @@
+# Import this repository as a Render Blueprint. No paid resource is selected.
+# The free plan is for prototype setup; see DEPLOYMENT.md for cold-start limits.
+services:
+  - type: web
+    name: roneira-ml-service
+    runtime: python
+    plan: free
+    rootDir: ml
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: ML_SERVICE_TOKEN
+        generateValue: true
