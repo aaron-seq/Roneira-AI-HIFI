@@ -43,6 +43,42 @@ Railway and Render both work; the service is a standard uvicorn app.
 - **Python:** pinned by `ml/runtime.txt`
 - **Build:** `pip install -r requirements.txt`
 
+### Railway dashboard setup
+
+Open the existing Railway project and select the service connected to this
+repository. Check these settings before deploying `main`:
+
+| Setting | Value |
+|---|---|
+| Repository / branch | `aaron-seq/Roneira-AI-HIFI` / `main` |
+| Root Directory | `/ml` |
+| Railway Config File | `/ml/railway.json` |
+| Builder | Railpack, selected by the config file |
+| Python | `3.11.9`, read from `ml/runtime.txt` |
+| Build/install override | Leave automatic; Railpack installs `requirements.txt` |
+| Start command | From the config: `uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
+| Health check | `/health`, configured in the same file |
+
+Railway's config-file path is **relative to the repository root**, independently
+of Root Directory. Set both paths explicitly; the retired `ml-service/` tree is
+not the current service. The recipe uses the currently documented Railpack
+builder; it no longer selects Nixpacks.
+
+Add `ML_SERVICE_TOKEN` under the service's Variables using a newly generated
+secret. Generate it privately with `openssl rand -hex 32`; copy the same value
+to Vercel's server-side `ML_SERVICE_TOKEN` setting. Do not put it in Git, a
+public-prefixed variable or a chat message.
+
+Deploy the service, then use **Settings → Networking → Generate Domain** to
+obtain its public HTTPS base URL. Check that `<base-url>/health` returns HTTP 200.
+This proves process health, not successful provider access or a matching caller
+token. Complete the Vercel steps below before declaring market data restored.
+Check the project's plan and usage before selecting any paid resource.
+
+References: Railway's [monorepo paths](https://docs.railway.com/deployments/monorepo),
+[builder settings](https://docs.railway.com/config-as-code/reference#specify-the-builder)
+and Railpack's [Python support](https://railpack.com/languages/python/).
+
 No training step at deploy — the trained artifacts are committed under
 `ml/artifacts/generated`, which is what keeps this deployable on a free tier.
 Ship model files and their metadata together. The current bundles are trained for
@@ -88,6 +124,34 @@ Note `ML_BACKEND_URL` is deliberately **not** `NEXT_PUBLIC_`-prefixed. It is rea
 only by server-side route handlers; the prefix would make the internal hostname
 eligible for inlining into a client bundle.
 
+### Connect the Railway service to production
+
+In the Vercel project's **Settings → Environment Variables**, select the
+**Production** environment and set:
+
+- `ML_BACKEND_URL`: the generated Railway HTTPS base URL, without `/health` or
+  another endpoint path. Do not use `localhost`, `127.0.0.1` or an old service
+  hostname that has not been verified. `NEXT_PUBLIC_ML_BACKEND_URL` is not read
+  by the server routes.
+- `ML_SERVICE_TOKEN`: exactly the same secret as Railway's value.
+
+Redeploy the latest production deployment after saving the settings. Preview
+environments require their own explicit configuration if they also need the
+service.
+
+Verify these web routes return actual data, using the production site URL:
+
+```text
+/api/market-data?symbols=%5ENSEI
+/api/market-data/history?symbol=%5ENSEI&interval=1day&range=1month
+```
+
+The first response must contain a NIFTY 50 quote; the second must contain a
+nonempty `candles` array. HTTP 200 alone does not prove either: quote-provider
+failures can currently produce an empty successful response. An HTTP 200 from
+the backend's `/health` endpoint also does not exercise these authenticated
+provider calls. Do not post the shared token while collecting diagnostics.
+
 Optional provider keys (each missing one degrades a single feature rather than
 breaking the app): `ALPHA_VANTAGE_API_KEY`, `FINNHUB_API_KEY`, `NEWS_API_KEY`,
 `TWELVE_DATA_API_KEY`, and
@@ -125,6 +189,7 @@ from the upstream, and an unset token on the ML side as a 503.
 
 | Symptom | Cause |
 |---|---|
+| Chart history logs `ECONNREFUSED 127.0.0.1:8000` | The effective ML target is loopback. Set the server-side `ML_BACKEND_URL` to the active hosted service and redeploy; the public-prefixed variable is ignored. |
 | `/api/predict` returns 502 | ML service unreachable, or `ML_SERVICE_TOKEN` differs between the two platforms. Check the Vercel function log for the upstream status. |
 | ML endpoints return 503 | `ML_SERVICE_TOKEN` is unset on the ML service. It fails closed by design. |
 | ML endpoints return 401 | The two `ML_SERVICE_TOKEN` values do not match. |
