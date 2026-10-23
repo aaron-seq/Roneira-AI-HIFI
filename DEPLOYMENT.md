@@ -7,7 +7,7 @@ the deleted legacy Docker Compose services.
 | Surface | Target | What it runs |
 |---|---|---|
 | `src/` | **Vercel** | The Next.js app: UI and API route handlers. `vercel.json` describes it. |
-| `ml/` | **Railway** or **Render** | `uvicorn app.main:app` — the FastAPI ML service. |
+| `ml/` | **Render** (prototype recipe) or **Railway** | `uvicorn app.main:app` — the FastAPI ML service. |
 | `supabase/` | **Supabase** (hosted) | Postgres, Auth, RLS policies, audit triggers. |
 
 Browser market-data and inference requests go through Vercel's Next.js routes.
@@ -40,8 +40,73 @@ Railway and Render both work; the service is a standard uvicorn app.
 - **Root directory:** `ml`
 - **Start command:** `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
   (already in `ml/Procfile` and `ml/railway.json`)
-- **Python:** pinned by `ml/runtime.txt`
+- **Python:** `3.11.9`; `ml/runtime.txt` for Railway and `PYTHON_VERSION` for Render
 - **Build:** `pip install -r requirements.txt`
+
+### Render setup for the Vercel prototype
+
+The root [render.yaml](render.yaml) deploys only the Python web service. It
+selects the **free** instance plan, pins Python explicitly through
+`PYTHON_VERSION`, checks `/health`, and generates a new private
+`ML_SERVICE_TOKEN`. It creates no database or disk and does not move the
+Vercel app or Supabase data. No production secret is stored in the file.
+
+1. Sign in to [Render](https://dashboard.render.com/) and check for an existing
+   ML service connected to this repository. Reuse it when appropriate rather
+   than creating a duplicate. Its root must be `ml`, not the retired
+   `ml-service` or `backend` directory.
+2. For a new service, open [Deploy to Render](https://render.com/deploy?repo=https://github.com/aaron-seq/Roneira-AI-HIFI)
+   or choose **New → Blueprint**, connect this repository and select `main`.
+   Review the plan: one free Python web service from the root `render.yaml`.
+   Confirm the instance is Free before applying. The dashboard must accept
+   the Blueprint; a local YAML check does not establish account eligibility,
+   quota or hosted build success.
+3. For an existing manually managed service, use these equivalent settings.
+   Do not import a second Blueprint over it without reviewing resource
+   ownership. Generate a new token privately with `openssl rand -hex 32` and
+   set it as `ML_SERVICE_TOKEN` in that service's environment.
+
+   | Setting | Value |
+   |---|---|
+   | Repository / branch | `aaron-seq/Roneira-AI-HIFI` / `main` |
+   | Runtime | Python |
+   | Root Directory | `ml` |
+   | Build command | `pip install -r requirements.txt` |
+   | Start command | `uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
+   | Health Check Path | `/health` |
+   | Environment | `PYTHON_VERSION=3.11.9`, private `ML_SERVICE_TOKEN` |
+
+4. Wait for the service to become **Live**. Copy the actual public HTTPS base
+   URL from its dashboard, then check `<base-url>/health`. Do not guess an
+   `onrender.com` hostname from the service name. Check that the response
+   reports the expected model load state as well as HTTP 200.
+5. In Render's environment settings, reveal/copy the generated service token
+   privately. Bind the URL and that same token in Vercel Production using
+   [the connection steps below](#connect-the-ml-service-to-vercel-production),
+   then redeploy Vercel and verify nonempty quote/history responses. A Live
+   Render service alone does not restore the web app.
+
+The Free plan is a prototype starting point, not a claim of production
+capacity or uninterrupted availability. Render documents idle spin-down and
+cold starts for free web services. This app's quote/history upstream deadline
+is **10 seconds**, so a waking service can fail the first chart request even
+when configuration is correct. Allow the service to finish starting and retry
+for a demonstration; measure latency and memory before selecting an always-on
+paid instance. Do not silently upgrade a plan. Random Forest fitting also
+consumes resources per prediction, so committed artifacts alone do not prove
+that the free instance is sufficient.
+
+Keep Render and Vercel's token values identical. Use a newly generated value
+for this connection rather than reusing one from another host. Do not copy
+Supabase service-role credentials into Render: the current ML app does not
+need them. Keep the previous host available until the web routes are verified;
+switching the Vercel URL does not stop an old service or its billing. Roll back
+only to a known healthy target with its matching token, then redeploy Vercel.
+
+References: Render's [official FastAPI example](https://github.com/render-examples/fastapi),
+[Blueprint specification](https://render.com/docs/blueprint-spec),
+[Python versions](https://render.com/docs/python-version) and
+[free service limits](https://render.com/docs/free).
 
 ### Railway dashboard setup
 
@@ -99,7 +164,7 @@ References: Railway's [monorepo paths](https://docs.railway.com/deployments/mono
 and Railpack's [Python support](https://railpack.com/languages/python/).
 
 No training step at deploy — the trained artifacts are committed under
-`ml/artifacts/generated`, which is what keeps this deployable on a free tier.
+`ml/artifacts/generated`, so deployment does not run offline training.
 Ship model files and their metadata together. The current bundles are trained for
 30 observed sessions and use `origin-inclusive-v2`; older bundles fail compatibility
 checks and produce a disclosed no-change fallback. `/health` reports readiness only
@@ -143,16 +208,16 @@ Note `ML_BACKEND_URL` is deliberately **not** `NEXT_PUBLIC_`-prefixed. It is rea
 only by server-side route handlers; the prefix would make the internal hostname
 eligible for inlining into a client bundle.
 
-### Connect the Railway service to production
+### Connect the ML service to Vercel Production
 
 In the Vercel project's **Settings → Environment Variables**, select the
 **Production** environment and set:
 
-- `ML_BACKEND_URL`: the generated Railway HTTPS base URL, without `/health` or
+- `ML_BACKEND_URL`: the actual Render or Railway HTTPS base URL, without `/health` or
   another endpoint path. Do not use `localhost`, `127.0.0.1` or an old service
   hostname that has not been verified. `NEXT_PUBLIC_ML_BACKEND_URL` is not read
   by the server routes.
-- `ML_SERVICE_TOKEN`: exactly the same secret as Railway's value.
+- `ML_SERVICE_TOKEN`: exactly the same secret as the selected ML service's value.
 
 Redeploy the latest production deployment after saving the settings. Preview
 environments require their own explicit configuration if they also need the
