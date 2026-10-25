@@ -34,6 +34,9 @@ import export_stock_screener as screener
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("roneira-ml")
 
+# Each worker's elapsed clock starts when it initializes this application module.
+_PROCESS_STARTED_AT = time.monotonic()
+
 app = FastAPI(
     title="Roneira AI HIFI — ML Backend",
     description="AI-powered stock prediction API with LSTM, Random Forest, GAN, and Ensemble models",
@@ -251,7 +254,7 @@ async def root():
 async def health_check():
     return {
         "status": "healthy",
-        "uptime": time.time(),
+        "uptime": time.monotonic() - _PROCESS_STARTED_AT,
         "models_loaded": {
             "random_forest": rf_predictor.is_ready(),
             "lstm": lstm_predictor.is_ready(),

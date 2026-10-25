@@ -11,6 +11,12 @@ TestClient, so dependency-drift bugs like a missing `pydantic`/`fastapi`
 install fail CI instead of surfacing later as a 502 from the Next.js
 `/api/predict` route.
 """
+import runpy
+import sys
+import time
+from types import ModuleType, SimpleNamespace
+
+import pytest
 from fastapi.testclient import TestClient
 
 
@@ -53,6 +59,67 @@ def test_health_endpoint_reports_model_load_state():
         "pdm_momentum",
         "ensemble",
     }
+
+
+@pytest.mark.parametrize("started_at, now, elapsed", [
+    (100.0, 100.0, 0.0),
+    (100.0, 107.25, 7.25),
+    (500.0, 502.0, 2.0),
+])
+def test_health_reports_elapsed_worker_uptime(monkeypatch, started_at, now, elapsed):
+    import app.main as main
+
+    # Control this module's clock only; TestClient keeps its real event-loop clock.
+    monkeypatch.setattr(main, "_PROCESS_STARTED_AT", started_at, raising=False)
+    monkeypatch.setattr(main, "time", SimpleNamespace(
+        monotonic=lambda: now,
+        time=lambda: 1_792_834_290.0,
+    ))
+
+    response = TestClient(main.app).get("/health")
+
+    assert response.status_code == 200
+    assert response.json()["uptime"] == elapsed
+
+
+def test_health_uptime_is_unaffected_by_wall_clock_adjustments(monkeypatch):
+    import app.main as main
+
+    clock = {"monotonic": 100.0, "wall": 1_792_834_290.0}
+    monkeypatch.setattr(main, "_PROCESS_STARTED_AT", 100.0, raising=False)
+    monkeypatch.setattr(main, "time", SimpleNamespace(
+        monotonic=lambda: clock["monotonic"],
+        time=lambda: clock["wall"],
+    ))
+    client = TestClient(main.app)
+    assert client.get("/health").json()["uptime"] == 0.0
+
+    clock.update(monotonic=109.0, wall=-100.0)
+    assert client.get("/health").json()["uptime"] == 9.0
+
+    clock.update(monotonic=112.0, wall=9_999_999_999.0)
+    assert client.get("/health").json()["uptime"] == 12.0
+
+
+def test_health_uptime_restarts_with_each_worker_module(monkeypatch):
+    import app.main as main
+
+    for started_at in (100.0, 500.0):
+        clock = {"monotonic": started_at}
+        worker_time = ModuleType("time")
+        worker_time.__dict__.update(vars(time))
+        worker_time.monotonic = lambda: clock["monotonic"]
+        worker_time.time = lambda: 1_792_834_290.0
+        # Execute the actual module with its own clock, then restore the import
+        # before TestClient runs. Framework/event-loop clocks are never changed.
+        with monkeypatch.context() as worker_import:
+            worker_import.setitem(sys.modules, "time", worker_time)
+            worker = runpy.run_path(main.__file__)
+
+        client = TestClient(worker["app"])
+        assert client.get("/health").json()["uptime"] == 0.0
+        clock["monotonic"] += 2.0
+        assert client.get("/health").json()["uptime"] == 2.0
 
 
 # ========== Service token (see ml/.env.example) ==========
