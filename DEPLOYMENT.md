@@ -256,6 +256,11 @@ See `.env.example` for the full annotated list.
 
 ## Verifying a deployment
 
+`/health` reports `uptime` as elapsed seconds since this worker initialized the
+application module, measured with a monotonic clock. A worker restart resets it;
+replicas have separate clocks. It is not Unix time, service availability history,
+or evidence that authenticated data requests succeed.
+
 ```bash
 # ML service is up (no token needed for /health)
 curl https://<ml-host>/health
