@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-
-// No service token sent: /health is deliberately left unauthenticated on the ML
-// side so platform health checks (which cannot set custom headers) keep working.
-const ML_BACKEND_URL = process.env.ML_BACKEND_URL || "http://localhost:8000";
+import { fetchMLJson, MLServiceError, reportMLServiceError } from "@/lib/server/ml";
 
 export async function GET() {
   try {
@@ -45,15 +42,10 @@ export async function GET() {
 
     let mlHealth: { status: string; uptime?: number; models_loaded?: Record<string, boolean> } | null = null;
     try {
-      const response = await fetch(`${ML_BACKEND_URL}/health`, {
-        cache: "no-store",
-        // A health probe that can hang defeats the point of probing.
-        signal: AbortSignal.timeout(5_000),
-      });
-      if (response.ok) {
-        mlHealth = (await response.json()) as typeof mlHealth;
-      }
-    } catch {
+      // Public health checks never send the private service token.
+      mlHealth = await fetchMLJson<NonNullable<typeof mlHealth>>("/health", { timeoutMs: 5_000 });
+    } catch (error) {
+      if (error instanceof MLServiceError) reportMLServiceError(error);
       mlHealth = null;
     }
 

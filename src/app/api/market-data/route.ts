@@ -9,6 +9,7 @@ import {
   getPeerComparisonPayload,
 } from "@/lib/server/market";
 import { rateLimit, tooManyRequests } from "@/lib/server/rate-limit";
+import { mlServiceErrorResponse } from "@/lib/server/ml";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -54,6 +55,8 @@ export async function GET(request: Request) {
       { status: 400 }
     );
   } catch (error) {
+    const unavailable = mlServiceErrorResponse(error);
+    if (unavailable) return unavailable;
     console.error("Market data route error:", error);
     return NextResponse.json(
       { error: "Failed to load market data" },

@@ -264,8 +264,13 @@ describe("normalizeQuote", () => {
 });
 
 describe("ML quote batching", () => {
-  beforeEach(() => clearCachedValue());
-  afterEach(() => vi.unstubAllGlobals());
+  beforeEach(() => {
+    clearCachedValue();
+    vi.stubEnv("ML_BACKEND_URL", "https://ml.example.test");
+    vi.stubEnv("ML_SERVICE_TOKEN", "test-service-token");
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+  });
+  afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.restoreAllMocks(); });
 
   const config = (symbol: string): QuoteConfig => ({ ...equityConfig, symbol, exchange: "NSE" });
   const reply = (symbols: string[]) => new Response(JSON.stringify({

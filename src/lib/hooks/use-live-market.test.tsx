@@ -48,13 +48,28 @@ describe("live quote request behavior", () => {
     expect(result.current.data).toEqual(payload);
   });
 
-  it("surfaces an unavailable provider as an error instead of an empty successful book", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { status: 503 })));
+  it.each([502, 503])("surfaces an unavailable provider (%s) as an error instead of an empty successful book", async (status) => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { status })));
     const { result } = renderHook(() => useLiveQuotes(["TCS.NS"]), { wrapper });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
-    expect(result.current.error?.message).toBe("Request failed: 503");
+    expect(result.current.error?.message).toBe(`Request failed: ${status}`);
     expect(result.current.data).toBeUndefined();
+  });
+
+  it("accepts a legitimate empty result and recovers from an unavailable response on refetch", async () => {
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(Response.json({}, { status: 502 }))
+      .mockResolvedValueOnce(Response.json({ data: [] }))
+      .mockResolvedValueOnce(Response.json({ data: [{ symbol: "TCS.NS", price: 100 }] }));
+    vi.stubGlobal("fetch", fetch);
+    const { result } = renderHook(() => useLiveQuotes(["TCS.NS"]), { wrapper });
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    await act(async () => { await result.current.refetch(); });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toEqual({ data: [] });
+    await act(async () => { await result.current.refetch(); });
+    await waitFor(() => expect(result.current.data).toEqual({ data: [{ symbol: "TCS.NS", price: 100 }] }));
   });
 
   it.each([

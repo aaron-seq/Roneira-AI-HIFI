@@ -5,11 +5,7 @@ import type { PredictionResult } from "@/lib/market/types";
 import { getTargetDate } from "@/lib/market/timeframe";
 import { formatIssues, predictRequestSchema } from "@/lib/server/validation";
 import { rateLimit, tooManyRequests } from "@/lib/server/rate-limit";
-
-const ML_BACKEND_URL = process.env.ML_BACKEND_URL || "http://localhost:8000";
-const ML_SERVICE_TOKEN = process.env.ML_SERVICE_TOKEN || "";
-
-
+import { fetchMLJson, mlServiceErrorResponse } from "@/lib/server/ml";
 
 async function persistPrediction(
   prediction: PredictionResult,
@@ -115,41 +111,24 @@ export async function POST(request: Request) {
 
     // Route prediction requests through the Next.js API to the internal FastAPI service
     // This keeps the ML backend private and validates payloads
-    const mlResponse = await fetch(`${ML_BACKEND_URL}/predict`, {
+    const prediction = await fetchMLJson<PredictionResult>("/predict", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-ML-Service-Token": ML_SERVICE_TOKEN,
-      },
       body: JSON.stringify({
         ticker,
         timeframe,
         model_type: modelType,
         include_pdm: true,
       }),
-      cache: "no-store",
       // Inference is slow by nature (Random Forest refits per request), but
       // unbounded means a wedged ML service hangs this route forever.
-      signal: AbortSignal.timeout(30_000),
+      timeoutMs: 30_000,
     });
-
-    if (!mlResponse.ok) {
-      // Handle integration/fallback issues gracefully if the ML service encounters a problem
-      // Logged server-side only: the upstream body is FastAPI's, and can carry
-      // stack traces / internal schema that a client of this route never needs.
-      const errorText = await mlResponse.text();
-      console.error("ML backend error:", errorText);
-      return NextResponse.json(
-        { error: "ML prediction service unavailable" },
-        { status: 502 }
-      );
-    }
-
-    const prediction = (await mlResponse.json()) as PredictionResult;
     // Persist prediction for historical outcome evaluation and audit logging
     await persistPrediction(prediction, supabase, user.id);
     return NextResponse.json(prediction);
   } catch (error) {
+    const unavailable = mlServiceErrorResponse(error);
+    if (unavailable) return unavailable;
     console.error("Prediction API error:", error);
     return NextResponse.json(
       { error: "Failed to get prediction" },
