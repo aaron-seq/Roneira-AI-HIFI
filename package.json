@@ -22,7 +22,6 @@
     "test:data": "python data/validate.py --metadata-only && python data/validate.py && python -m unittest discover -s data/tests -v"
   },
   "dependencies": {
-    "@hookform/resolvers": "^3.9.0",
     "@supabase/ssr": "^0.5.0",
     "@supabase/supabase-js": "^2.46.0",
     "@tanstack/react-query": "^5.60.0",
@@ -37,7 +36,6 @@
     "next": "^16.4.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "react-hook-form": "^7.54.0",
     "recharts": "^2.15.0",
     "tailwind-merge": "^2.5.2",
     "zod": "^3.24.0",

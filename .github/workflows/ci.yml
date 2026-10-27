@@ -10,14 +10,8 @@ on:
   # Allow manual workflow dispatch
   workflow_dispatch:
 
-# NOTE ON SCOPE
-# This pipeline validates both production surfaces:
-#   - `src/`  — the Next.js app that deploys to Vercel (see vercel.json)
-#   - `ml/`   — the FastAPI ML service
-# That is now the whole repository: the legacy `frontend/`, `backend/`,
-# `ml-service/`, `realtime/` and `infrastructure/` trees were deleted, so there
-# is no longer a distinction between "canonical" and "reference" paths.
-# The jobs below implement the launch verification listed in task.md.
+# Canonical web, ML, data and disposable database/Auth verification.
+# Hosted runtime and provider readiness require separate evidence.
 
 jobs:
   # Next.js application: lint, types, unit tests, production build

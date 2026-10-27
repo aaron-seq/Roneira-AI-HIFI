@@ -28,24 +28,15 @@ dist/
 *.keras
 ml/models/trained/
 
-# The gradient-boosted (xgboost) artifacts that actually back the LSTM/GAN
-# slots ARE committed, on purpose. They're ~500KB each -- trivial for git, no
-# LFS needed -- and committing them means Railway/Render's free tier boots
-# with real trained models with zero training step at deploy time. That
-# matters because free tiers there have no persistent disk and spin down
-# after 15 min idle (Render), so training at boot would mean retraining on
-# every cold start against a yfinance/Yahoo connection that's already proven
-# to rate-limit (see ARCHITECTURE.md). Regenerate with `npm run train:ml` and
-# commit the refreshed files when the data goes stale enough to matter.
+# Reviewed startup bundles stay versioned; other training output stays local.
+# Artifact compatibility and promotion requirements: ml/MODELS.md.
 ml/artifacts/generated/*
 !ml/artifacts/generated/lstm_gbm.joblib
 !ml/artifacts/generated/lstm_metadata.json
 !ml/artifacts/generated/gan_gbm.joblib
 !ml/artifacts/generated/gan_metadata.json
 
-# Any other *.pkl in the tree (not the two files above) stays untracked --
-# arbitrary pickles are a code-execution risk if ever sourced from outside
-# this project (see ml/app/models/gradient_boost.py::load_artifact).
+# Untrusted pickle files can execute code; never use uploaded model artifacts.
 *.pkl
 
 # Build caches
@@ -63,11 +54,6 @@ ml/exports/
 .DS_Store
 *.log
 
-# Legacy reference tree (see task.md): not built, tested, or deployed.
-# Its lockfile is intentionally untracked — committing it published 18 CVEs
-# (16 high) into code scanning for a tree that never ships, and remediating
-# them needs breaking major upgrades. Refresh dependencies before reviving.
-frontend/package-lock.json
 venv/
 
 # Backtest price cache (ml/backtest.py) -- re-downloadable, not source.
