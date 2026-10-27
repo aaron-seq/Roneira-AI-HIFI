@@ -21,17 +21,18 @@ For portfolio owners, the goal is to make three questions clear: **What is my po
 
 ### Portfolio history
 
-[Calculation, API, validation and screenshots](docs/portfolio-history.md).
+The server records private, currency-specific observations of the current book,
+starting with the first capture. There is one entry per UTC day/currency; a new
+save replaces that day's observation. Opening the portfolio attempts a missing
+capture, and explicit refresh is available. Days without a capture stay missing;
+there is no unattended daily capture schedule.
 
-The server reads your holdings, fetches quotes and conversion rates, and calculates each capture. Clients cannot submit portfolio totals, choose another account or fabricate past dates. History is private to the signed-in account.
-
-- Each currency has its own series and one capture per **UTC calendar day**. Saving again replaces that day's observation.
-- Opening the portfolio attempts a capture when today's entry is missing; you can also refresh it explicitly. There is no unattended daily capture schedule: days without observations remain missing.
-- Current cost basis and market value are recorded together. Unknown prices/FX remain explicit; an unpriced book is not a portfolio worth zero.
-- Capture time describes when the portfolio was recorded. Source quote timestamps and exchange session dates can be earlier.
-- Unrealized P&L excludes realized gains, cash, deposits/withdrawals, fees, taxes, dividends and historical FX effects. Editing holdings or cost basis can change the series without an investment gain.
-
-The current app does not maintain a complete transaction/cash-flow ledger or calculate time-weighted/money-weighted returns. It does not reconstruct historical holdings from today's portfolio. Transaction-aware accounting and attribution remain tracked in [#147](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/147).
+Totals disclose missing prices/FX and reflect current cost basis. Unrealized P&L
+excludes realized gains, cash flows, fees, taxes, dividends and historical FX
+performance. Editing holdings can change the series without an investment gain.
+The app does not reconstruct historical holdings or calculate cash-flow-adjusted
+returns. See the [calculation/API contract](docs/portfolio-history.md) and
+[ledger work #147](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/147).
 
 ## How the models work
 
@@ -71,63 +72,55 @@ The real-market research workflow trains and evaluates separate horizons on froz
 
 ### Measured real-market study
 
-The [2026-10-19 study](ml/research/results-2026-10-19.md) used ten years of actual adjusted daily histories for four Indian and two US stocks: 24 sequence fits and 236 Random Forest forecast origins. Candidates and parameters were frozen before scoring. The table describes the **refitted research ensemble**, not the shipped 30-session artifact or net trading performance.
+The [2026-10-19 study](ml/research/results-2026-10-19.md) evaluated frozen
+7/30/90/180-session candidates on six selected Indian/US stocks. Both sequence
+candidates underperformed no change at every studied horizon. The refitted
+ensemble's pooled 180-session gain reversed in its final temporal fold; **no
+candidate was promoted**. Selected-stock historical replay does not establish
+an unseen-instrument, prospective or net trading edge.
 
-| Horizon (sessions) | Scored origins | Ensemble MAE / no-change MAE (percentage points) | Pooled signed skill | Direction hits / always-up hits | Final-fold skill (origins) |
-|---|---:|---:|---:|---:|---:|
-| 7 | 72 | 3.04 / 2.99 | −0.016 | 34/72 / 37/72 | −0.038 (24) |
-| 30 | 72 | 7.29 / 7.06 | −0.034 | 39/72 / 39/72 | −0.086 (24) |
-| 90 | 62 | 11.39 / 11.48 | +0.008 | 31/62 / 32/62 | +0.141 (24) |
-| 180 | 30 | 15.14 / 16.42 | +0.078 | 21/30 / 18/30 | −0.109 (12) |
-
-The 180-session pooled gain reversed in its final period. Both sequence slots underperformed no change at every studied horizon, so **no candidate was promoted**. The small, correlated, selected-stock sample is not an unseen-instrument or prospective test. Reported ensemble recombinations omit the combiner's final cent rounding. Coverage, per-model baselines, training-label cutoffs, hashes and the one unavailable Technical projection are disclosed in the [full report](ml/research/results-2026-10-19.md) and [aggregate JSON](ml/research/results-2026-10-19.json).
-
-See [the model guide](ml/MODELS.md), [the frozen real-market protocol](ml/research/README.md), and [the earlier fixed-data diagnostic](docs/ml-validation-2026-10-11.md) for contracts, baseline definitions and known limits.
+The [full report](ml/research/results-2026-10-19.md),
+[aggregate results](ml/research/results-2026-10-19.json) and
+[model guide](ml/MODELS.md) retain the sample/coverage, per-horizon metrics,
+baselines, cutoffs, hashes and limitations. The
+[frozen protocol](ml/research/README.md) explains reproduction.
 
 ## Free, open source and data rights
 
-The initial product has no payment integration, subscription enforcement or license-fee gate. Contributors can inspect and improve the code, schemas, tests, training protocol and synthetic fixtures under MIT. Your portfolio, account and valuation history remain private.
+The initial product has no payment or license-fee gate. Code, schemas, tests and
+permitted research are open under MIT; private accounts/portfolios stay private.
+Third-party quotes, news, raw histories and derived artifacts have independent
+rights. An API key or free access does not grant public-display, redistribution
+or commercial permission. Keep restricted downloads out of Git.
 
-Open-source code does **not** make third-party quotes, news, raw training histories or derived artifacts freely redistributable. API access and a free developer key do not by themselves grant public-display or commercial rights. Raw provider downloads stay in ignored local caches. Publish datasets or artifacts only when their applicable rights allow it.
-
-Relevant provider guidance includes:
-
-- [yfinance's maintainer notice](https://github.com/ranaroussi/yfinance#readme): research/educational tooling; the Yahoo finance API is intended for personal use.
-- [Finnhub terms](https://finnhub.io/terms-of-service): data/derived-result sharing and commercial use require the applicable permission.
-- [Alpha Vantage terms](https://www.alphavantage.co/terms_of_service/): default access has personal/noncommercial restrictions.
-- [NewsAPI terms](https://newsapi.org/terms): the Developer plan is for development/testing, rather than staging or production.
-- Twelve Data and exchange-specific rights depend on the selected contract; confirm display, redistribution and commercial use before hosting a public feed.
-
-A future optional paid hosted service would need licensed data, reproducible positive results on genuinely unseen/prospective data, clear metric definitions, adequate coverage, and reliable operations. A single “90%” number would not justify charging: direction hit rate, BUY precision, price tolerance and interval coverage measure different things. Any claimed trading results would additionally need execution costs, liquidity, risk and drawdown analysis. No such paid launch or performance guarantee is being announced.
+The [market-data PRD](docs/product/market-data-prd.md) records provider-term
+sources and the permission-review gate. A future paid hosted proposal would
+need licensed data, user value, reliable operations and reviewed evidence/terms;
+a headline “90%” metric cannot trigger fees. See the
+[hosting PRD](docs/product/open-source-hosting-prd.md).
 
 ## Product and data project
 
-The [product pack](docs/product/README.md) contains the vision, four PRDs and an evidence-gated [delivery plan](docs/product/delivery-plan.md): portfolio accounting, analyst research, market-data governance and future hosting. It includes personas, non-goals, acceptance criteria, priorities, dependencies, metrics, risks and rollout/rollback requirements. Planned work is explicitly separated from implemented behavior.
+[PRDs and delivery plan](docs/product/README.md), the
+[live tracker](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/189) and
+[milestones](https://github.com/aaron-seq/Roneira-AI-HIFI/milestones) separate
+implemented behavior from proposals and release gates. The
+[ADR catalog](docs/adr/README.md) identifies decisions needing human review;
+the [dated delivery audit](docs/product/delivery-audit-2026-10-21.md) retains
+historical issue/PR/review dispositions.
 
-The [data project](data/README.md) reuses the frozen research pipeline. It provides a versioned dataset registry, public lineage/hash metadata, synthetic fixtures and a standard-library validator. Actual provider CSVs stay in ignored local caches. Validate fixture and registry changes before research; dataset hashes prove byte identity, not data rights or forecasting value.
-
-[Delivery tracker #189](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/189) and [repository milestones](https://github.com/aaron-seq/Roneira-AI-HIFI/milestones) track delivery. Pick a ready issue with its linked PRD, state the acceptance criteria and evidence, and link the review PR. No roadmap date, usability metric or future fee is presented as an achieved result.
-
-The [2026-10-21 delivery audit](docs/product/delivery-audit-2026-10-21.md) records every original issue, PR and unresolved review thread. The [ADR catalog](docs/adr/README.md) separates implemented decisions from proposals needing human review. High-priority follow-ups include [prediction-history write integrity #202](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/202); earlier passing tests do not establish that every authorization path is safe. The live tracker carries current review and implementation status.
+The [data project](data/README.md) provides registry/hash metadata, synthetic
+fixtures and validators. Dataset hashes establish byte identity, not permissions
+or forecasting quality. Raw provider data remains in local ignored caches.
 
 ## Architecture & technology stack
 
-```mermaid
-flowchart LR
-    UI[Next.js / React dashboard] --> API[Next.js route handlers]
-    UI --> Auth[Supabase Auth and private account reads]
-    API --> DB[(Supabase Postgres with RLS)]
-    API --> ML[Private FastAPI ML service]
-    API --> Providers[Configured quote and news providers]
-    ML --> Yahoo[Yahoo via yfinance]
-    API --> Snapshots[Server-calculated valuation captures]
-    Snapshots --> DB
-```
-
-- **Web:** Next.js 16, React 19, TypeScript, TanStack Query, Zustand and Recharts.
-- **ML:** Python 3.11, FastAPI, scikit-learn and XGBoost.
-- **Persistence:** Supabase Auth/PostgreSQL with row-level security; server-calculated snapshot writes use a server-only service credential after authentication.
-- **Runtime:** Vercel for the web app; [Render prototype setup](DEPLOYMENT.md#render-setup-for-the-vercel-prototype) for the ML service, with Railway also supported. The root [render.yaml](render.yaml) selects a free instance and generates a private service token; deployment and Vercel's URL/token binding still require account configuration. Free instances can have cold starts. Cached provider data and optional Upstash-backed rate limits have environment-dependent limits.
+Next.js 16/React 19 serves the web app and API routes on Vercel. FastAPI,
+scikit-learn and XGBoost run in `ml/`, with Railway/Render deployment recipes.
+Supabase provides Auth and private PostgreSQL data under RLS. TanStack Query
+handles server data; Zustand handles UI state. See
+[Architecture](ARCHITECTURE.md) for flows and trust boundaries and
+[Deployment](DEPLOYMENT.md) for actual host URL/token binding and cold-start limits.
 
 ### Repository layout
 
@@ -199,9 +192,11 @@ The ML health endpoint is `/health`; its OpenAPI interface is `/docs` on the run
 Offline fitting is separate from application startup. Train candidate artifacts into an isolated output directory so experimenting with another horizon cannot overwrite the shipped 30-session bundle:
 
 ```bash
-cd ml
-ML_MODEL_DIR=.cache/candidates/h30 ../.venv/bin/python train_models.py \
-  --backend gradient-boost --models all --period 10y --horizon 30
+(
+  cd ml
+  ML_MODEL_DIR=.cache/candidates/h30 ../.venv/bin/python train_models.py \
+    --backend gradient-boost --models all --period 10y --horizon 30
+)
 ```
 
 A successful fit is not a deployment approval. Inspect held-out errors, baseline skill, coverage and data provenance, then evaluate the served method on untouched periods. Keep raw downloads out of commits and retain only rights-compatible code/configs/results. See [ml/MODELS.md](ml/MODELS.md) for reproducible evaluation commands and the current research protocol.

@@ -1,14 +1,6 @@
 #!/usr/bin/env sh
-# Run via git's native core.hooksPath (set by the "prepare" script in
-# package.json), not husky -- husky was never actually installed here: it wasn't
-# a dependency, .husky/_/ didn't exist, and core.hooksPath was unset, so this
-# hook silently never executed.
-#
-# Checks the canonical surfaces only: src/ (Next.js) and ml/ (FastAPI).
-# The previous version ran against backend/, frontend/, and ml-service/ -- all
-# legacy trees that are not built, tested, or deployed -- so every commit passed
-# a gate that validated nothing that ships. It also swallowed output with
-# 2>/dev/null and cd'd into directories without checking they existed.
+# Native Git hook installed by package.json's prepare script.
+# Validate canonical web files and any staged ML/data changes.
 set -e
 
 echo "🔍 Running pre-commit checks..."
@@ -22,7 +14,7 @@ npm run lint
 echo "  🧪 tests (src/)"
 npm run test:web
 
-# Python suite takes ~14s, so only pay for it when ml/ actually changed.
+# Run the ML suite only when that surface changed.
 if git diff --cached --name-only | grep -q '^ml/'; then
   echo "  🐍 pytest (ml/)"
   (cd ml && python -m pytest tests -q)

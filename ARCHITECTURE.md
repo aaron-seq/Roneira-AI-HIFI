@@ -3,8 +3,9 @@
 Roneira AI HIFI is an AI-assisted financial intelligence platform: live market data, ML
 price projections, portfolio and watchlist tracking, and an append-only audit trail.
 
-Two trees are built, tested, and deployed. Everything else in the repo root is legacy
-reference material and is **not** wired into CI — see [Canonical surfaces](#canonical-surfaces).
+The maintained runtime surfaces are Next.js, FastAPI and Supabase. The `data/`
+project and disposable database/Auth tests support them in CI; see
+[Canonical surfaces](#canonical-surfaces).
 
 ## System shape
 
@@ -47,8 +48,11 @@ graph TD
     ML --> YF
 ```
 
-The ML service is never exposed to the browser. All ML traffic goes through
-`src/app/api/predict`, which checks the user session and validates the payload before forwarding.
+Browser market-data and prediction calls go through Next.js routes. The FastAPI
+service is publicly reachable by its server caller; `X-ML-Service-Token` protects
+its data/inference endpoints. CORS is not that access boundary. `/` and `/health`
+remain public. Prediction additionally requires the Supabase user session.
+Browser Supabase clients also call Auth and private tables directly under RLS.
 
 ## Canonical surfaces
 
@@ -58,23 +62,17 @@ The ML service is never exposed to the browser. All ML traffic goes through
 | `ml/` — FastAPI ML service | Railway/Render |
 | `supabase/` — migrations | Supabase (hosted) |
 
-These are the only surfaces. The earlier `frontend/` (Vite + React), `backend/`
-(Express), `ml-service/` (Flask/FastAPI), `realtime/` (Socket.IO) and
-`infrastructure/` (TimescaleDB init scripts) trees, along with
-`docker-compose.yml`, were deleted — they were never built, tested, or deployed,
-and nothing in `src/` or `ml/` referenced them. Git history has them if a
-decision needs revisiting.
+`data/` contains the dataset registry, synthetic fixtures and validators. Earlier
+Vite/Express/Socket.IO and alternate ML services were removed; Git history
+preserves them. They are not supported startup paths.
 
-There is **no Docker path**. `docker-compose.yml` composed only the legacy
-services and had no service for `src/` or `ml/` at all, so following it built
-the dead stack. Local development is `npm run dev` plus `npm run ml:dev`.
-
-CI is `.github/workflows/ci.yml`, covering `src/` and `ml/`. There is no second workflow —
-the old `continuous-integration.yml` targeted the legacy trees and had a corrupted first
-line that made it unparseable, so it was deleted.
-
-`.husky/pre-commit` runs type-check, lint, and the web tests, plus `ml/` pytest when `ml/`
-files are staged.
+Local Supabase and disposable PostgreSQL/GoTrue integration tests use Docker.
+The web and ML development servers run directly; there is no maintained Compose
+stack for them. [CI](.github/workflows/ci.yml) checks web/build, ML, data,
+disposable database migrations/RLS, real GoTrue deletion, security scans and
+required deployment files. Hosted availability needs separate verification.
+The [native pre-commit hook](.husky/pre-commit) runs web checks and conditional
+ML/data checks. [Contributing](CONTRIBUTING.md) explains the workflow.
 
 ## Frontend (`src/`)
 
@@ -106,22 +104,24 @@ Prediction selection uses labelled native controls and descriptions of each meth
 Results explain the actual backend, requested/trained horizon and input daily session.
 An unavailable model shows a neutral no-change reference and omits forecast/signal
 visualizations; excluded ensemble members are listed separately from the target axis.
-Component tests plus Chromium keyboard, mobile layout and axe checks validate the
-changed research states. Synthetic browser fixtures do not verify hosted authentication.
+Component tests cover these states; dated browser/accessibility evidence is in
+the [model-design review](docs/model-design-review-2026-10-11.md). Synthetic browser
+fixtures do not verify hosted authentication.
 
 ## API route handlers (`src/app/api/`)
 
-| Route | Purpose | Auth | Rate limit |
-|---|---|---|---|
-| `auth/username` GET | username availability | anon | 20/min |
-| `auth/username` POST | username + password login | anon | 10/min |
-| `predict` POST | forward to ML, persist eligible forecast/audit fallback | required | 20/min |
-| `market-data` GET | quotes by `group` or `symbols` | none | — |
-| `market-data/history` GET | OHLCV candles | none | — |
-| `stocks/search` GET | symbol search | none | 30/min |
-| `news` GET | headlines + sentiment | none | 30/min |
-| `audit-log` POST | append validated client-reported activity for the verified actor | required | 30/min |
-| `admin/overview` GET | admin dashboard data | admin role | — |
+| Route | Purpose | Caller boundary |
+|---|---|---|
+| `auth/username` GET/POST | availability and username/password login | anonymous, rate limited |
+| `predict` POST | ML prediction and eligible forecast/audit persistence | authenticated session |
+| `market-data` GET | quote groups or symbols | public, rate limited |
+| `market-data/history` GET | OHLCV candles | public, rate limited |
+| `screener` GET | ML-backed stock screener | public, rate limited |
+| `stocks/search`, `news` GET | symbol search and classified headlines | public, rate limited |
+| `portfolio/history` GET/POST | private server-valued portfolio captures | authenticated owner |
+| `audit-log` POST | bounded client-reported activity for the verified actor | authenticated session |
+| `admin/overview` GET | admin dashboard data | administrator role |
+| `cron/alerts` GET | scheduled atomic price-alert evaluation | private cron bearer secret |
 
 Validation lives in `src/lib/server/validation.ts`. Audit enums mirror the
 Postgres `CHECK` constraints; prediction selections match supported FastAPI models
@@ -145,8 +145,11 @@ Quotes resolve in this order (`src/lib/server/market.ts`):
 2. Symbols it misses fall through to the **ML service** `/market-data`, which reads
    **yfinance**.
 
-A Twelve Data outage degrades to fully yfinance-sourced data rather than an empty
-response. Results cache for 60s, so the chain only runs on a miss.
+Results cache for 60s, so the chain runs on a cache miss. Fallback still depends
+on the ML URL, matching token and provider availability. Quote failures can
+currently become an empty successful response; history failures surface as a
+generic error. [#213](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/213) tracks
+safer classification while preserving usable partial results.
 
 - **Finnhub** — symbol search, with Alpha Vantage as fallback. Results are deduplicated by
   symbol; providers return the same ticker under several descriptions.
@@ -193,91 +196,24 @@ unsupported members, which receive no weight. Agreement/proximity is descriptive
 does not increase confidence. Every response includes daily input provenance and
 fallback state; a fallback is audited but not inserted into forecast history/cache.
 
-**TensorFlow is not a dependency.** The LSTM and GAN slots were written against Keras;
-without TF they served an untrained heuristic. They are now backed by
-`app/models/gradient_boost.py`, which wraps an `XGBRegressor` in an adapter exposing the
-narrow Keras surface the existing inference code calls (`predict(x, verbose=0)[0][0]`), so
-each slot keeps its own feature engineering and signal thresholds. Inference loads
-only gradient-boosted bundles; TensorFlow training is disabled pending corrected
-preprocessing and purged validation. Artifacts and metadata both bind the origin-inclusive
-window schema and training horizon. Feature shapes are rejected rather than padded.
-Readiness requires a compatible bundle; 30-session artifacts cannot forecast 7 sessions.
+**TensorFlow is not a dependency.** Both sequence slots use XGBoost bundles and
+retain their compatibility names. They are not recurrent LSTM or generative GAN
+networks. TensorFlow training is disabled. The four reviewed bundle/metadata files
+under `ml/artifacts/generated/` are committed for startup without offline fitting;
+provider data fetches are still required and Random Forest fits per request.
 
-The shared history policy is `max(504, 4 * horizon + 200)` observed sessions, fetched
-with a calendar-history buffer and bounded before inference. Sequence validation and
-RF validation purge by actual label-resolution timestamps. Details and the reproducible
-Indian-equity diagnostic are in [ml/MODELS.md](ml/MODELS.md).
+Only trusted artifacts may be loaded: joblib/pickle can execute code. A bundle's
+feature/window schema and trained session horizon must match the request; feature
+padding and unsupported-horizon promotion are rejected. Keep candidate training
+separate from deployed artifacts. Staleness or a successful fit is not promotion
+approval.
 
-Artifacts live in `ml/artifacts/generated/` (override with `ML_MODEL_DIR`) and come from
-`python train_models.py`. Loading uses joblib/pickle, so it must only ever read artifacts
-this project produced — never a user upload.
-
-**The four generated files (`lstm_gbm.joblib`, `lstm_metadata.json`, `gan_gbm.joblib`,
-`gan_metadata.json`) are committed to git**, not gitignored — deliberately, and only these
-four (`.gitignore` excludes everything else under `ml/artifacts/generated/` plus any
-`.h5`/`.keras`/`.pkl`). At ~500KB each this is trivial for git; no LFS needed. This matters
-for deployment: Render's free web-service tier has no persistent disk and spins down after
-15 minutes idle, so training at boot would mean retraining on every cold start against a
-yfinance/Yahoo connection that's already proven to rate-limit by IP (see above). Committing
-the artifacts means the service boots with real trained models and zero live network calls
-for inference — free-tier hosting and genuinely trained models are not in tension here.
-Railway, for reference, has no ongoing free tier as of this writing (one-time $5 trial
-credit, then usage-based billing) — Render is the free-tier-compatible target of the two
-named in this doc. Regenerate with `npm run train:ml` and commit the refreshed files when
-the data goes stale enough to matter.
-
-> **Superseded by walk-forward results.** The single-split figures below were the best
-> available until `ml/backtest.py` (#144). Across 10 periods from 1934 to 2026, neither slot
-> beats "no change": LSTM slot −0.049, GAN slot −0.037, each positive in only 4 of 10
-> periods. See [ml/MODELS.md](./ml/MODELS.md#walk-forward-results-144). The history below
-> is kept because the defects it describes were real and are fixed.
->
-> **Measured skill — read before trusting these numbers.** Both gradient-boosted slots
-> report a small positive `skill_vs_no_change`: **0.036** (LSTM slot, validation MAE 0.0711
-> vs a 0.0738 "no change" baseline) and **0.029** (GAN slot, 0.0717 vs 0.0738), measured on
-> a held-out final 20% *of dates* with a 47-calendar-day purge at the boundary. A 3–3.6%
-> error reduction at a 30-day horizon is a real edge and a thin one; treat the confidence
-> score (≈41.6) as the honest read, and do not size a position on either slot alone. The
-> Ensemble weights the LSTM slot at 0.15 — see the comment in `main.py` for why that did not
-> move. Re-check `artifacts/generated/*_metadata.json` after any retrain.
->
-> **The purge is in calendar days, not rows, and that distinction is load-bearing.** The
-> pool is date-sorted, so all nine tickers contribute a window for the same date. A 30-*row*
-> purge therefore spanned 2018-04-09 to 2018-04-12 — two trading sessions against a
-> thirty-session label — leaving roughly 28 sessions of overlap in training. `purge_days`
-> now clears a real time gap (`horizon_days * 7 / 5 + 5`, generous because market holidays
-> widen sessions-to-calendar), and `purged_rows` in the metadata records how many rows that
-> removed: 296 and 282, versus 30 before. Correcting it moved the reported skill from 0.035
-> to 0.036 (LSTM) and 0.030 to 0.029 (GAN) — i.e. **the earlier figures were not materially
-> inflated**; the leak mattered for correctness, not for the headline. Do not read the fix
-> as having rescued a bad number.
->
-> These numbers replace a previously reported `skill_vs_no_change: 0.0`. Three defects were
-> responsible, all of them in how the data reached the booster rather than in the booster:
->
-> 1. **The top feature was a function of the caller's `period=` argument.**
->    `close_norm = Close / Close.iloc[0]` carried the highest importance in both models
->    (0.31 GAN, 0.18 LSTM). Training fetched `period="max"`; `main.py` serves `"1y"`/`"2y"`.
->    The same session scored ≈8.8 during training and ≈1.4 in production, so production
->    inputs landed outside the range the split points were fitted for. Measured directly:
->    the same 30 sessions predicted −3.1% at training depth and −1.2% at serving depth.
->    Replaced by `Close / Close.rolling(150).mean()` — causal, and identical at any fetch
->    depth a 1-year window can supply.
-> 2. **The LSTM slot's `_normalize` was a frame-wide min-max**, applied before windowing.
->    Every training window was therefore scaled by statistics that included its own future,
->    and the divisor differed between a 25-year fit frame and a 1-year serving frame. The
->    tree path no longer normalises at all; the remaining features are ratios and returns,
->    and a tree only needs the scale it was fitted on. `_normalize` stays for the Keras path.
-> 3. **The "chronological" 80/20 split was a ticker holdout.** `build_training_windows`
->    appended frame after frame, so the last 20% of rows was the last few *tickers*, not the
->    last few years. Windows are now sorted by date across all frames, and `fit_windows`
->    purges `horizon_days` rows at the boundary so no training label resolves inside the
->    validation period.
->
-> `ml/tests/test_training.py::TestFeatureDepthInvariance` fails if (1) or (2) returns;
-> `TestChronologicalPooling` fails if (3) does. Both were confirmed to fail against the old
-> code before being committed. Retraining also went from 502s to 24s for the LSTM slot
-> (`tree_method="hist"`).
+The [model guide](ml/MODELS.md) owns feature, horizon, purging and evaluation
+contracts. The shipped 30-session bundles did worse than no change in their
+recorded held-out assessment. The [frozen real-market study](ml/research/results-2026-10-19.md)
+did not justify promoting a candidate. Older benchmark caveats are retained in
+[the model reference](ml/MODELS.md#historical-benchmark-caveat); no trading edge or
+position-sizing recommendation follows from those results.
 
 ## Database (Supabase Postgres)
 
@@ -350,41 +286,21 @@ Supabase Auth with cookie sessions via `@supabase/ssr`.
 
 ## Environment
 
-Copy `.env.example` to `.env.local`.
+The [README configuration table](README.md#configuration) and [.env.example](.env.example)
+define the environment variables. Hosting requires an actual server-side
+`ML_BACKEND_URL` and the same private `ML_SERVICE_TOKEN` on both services; a local
+localhost default is not a deployed backend. A healthy ML process does not prove
+that token-protected provider calls succeed.
 
-**Required:** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
-`SUPABASE_SERVICE_ROLE_KEY`, `ML_SERVICE_TOKEN` (must match the value set on the
-ML service itself; its data endpoints fail closed with a 503 without it).
-
-**Optional:** `ALPHA_VANTAGE_API_KEY`, `FINNHUB_API_KEY`, `NEWS_API_KEY`,
-`TWELVE_DATA_API_KEY`, `HUGGING_FACE_API_KEY`, `UPSTASH_REDIS_URL`,
-`UPSTASH_REDIS_TOKEN`, `ML_MODEL_DIR`, `ML_BACKEND_URL`.
-
-Note `ML_BACKEND_URL` is deliberately **not** `NEXT_PUBLIC_`-prefixed: it is read
-only by server-side route handlers, and the prefix would make it eligible for
-inlining into a client bundle.
-
-Missing optional keys degrade one feature rather than breaking the app: no
-`TWELVE_DATA_API_KEY` means all quotes come from yfinance; no `NEWS_API_KEY` returns an
-empty feed; no Upstash means per-instance rate limiting.
+Provider permissions, quotas and optional Upstash configuration affect coverage
+and rate limiting. Hosted setup, migration ordering, cold-start limits and
+recovery are documented in [Deployment](DEPLOYMENT.md). Installation, startup
+and test commands are maintained in the [README](README.md#getting-started).
 
 ## Commands
 
-```bash
-npm ci                 # install the committed lockfile; node_modules is untracked
-npm run dev            # next dev
-npm run build          # next build
-npm run lint           # eslint (ignores ml/)
-npm run type-check     # tsc --noEmit -p tsconfig.typecheck.json
-npm run test:web       # vitest, src/**/*.test.{ts,tsx}
-
-python3.11 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r ml/requirements.txt
-npm run ml:dev         # uvicorn app.main:app --reload --port 8000
-npm run test:ml        # pytest
-npm run train:ml       # train the gradient-boosted artifacts
-```
+Use the [README quickstart](README.md#getting-started) and
+[validation commands](README.md#training-and-testing) for the maintained command list.
 
 ## Guardrails
 
@@ -395,9 +311,9 @@ npm run train:ml       # train the gradient-boosted artifacts
 | Outbound timeouts | all server-side `fetch` | `AbortSignal.timeout` |
 | Row-level security | all `public` tables | Supabase RLS; admin via `is_admin()` |
 | Append-only audit | `audit_log` | no DELETE policy + DB triggers |
-| ML service isolation | network | private; browser only reaches `src/app/api/*` |
+| ML service isolation | server-to-server calls | private token on protected routes; browser calls Next.js |
 | Error boundaries | React UI | `src/components/ui/ErrorBoundary.tsx` |
-| Pre-commit | git | type-check, lint, vitest, conditional pytest |
+| Pre-commit | git | type-check, lint, web tests, conditional ML/data checks |
 
 Volatile market prices are **not** persisted to Supabase. They live in the 60s in-memory
 cache; `market_data.stock_prices` holds historical OHLCV only.
