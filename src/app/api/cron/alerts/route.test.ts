@@ -5,6 +5,7 @@ vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: mocks.createAdminCli
 vi.mock("@/lib/server/market", () => ({ getNormalizedQuotes: mocks.getNormalizedQuotes }));
 
 import { GET } from "./route";
+import { MLServiceError } from "@/lib/server/ml";
 
 const row = {
   id: "a1", user_id: "u1", ticker: "TCS.NS", exchange: "NSE", alert_price: 3500,
@@ -38,6 +39,17 @@ describe("price alert cron delivery", () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
+  it.each(["missing_service_token", "upstream_http"] as const)("does not deliver or claim alerts after %s", async (reason) => {
+    const failure = new MLServiceError(reason, reason === "upstream_http" ? 401 : undefined);
+    mocks.getNormalizedQuotes.mockRejectedValue(failure);
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const response = await GET(request());
+    expect(response.status).toBe(failure.status);
+    expect(await response.json()).toEqual({ error: failure.message, code: failure.code });
+    expect(rpc).not.toHaveBeenCalled();
   });
 
   it("rejects unauthenticated calls before opening an admin client", async () => {

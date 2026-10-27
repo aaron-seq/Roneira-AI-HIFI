@@ -271,17 +271,18 @@ curl -s -o /dev/null -w '%{http_code}\n' https://<ml-host>/screener
 ```
 
 Then load the Vercel URL and open the predictions page. If predictions return a
-502, check the Vercel function logs: a token mismatch surfaces there as a 401
-from the upstream, and an unset token on the ML side as a 503.
+502, inspect the sanitized Vercel function log: `upstreamStatus:401` indicates a
+token mismatch; `upstreamStatus:503` can indicate a missing backend token. Logs
+contain only the failure code, reason and upstream status. Do not log tokens,
+configured URLs or upstream response bodies.
 
 ## Troubleshooting
 
 | Symptom | Cause |
 |---|---|
-| Chart history logs `ECONNREFUSED 127.0.0.1:8000` | The effective ML target is loopback. Set the server-side `ML_BACKEND_URL` to the active hosted service and redeploy; the public-prefixed variable is ignored. |
-| `/api/predict` returns 502 | ML service unreachable, or `ML_SERVICE_TOKEN` differs between the two platforms. Check the Vercel function log for the upstream status. |
-| ML endpoints return 503 | `ML_SERVICE_TOKEN` is unset on the ML service. It fails closed by design. |
-| ML endpoints return 401 | The two `ML_SERVICE_TOKEN` values do not match. |
+| Next.js ML-backed data returns503 with `ML_SERVICE_CONFIGURATION_ERROR` | Set server-side `ML_BACKEND_URL` to the verified HTTPS origin (no path, credentials, query, fragment or loopback) and set `ML_SERVICE_TOKEN`; redeploy. The public-prefixed URL is ignored. Local development retains `http://localhost:8000`, but still needs the protected endpoint token. |
+| Next.js ML-backed data returns502 with `ML_SERVICE_UNAVAILABLE` | Inspect sanitized `reason`/`upstreamStatus`: upstream401 means token mismatch; upstream503 can mean backend token unset; transport/payload failures need backend investigation. Repair the cause and retry; failed loads are not cached as empty results. |
+| Direct ML endpoints return503 /401 | Respectively, backend token unset / supplied token mismatch. `/health` remains public and does not verify protected data access. |
 | Login fails for username (not email) | Migration `008` not applied. |
 | Admin dashboard errors with a recursion message | Migration `007` not applied. |
 | Quotes all come from yfinance and are slow | `TWELVE_DATA_API_KEY` unset — expected degradation, not a fault. |

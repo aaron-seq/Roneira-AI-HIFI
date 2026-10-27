@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createSymbolConfig } from "@/lib/market/constants";
 import { getNormalizedQuotes } from "@/lib/server/market";
+import { mlServiceErrorResponse } from "@/lib/server/ml";
 import { rateLimit, tooManyRequests } from "@/lib/server/rate-limit";
 import { buildPortfolioCapture, PORTFOLIO_HISTORY_METHODOLOGY } from "@/lib/portfolio/history";
 import {
@@ -99,7 +100,9 @@ export async function POST(request: Request) {
     }).single();
     if (saveError || !saved) return json({ error: "Could not save this portfolio capture." }, 503);
     return json({ snapshot: snapshotFromRow(saved as PortfolioSnapshotRow), methodology: PORTFOLIO_HISTORY_METHODOLOGY });
-  } catch {
+  } catch (error) {
+    const unavailable = mlServiceErrorResponse(error, privateHeaders);
+    if (unavailable) return unavailable;
     return json({ error: "Failed to capture portfolio value. No successful save was confirmed." }, 500);
   }
 }

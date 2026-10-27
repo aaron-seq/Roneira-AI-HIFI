@@ -9,6 +9,7 @@ vi.mock("@/lib/server/market", () => ({ getNormalizedQuotes: mocks.getNormalized
 vi.mock("@/lib/server/rate-limit", () => ({ rateLimit: mocks.rateLimit, tooManyRequests: () => Response.json({ error: "Too many requests" }, { status: 429 }) }));
 
 import { GET, POST } from "./route";
+import { MLServiceError } from "@/lib/server/ml";
 
 const holding = {
   id: "h1", ticker: "TCS.NS", exchange: "NSE", quantity: 10, avg_buy_price: 100,
@@ -59,7 +60,19 @@ describe("server-calculated portfolio history", () => {
     mocks.createAdminClient.mockReturnValue({ from: adminFrom, rpc: saveRpc });
   });
 
-  afterEach(() => vi.useRealTimers());
+  afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
+
+  it.each(["missing_service_token", "upstream_http"] as const)("does not save a capture after %s", async (reason) => {
+    const failure = new MLServiceError(reason, reason === "upstream_http" ? 401 : undefined);
+    mocks.getNormalizedQuotes.mockRejectedValue(failure);
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const response = await POST(postRequest());
+    expect(response.status).toBe(failure.status);
+    expect(response.headers.get("Cache-Control")).toBe("private, no-store");
+    expect(await response.json()).toEqual({ error: failure.message, code: failure.code });
+    expect(mocks.createAdminClient).not.toHaveBeenCalled();
+    expect(saveRpc).not.toHaveBeenCalled();
+  });
 
   it.each([GET, POST])("rejects anonymous callers before holdings, prices or service-role access", async (handler) => {
     mocks.getUser.mockResolvedValue({ data: { user: null }, error: null });

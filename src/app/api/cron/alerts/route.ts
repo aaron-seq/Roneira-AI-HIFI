@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { dueAlerts, marketOf, marketSessionDate, type ArmedAlert, type Market } from "@/lib/alerts/evaluate";
 import { createSymbolConfig } from "@/lib/market/constants";
 import { getNormalizedQuotes } from "@/lib/server/market";
+import { mlServiceErrorResponse } from "@/lib/server/ml";
+import type { MarketQuote } from "@/lib/market/types";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
@@ -43,9 +45,16 @@ export async function GET(request: Request) {
       row.users?.preferences?.notifications?.priceAlerts !== false
   );
   const tickers = Array.from(new Set(armed.map((row) => row.ticker)));
-  const quotes = tickers.length
-    ? await getNormalizedQuotes(tickers.map((ticker) => createSymbolConfig(ticker)))
-    : [];
+  let quotes: MarketQuote[];
+  try {
+    quotes = tickers.length
+      ? await getNormalizedQuotes(tickers.map((ticker) => createSymbolConfig(ticker)))
+      : [];
+  } catch (error) {
+    const unavailable = mlServiceErrorResponse(error);
+    if (unavailable) return unavailable;
+    throw error;
+  }
   const evaluatedAt = new Date();
   const due = dueAlerts(armed, new Map(quotes.map((quote) => [quote.symbol, quote])), 20, evaluatedAt);
 

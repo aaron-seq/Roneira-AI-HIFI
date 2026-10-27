@@ -13,9 +13,8 @@ import type {
   StockSearchResult,
 } from "@/lib/market/types";
 import { getCachedValue } from "@/lib/server/cache";
+import { fetchMLJson, MLServiceError, reportMLServiceError } from "@/lib/server/ml";
 
-const ML_BACKEND_URL = process.env.ML_BACKEND_URL || "http://localhost:8000";
-const ML_SERVICE_TOKEN = process.env.ML_SERVICE_TOKEN || "";
 const TWELVE_DATA_API_KEY = process.env.TWELVE_DATA_API_KEY || "";
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY || "";
 const ALPHA_VANTAGE_API_KEY = process.env.ALPHA_VANTAGE_API_KEY || "";
@@ -77,17 +76,6 @@ async function fetchJson(
   }
 
   return (await response.json()) as JsonRecord;
-}
-
-/**
- * Calls to our own ML service, which requires the shared secret.
- *
- * Deliberately separate from `fetchJson`: that one is also used for Twelve
- * Data, Finnhub and Alpha Vantage, and attaching the token there would hand
- * our service credential to three third parties.
- */
-function fetchMlJson(url: string): Promise<JsonRecord> {
-  return fetchJson(url, { "X-ML-Service-Token": ML_SERVICE_TOKEN });
 }
 
 export function unwrapTwelveQuotePayload(payload: JsonRecord): Map<string, JsonRecord> {
@@ -266,9 +254,9 @@ async function fetchTwelveQuotes(
 
 async function fetchMlQuotes(
   configs: QuoteConfig[]
-): Promise<Map<string, MarketQuote>> {
+): Promise<{ quotes: Map<string, MarketQuote>; failure?: MLServiceError }> {
   if (configs.length === 0) {
-    return new Map();
+    return { quotes: new Map() };
   }
 
   const fallbackSymbols = Array.from(new Set(configs.map(
@@ -276,22 +264,27 @@ async function fetchMlQuotes(
   )));
 
   const mlBySymbol = new Map<string, JsonRecord>();
+  let failure: MLServiceError | undefined;
   // Preserve successful batches if another batch fails. Sequential requests
   // also bound provider fan-out to the backend's eight-worker pool.
   for (let offset = 0; offset < fallbackSymbols.length; offset += ML_QUOTE_BATCH_SIZE) {
     try {
       const batch = fallbackSymbols.slice(offset, offset + ML_QUOTE_BATCH_SIZE);
-      const payload = await fetchMlJson(
-        `${ML_BACKEND_URL}/market-data?symbols=${encodeURIComponent(batch.join(","))}`
+      const payload = await fetchMLJson<JsonRecord>(
+        `/market-data?symbols=${encodeURIComponent(batch.join(","))}`
       );
-      const rows = Array.isArray(payload.data) ? payload.data : [];
+      if (!Array.isArray(payload.data)) throw new MLServiceError("upstream_payload");
+      const rows = payload.data;
       for (const row of rows) {
         if (typeof row === "object" && row !== null && typeof row.symbol === "string") {
           mlBySymbol.set(row.symbol, row as JsonRecord);
         }
       }
-    } catch {
+    } catch (error) {
+      if (!(error instanceof MLServiceError)) throw error;
+      failure ??= error;
       // Other batches can still supply holdings, FX rates, and alert symbols.
+      if (error.status === 503) break;
     }
   }
 
@@ -308,7 +301,7 @@ async function fetchMlQuotes(
     }
   }
 
-  return quotes;
+  return { quotes, failure };
 }
 
 /**
@@ -317,8 +310,8 @@ async function fetchMlQuotes(
  *   2. Any symbol Twelve Data didn't return a quote for falls through to
  *      `fetchMlQuotes`, which asks the FastAPI service in `ml/` for a quote
  *      -- that service in turn falls back to yfinance when its own primary
- *      source misses. Twelve Data is never a hard dependency: a full outage
- *      degrades to 100% yfinance-via-ml/ rather than an empty response.
+ *      source misses. Known ML failures reject a fully unavailable result;
+ *      successful empty responses and any usable partial quotes are retained.
  * Results are cached (`getCachedValue`, `QUOTE_TTL_MS` = 60s) so this chain
  * only runs on a cache miss, not on every request.
  */
@@ -338,11 +331,16 @@ export async function getNormalizedQuotes(
       const missing = uniqueConfigs.filter(
         (config) => !twelveQuotes.has(config.symbol)
       );
-      const fallbackQuotes = await fetchMlQuotes(missing);
+      const { quotes: fallbackQuotes, failure } = await fetchMlQuotes(missing);
 
-      return uniqueConfigs
+      const quotes = uniqueConfigs
         .map((config) => twelveQuotes.get(config.symbol) ?? fallbackQuotes.get(config.symbol))
         .filter((quote): quote is MarketQuote => Boolean(quote));
+      if (failure) {
+        if (quotes.length === 0) throw failure;
+        reportMLServiceError(failure);
+      }
+      return quotes;
     }
   );
 }
@@ -371,10 +369,21 @@ export function splitMovers(quotes: MarketQuote[], count = 5) {
 }
 
 export async function getMarketOverviewPayload() {
-  const [overviewQuotes, moverQuotes] = await Promise.all([
+  const results = await Promise.allSettled([
     getNormalizedQuotes(MARKET_OVERVIEW_SYMBOLS),
     getNormalizedQuotes(MOVER_SYMBOL_LIST),
   ]);
+  let failure: MLServiceError | undefined;
+  const [overviewQuotes, moverQuotes] = results.map((result) => {
+    if (result.status === "fulfilled") return result.value;
+    if (!(result.reason instanceof MLServiceError)) throw result.reason;
+    failure ??= result.reason;
+    return [];
+  });
+  if (failure) {
+    if (overviewQuotes.length === 0 && moverQuotes.length === 0) throw failure;
+    reportMLServiceError(failure);
+  }
 
   const overviewMap = new Map(
     overviewQuotes.map((quote) => [quote.symbol, quote])
@@ -585,16 +594,15 @@ async function fetchMlHistory(
   interval: string,
   range: string
 ): Promise<CandlePoint[]> {
-  const payload = await fetchMlJson(
-    `${ML_BACKEND_URL}/history?symbol=${encodeURIComponent(
+  const payload = await fetchMLJson<JsonRecord>(
+    `/history?symbol=${encodeURIComponent(
       config.fallbackSymbol ?? config.symbol
     )}&interval=${encodeURIComponent(interval)}&range=${encodeURIComponent(
       range
     )}`
   );
-  const rows = Array.isArray(payload.candles)
-    ? (payload.candles as JsonRecord[])
-    : [];
+  if (!Array.isArray(payload.candles)) throw new MLServiceError("upstream_payload");
+  const rows = payload.candles as JsonRecord[];
 
   return rows
     .map((value) => {

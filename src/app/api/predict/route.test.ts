@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { inspect } from "node:util";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "./route";
 
 const { inserted, insert, getUser, createAdminClient } = vi.hoisted(() => {
@@ -24,9 +25,45 @@ const prediction = {
   fallback_reason: "artifact_unavailable", excluded_components: [],
 };
 
-afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); inserted.length = 0; getUser.mockClear(); createAdminClient.mockReset(); });
+beforeEach(() => {
+  vi.stubEnv("NODE_ENV", "production");
+  vi.stubEnv("ML_BACKEND_URL", "https://ml.example.test");
+  vi.stubEnv("ML_SERVICE_TOKEN", "test-service-token");
+});
+afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.restoreAllMocks(); inserted.length = 0; getUser.mockClear(); createAdminClient.mockReset(); });
 
 describe("Prediction provenance persistence", () => {
+  it("does not contact ML or persist results when its token is missing", async () => {
+    vi.stubEnv("ML_SERVICE_TOKEN", "");
+    const fetch = vi.fn(async () => Response.json(prediction));
+    vi.stubGlobal("fetch", fetch);
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const response = await POST(new Request("http://localhost/api/predict", {
+      method: "POST", body: JSON.stringify({ ticker: "TCS.NS", timeframe: "1month" }),
+    }));
+    expect(response.status).toBe(503);
+    expect(fetch).not.toHaveBeenCalled();
+    expect(inserted).toEqual([]);
+    expect(createAdminClient).not.toHaveBeenCalled();
+  });
+
+  it.each([401, 503])("safely handles ML rejection %s without persisting it", async (status) => {
+    const detail = "https://ml.example.test/test-service-token/private-upstream-detail";
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ detail }, { status })));
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const timeout = vi.spyOn(AbortSignal, "timeout");
+    const response = await POST(new Request("http://localhost/api/predict", {
+      method: "POST", body: JSON.stringify({ ticker: "TCS.NS", timeframe: "1month" }),
+    }));
+    expect(response.status).toBe(502);
+    expect(await response.json()).toEqual({ error: "Market service is temporarily unavailable.", code: "ML_SERVICE_UNAVAILABLE" });
+    expect(timeout).toHaveBeenCalledWith(30_000);
+    expect(inspect(log.mock.calls)).not.toContain(detail);
+    expect(inspect(log.mock.calls)).not.toContain("test-service-token");
+    expect(inserted).toEqual([]);
+    expect(createAdminClient).not.toHaveBeenCalled();
+  });
+
   it("rejects an anonymous request before spending inference or storing results", async () => {
     const fetch = vi.fn();
     vi.stubGlobal("fetch", fetch);

@@ -145,11 +145,18 @@ Quotes resolve in this order (`src/lib/server/market.ts`):
 2. Symbols it misses fall through to the **ML service** `/market-data`, which reads
    **yfinance**.
 
-Results cache for 60s, so the chain runs on a cache miss. Fallback still depends
-on the ML URL, matching token and provider availability. Quote failures can
-currently become an empty successful response; history failures surface as a
-generic error. [#213](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/213) tracks
-safer classification while preserving usable partial results.
+Results cache for 60s, so the chain runs on a cache miss. ML configuration is
+validated only when needed: production requires an explicit HTTPS origin without
+loopback, credentials, path, query or fragment, plus a private token for protected
+endpoints. Development retains the localhost default. Missing/invalid caller
+configuration returns503 (`ML_SERVICE_CONFIGURATION_ERROR`); upstream HTTP,
+transport or invalid JSON/envelope failures return502 (`ML_SERVICE_UNAVAILABLE`).
+Failures are not cached as empty success. Valid empty responses and usable
+provider/batch/overview results are retained. Shared requests reject redirects
+and log only error code, reason and upstream status, never URLs, tokens or bodies.
+Prediction authentication, route rate limits and deadlines remain in place;
+admin health failure leaves the database overview available with `mlHealth:null`.
+Quote failures stop alert delivery and portfolio capture before their writes.
 
 - **Finnhub** — symbol search, with Alpha Vantage as fallback. Results are deduplicated by
   symbol; providers return the same ticker under several descriptions.
