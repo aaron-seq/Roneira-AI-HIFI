@@ -134,8 +134,18 @@ cd ml
 python backtest.py --models all --tickers RELIANCE.NS,TCS.NS,INFY.NS,HDFCBANK.NS \
   --period 10y --folds 4 --horizon 7 --max-origins-per-fold 12 \
   --json results-7.json --records origins-7.csv
-python -m pytest tests/test_backtest.py
+python -m pytest tests/test_backtest.py tests/test_backtest_cache.py
 ```
+
+The legacy `.cache/backtest/` cache accepts at least 600 complete, finite OHLCV
+sessions with positive consistent prices, nonnegative volume and unique increasing
+timestamps. Missing or unusable caches get one download attempt per ticker/run;
+failed inputs are skipped and are not saved. Existing unusable bytes remain for
+inspection until a valid replacement succeeds. Valid ordinary caches are reused
+without downloads or rewrites. `--refresh` stages a validated replacement before
+atomic publication; a failed refresh excludes that ticker for the requested run
+while retaining its previous file. This does not modify the separate frozen
+`research.py` datasets or their manifests.
 
 By default origins are one horizon apart per stock, so its forward returns do
 not overlap. Cross-stock outcomes can remain correlated. Fold edges are shared

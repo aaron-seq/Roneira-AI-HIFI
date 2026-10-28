@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import tempfile
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -425,30 +426,70 @@ def print_report(summary: dict, horizon: int) -> None:
     print()
 
 
+def _validated_history(frame: pd.DataFrame) -> pd.DataFrame:
+    """Reject inputs that cannot form finite, chronological session windows."""
+    columns = ["Open", "High", "Low", "Close", "Volume"]
+    if not isinstance(frame, pd.DataFrame) or not set(columns).issubset(frame.columns):
+        raise ValueError("Missing OHLCV columns")
+    # Preserve the downloader's existing exclusion of incomplete price bars.
+    frame = frame.dropna(subset=columns[:4]).copy()
+    if len(frame) < 600:
+        raise ValueError("Fewer than 600 complete sessions")
+    if any(pd.api.types.is_number(stamp) for stamp in frame.index):
+        raise ValueError("Session timestamps must be dates")
+    frame.index = pd.to_datetime(frame.index, utc=True)
+    if frame.index.hasnans or not frame.index.is_unique or not frame.index.is_monotonic_increasing:
+        raise ValueError("Sessions must be unique and increasing")
+    for column in columns:
+        frame[column] = pd.to_numeric(frame[column], errors="raise")
+    values = frame[columns].to_numpy(dtype=float)
+    prices = values[:, :4]
+    if (not np.isfinite(values).all() or (prices <= 0).any() or (values[:, 4] < 0).any()
+            or (values[:, 1] < prices.max(axis=1)).any()
+            or (values[:, 2] > prices.min(axis=1)).any()):
+        raise ValueError("Invalid OHLCV values")
+    return frame
+
+
+def _cache_history(frame: pd.DataFrame, path: Path) -> None:
+    """Stage the complete CSV before replacing any previously cached bytes."""
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", dir=path.parent, prefix=".backtest-", suffix=".csv", delete=False,
+        ) as file:
+            temporary = Path(file.name)
+            frame.to_csv(file)
+        temporary.replace(path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
 def load_frames(tickers: list[str], period: str, refresh: bool) -> dict[str, pd.DataFrame]:
-    """Fetch full history once and cache it: a backtest should not re-download per run."""
+    """Reuse valid histories; retry unusable caches without persisting failed inputs."""
     import yfinance as yf
 
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     yf.set_tz_cache_location(str(CACHE_DIR / "yfinance"))
     frames: dict[str, pd.DataFrame] = {}
-    for ticker in tickers:
+    for ticker in dict.fromkeys(tickers):
         # CSV, not pickle: this is plain OHLCV, and a cache file should never be
         # able to execute code when read back.
         path = CACHE_DIR / f"{ticker.replace('^', '_')}_{period}.csv"
         if path.exists() and not refresh:
-            frame = pd.read_csv(path, index_col=0)
-            frame.index = pd.to_datetime(frame.index, utc=True)
-        else:
-            frame = yf.Ticker(ticker).history(period=period)
-            if not frame.empty:
-                frame = frame.dropna(subset=["Open", "High", "Low", "Close"])
-            frame.to_csv(path)
-        # One timezone for every frame: NSE and NASDAQ indexes carry different
-        # offsets, and pooling them would make fold edges an object index.
-        frame.index = pd.to_datetime(frame.index, utc=True)
-        if len(frame) < 600:
-            logger.warning("Skipping %s: only %d sessions", ticker, len(frame))
+            try:
+                frames[ticker] = _validated_history(pd.read_csv(path, index_col=0))
+                continue
+            except (OSError, ValueError, TypeError) as error:
+                logger.warning("Retrying unusable cache for %s (%s)", ticker, type(error).__name__)
+        try:
+            frame = _validated_history(yf.Ticker(ticker).history(period=period))
+            _cache_history(frame, path)
+        except Exception as error:
+            # Preserve a previous cache on download/validation/write failure.
+            # Provider exception messages can contain URLs or payload excerpts.
+            logger.warning("Skipping unavailable history for %s (%s)", ticker, type(error).__name__)
             continue
         frames[ticker] = frame
     return frames
