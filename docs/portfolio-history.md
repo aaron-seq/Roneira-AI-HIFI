@@ -88,32 +88,35 @@ storage error. Amounts are not labelled as investment returns.
 
 ## Validation and limits
 
-The implementation was reviewed independently, including out-of-order captures,
-A→B→A recovery, strict source-time handling and finite/partial financial math.
-Original market-helper regressions were retained alongside new direct-symbol FX
-and normalization-to-capture tests. The local stack applies 12 application
-migrations and passes 13 setup checks including real Auth/RLS/SSR and the committed
-history SQL assertions. Known Auth hard-delete failure remains
-[#174](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/174), distinct from these
-passed checks.
+### Recorded validation — PR191, 2026-10-19
 
-The final suite has 397 web tests, 224 ML tests and 18 data-project tests; lint,
-type-check and production build pass. Local browser testing covers 16 currency/
-viewport/theme states and 8 flows using public synthetic holdings and actual Yahoo
-quotes. It checks unauthorized/forged requests, daily idempotency, currency
-series, failure/retry, second-account isolation, overflow and accessibility.
-The final live mixed-currency capture included all six fixture holdings in
-both currencies; raw provider availability remains environment-dependent.
+[PR191](https://github.com/aaron-seq/Roneira-AI-HIFI/pull/191) records review of
+out-of-order captures, A→B→A recovery, source-time handling and finite/partial
+math, retaining market-helper regressions plus direct-symbol FX and
+normalization-to-capture tests. The local stack passed 13 setup checks with
+12 application migrations, real Auth/RLS/SSR and history SQL assertions;
+397 web, 224 ML and 18 data tests, lint, types and build passed.
 
-CI checks web/ML/data behavior and builds. Real database SQL/Auth/browser checks
-were run in the disposable development environment; automated database release
-gates remain follow-up [#188](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/188).
-Hosted database/deployment and provider commercial permissions are not established
-by local fixture checks. Source rights are discussed in the [data project](../data/README.md).
+Browser checks covered 16 currency/viewport/theme states and 8 flows with
+synthetic holdings and actual Yahoo quotes: unauthorized/forged requests,
+daily idempotency, currency series, failure/retry, account isolation, overflow
+and accessibility. The final mixed-currency capture covered all six fixture
+holdings in both currencies. At that checkpoint, Auth hard-delete (#174) and
+automated database/Auth CI (#188) remained follow-ups. These are historical
+observations; provider availability remains environment-dependent.
 
 ![Synthetic portfolio holdings with actual quotes, INR history](portfolio-history-inr-390.png)
 
 ![The same observed book in a separate USD history](portfolio-history-usd-390.png)
+
+### Current verification paths
+
+Migration 015 repaired the account-deletion conflict; the
+[audit-retention ADR](adr/0002-audit-retention-on-account-deletion.md) records
+the contract and unresolved erasure policy. Database SQL and real GoTrue deletion
+now run in CI; use the [database test guide](../supabase/tests/README.md) for
+commands and scope. Hosted readiness and provider commercial permissions require
+separate evidence; see the [data project](../data/README.md).
 
 ## Rollout and rollback
 

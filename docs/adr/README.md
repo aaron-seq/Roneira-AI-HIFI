@@ -1,6 +1,6 @@
 # Architecture and product decision records
 
-Reviewed inventory: **2026-10-21**, implementation baseline `9049f8c`. [Live dashboard #189](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/189) · [Review queue #198](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/198) · [Complete issue/PR audit](../product/delivery-audit-2026-10-21.md).
+Reviewed inventory: **2026-10-21**, implementation baseline `9049f8c`. [Delivery record #189](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/189) · [Review record #198](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/198) · [Complete issue/PR audit](../product/delivery-audit-2026-10-21.md).
 
 ADRs group coherent decisions; the issue ledger maps every original issue (including retired-stack fixes) to a governing topic. This catalog covers ordinary-user portfolio valuation/history, financial accounting, Indian swing planning, analyst models/training, prospective evidence, data stories/UX, provider rights/open data, identity/audit/deletion, runtime/setup, testing/release, free software/future hosting and delivery management.
 

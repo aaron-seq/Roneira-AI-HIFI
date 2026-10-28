@@ -3,8 +3,8 @@
 Work in the canonical `src/`, `ml/`, `supabase/` and supporting `data/` paths.
 See [Architecture](ARCHITECTURE.md#canonical-surfaces) for runtime boundaries,
 the [README](README.md#training-and-testing) for checks, and the
-[delivery tracker](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/189)
-for current priorities and acceptance criteria. Legacy services are recoverable
+[delivery record](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/189)
+for recorded priorities and acceptance criteria. Legacy services are recoverable
 from Git history, not supported development entrypoints.
 
 ## Guardrails

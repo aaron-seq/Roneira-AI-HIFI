@@ -3,20 +3,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type { PredictionResult, StockSearchResult } from "@/lib/market/types";
 import { useAppStore } from "@/lib/stores/app-store";
-
-async function fetchJson<T>(url: string): Promise<T> {
-  const response = await fetch(url, {
-    headers: {
-      Accept: "application/json",
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Request failed: ${response.status}`);
-  }
-
-  return (await response.json()) as T;
-}
+import { fetchJson } from "@/lib/client/fetch-json";
 
 export function useStockSearch(query: string) {
   const trimmed = query.trim();

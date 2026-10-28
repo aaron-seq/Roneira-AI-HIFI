@@ -1,7 +1,7 @@
 # Contributing to Roneira AI HIFI
 
 Start with the [README](README.md), [product plan](docs/product/README.md) and
-[live delivery tracker](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/189).
+[delivery record](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/189).
 Search existing issues and PRs before starting work. An issue marked ready may
 still require a product or architecture decision; read its acceptance criteria.
 
