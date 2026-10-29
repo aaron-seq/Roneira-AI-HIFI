@@ -108,8 +108,8 @@ shared machines. `.gitignore` prevents ordinary accidental staging; it does not
 provide filesystem access control or remove prior commits/backups. Review a diff
 before publishing, including generated files. This directory does not implement
 customer-account deletion, backup erasure or production retention enforcement.
-Application deletion failures such as the known audit/auth FK issue remain
-separate application work.
+The [account-removal contract](../docs/adr/0002-audit-retention-on-account-deletion.md)
+records the repaired audit/Auth FK behavior and unresolved retention/erasure policy.
 
 The repository MIT license applies to its code and the newly authored synthetic
 fixtures. It does not grant rights to Yahoo Finance prices, another provider's

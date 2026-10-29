@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { CandlePoint, MarketQuote, ScreenerResponse } from "@/lib/market/types";
 import { useAppStore } from "@/lib/stores/app-store";
+import { fetchJson } from "@/lib/client/fetch-json";
 
 type MarketOverviewResponse = {
   data: MarketQuote[];
@@ -28,20 +29,6 @@ type CommoditiesForexResponse = {
   };
   timestamp: string;
 };
-
-async function fetchJson<T>(url: string): Promise<T> {
-  const response = await fetch(url, {
-    headers: {
-      Accept: "application/json",
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Request failed: ${response.status}`);
-  }
-
-  return (await response.json()) as T;
-}
 
 export function useMarketOverviewData() {
   const userId = useAppStore((state) => state.user?.id ?? null);

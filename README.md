@@ -102,7 +102,7 @@ a headline “90%” metric cannot trigger fees. See the
 ## Product and data project
 
 [PRDs and delivery plan](docs/product/README.md), the
-[live tracker](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/189) and
+[delivery record](https://github.com/aaron-seq/Roneira-AI-HIFI/issues/189) and
 [milestones](https://github.com/aaron-seq/Roneira-AI-HIFI/milestones) separate
 implemented behavior from proposals and release gates. The
 [ADR catalog](docs/adr/README.md) identifies decisions needing human review;
